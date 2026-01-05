@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Math Tool (Local State) - Safe + Auto Cleanup</title>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b0f14; color: #e6edf3; }
+
+    .topbar {
+      position: fixed; top: 12px; left: 12px; right: 12px;
+      display: flex; gap: 8px; align-items: center; z-index: 10;
+      flex-wrap: wrap;
+    }
+    .panel {
+      background: rgba(20, 26, 34, 0.85);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex; gap: 10px; align-items: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    button {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e6edf3;
+      padding: 8px 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    button:hover { background: rgba(255,255,255,0.12); }
+    button.active {
+      background: rgba(120, 200, 255, 0.22);
+      border-color: rgba(120, 200, 255, 0.35);
+    }
+    .readout { opacity: 0.9; font-size: 13px; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+    .footer {
+      position: fixed; bottom: 12px; left: 12px;
+      background: rgba(20, 26, 34, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+      opacity: 0.85;
+      line-height: 1.35;
+      z-index: 10;
+      max-width: min(720px, calc(100vw - 24px));
+    }
+    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; }
+
+    /* ---------- Button-side tooltip ---------- */
+    .tip {
+      position: fixed;
+      z-index: 9999;
+      display: none;
+
+      background: rgba(20, 26, 34, 0.94);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 10px 12px;
+
+      box-shadow: 0 18px 44px rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+
+      max-width: min(520px, calc(100vw - 24px));
+      font-size: 13px;
+      line-height: 1.35;
+
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-4px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+    .tip.show {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .tip.hide {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    .tip b { color: rgba(255, 230, 160, 0.95); }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="panel">
+      <button id="toolPoint" class="active" type="button">점 도구</button>
+      <button id="toolSegment" type="button">선분 도구</button>
+      <button id="toolSelect" type="button">선택/이동 도구</button>
+      <span class="readout" id="readout"></span>
+    </div>
+
+    <div class="panel">
+      <button id="btnUndoPoint" type="button">점 되돌리기</button>
+      <button id="btnUndoSeg" type="button">선분 되돌리기</button>
+      <button id="btnClearAll" type="button">전체 삭제</button>
+      <button id="btnCancelSeg" type="button">선분 1점 취소</button>
+    </div>
+  </div>
+
+  <canvas id="c"></canvas>
+
+  <div class="footer">
+    ✅ uvicorn 실행 + 데이터는 브라우저(localStorage)에만 저장(서버 저장 0)<br/>
+    선분: (1-2), (3-4), (5-6)… <b>2점씩 짝지어</b> 생성<br/>
+    단축키: <code>P</code>=점, <code>S</code>=선분, <code>V</code>=선택, <code>ESC</code>=선분 1점 취소
+  </div>
+
+  <div id="tip" class="tip" aria-live="polite"></div>
+
+<script>
+(() => {
+  // =========================
+  // 0) 자동 찌꺼기 삭제 정책
+  // =========================
+  // 코드 업데이트 시 BUILD_ID만 바꾸면:
+  // - 이전 localStorage에 남은 mathlab_state_* 전부 삭제
+  // - 새 버전으로 깨끗하게 시작
+  const BUILD_ID = "2026-01-05-build-01"; // ← 업데이트할 때 여기만 바꾸세요
+  const BUILD_KEY = "mathlab_build_id";
+
+  function purgeOldLocalStorageIfNeeded() {
+    try {
+      const prev = localStorage.getItem(BUILD_KEY);
+      if (prev === BUILD_ID) return false; // 같은 빌드면 유지
+
+      // 다른 빌드(또는 처음)면: 찌꺼기 제거
+      const keysToDelete = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        // 과거 버전에서 사용하던 키들을 한 번에 정리
+        if (k.startsWith("mathlab_state_") || k.startsWith("mathlab_")) {
+          keysToDelete.push(k);
+        }
+      }
+      for (const k of keysToDelete) localStorage.removeItem(k);
+
+      // 새 빌드 기록
+      localStorage.setItem(BUILD_KEY, BUILD_ID);
+      return true;
+    } catch {
+      // localStorage 접근 불가(브라우저 정책/시크릿 등)면 그냥 무시
+      return false;
+    }
+  }
+
+  const didPurge = purgeOldLocalStorageIfNeeded();
+
+  // -------------------------
+  // Element refs (방어)
+  // -------------------------
+  const canvas = document.getElementById('c');
+  const ctx = canvas?.getContext?.('2d');
+  const readout = document.getElementById('readout');
+  const tipEl = document.getElementById('tip');
+
+  const toolPointBtn = document.getElementById('toolPoint');
+  const toolSegmentBtn = document.getElementById('toolSegment');
+  const toolSelectBtn = document.getElementById('toolSelect');
+
+  const btnUndoPoint = document.getElementById('btnUndoPoint');
+  const btnUndoSeg   = document.getElementById('btnUndoSeg');
+  const btnClearAll  = document.getElementById('btnClearAll');
+  const btnCancelSeg = document.getElementById('btnCancelSeg');
+
+  if (!canvas || !ctx || !readout || !tipEl || !toolPointBtn || !toolSegmentBtn || !toolSelectBtn ||
+      !btnUndoPoint || !btnUndoSeg || !btnClearAll || !btnCancelSeg) {
+    alert('UI 요소 로딩에 실패했습니다. HTML이 손상되었는지 확인해 주세요.');
+    return;
+  }
+
+  // -------------------------
+  // Tooltip (버튼 옆)
+  // -------------------------
+  let tipTimer = null;
+  let tipHideTimer = null;
+
+  function hideTip() {
+    tipEl.classList.remove('show');
+    tipEl.classList.add('hide');
+    if (tipHideTimer) clearTimeout(tipHideTimer);
+    tipHideTimer = setTimeout(() => {
+      if (tipEl.classList.contains('hide')) tipEl.style.display = 'none';
+    }, 200);
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function positionTip(anchorEl) {
+    const padding = 10;
+    const gap = 10;
+
+    const tw = Math.max(1, tipEl.offsetWidth);
+    const th = Math.max(1, tipEl.offsetHeight);
+
+    if (!anchorEl || !anchorEl.getBoundingClientRect) {
+      const left = Math.round((window.innerWidth - tw) / 2);
+      const top = 72;
+      tipEl.style.left = `${clamp(left, padding, window.innerWidth - padding - tw)}px`;
+      tipEl.style.top  = `${clamp(top,  padding, window.innerHeight - padding - th)}px`;
+      return;
+    }
+
+    const r = anchorEl.getBoundingClientRect();
+    let left = r.right + gap;
+    let top  = r.top + (r.height - th) / 2;
+
+    if (left + tw > window.innerWidth - padding) {
+      left = r.left - gap - tw;
+    }
+
+    left = clamp(left, padding, window.innerWidth - padding - tw);
+    top  = clamp(top,  padding, window.innerHeight - padding - th);
+
+    tipEl.style.left = `${Math.round(left)}px`;
+    tipEl.style.top  = `${Math.round(top)}px`;
+  }
+
+  function showTip(html, anchorEl=null, ms=1600) {
+    if (tipTimer) clearTimeout(tipTimer);
+
+    tipEl.innerHTML = html;
+    tipEl.style.display = 'block';
+    tipEl.classList.remove('hide');
+    tipEl.classList.add('show');
+
+    requestAnimationFrame(() => positionTip(anchorEl));
+    tipTimer = setTimeout(hideTip, ms);
+  }
+
+  window.addEventListener('resize', hideTip);
+  window.addEventListener('scroll', hideTip, true);
+
+  // -------------------------
+  // Local-only persistence
+  // -------------------------
+  const STORAGE_KEY = 'mathlab_state_safe_v2'; // 현재 버전 상태키
+
+  function sanitizeNumber(x, fallback=0) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function sanitizeState(obj) {
+    const safe = { points: [], segments: [] };
+    if (!obj || typeof obj !== 'object') return safe;
+
+    const pts = Array.isArray(obj.points) ? obj.points : [];
+    const segs = Array.isArray(obj.segments) ? obj.segments : [];
+
+    for (const p of pts) {
+      if (!p || typeof p !== 'object') continue;
+      if (typeof p.id !== 'string' || !p.id) continue;
+      safe.points.push({ id: p.id, x: sanitizeNumber(p.x, 0), y: sanitizeNumber(p.y, 0) });
+    }
+
+    const ids = new Set(safe.points.map(p => p.id));
+    for (const s of segs) {
+      if (!s || typeof s !== 'object') continue;
+      if (typeof s.id !== 'string' || !s.id) continue;
+      if (typeof s.a_id !== 'string' || typeof s.b_id !== 'string') continue;
+      if (!ids.has(s.a_id) || !ids.has(s.b_id) || s.a_id === s.b_id) continue;
+      safe.segments.push({ id: s.id, a_id: s.a_id, b_id: s.b_id });
+    }
+
+    return safe;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { points: [], segments: [] };
+      return sanitizeState(JSON.parse(raw));
+    } catch {
+      return { points: [], segments: [] };
+    }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ points, segments }));
+    } catch {
+      showTip('저장에 실패했습니다(브라우저 설정/용량). 그래도 작업은 계속됩니다.', null, 1600);
+    }
+  }
+
+  // -------------------------
+  // View / State
+  // -------------------------
+  let scale = 40;
+  let origin = { x: 0, y: 0 };
+
+  let { points, segments } = loadState();
+
+  let tool = 'point';
+  let selectedId = null;
+
+  // Segment (PAIR MODE)
+  let segStartId = null;
+  let mouseWorld = { x: 0, y: 0 };
+
+  // Drag
+  let dragging = false;
+  let dragPointerId = null;
+  let dragOffset = { x: 0, y: 0 };
+  const HIT_RADIUS_PX = 10;
+
+  function uid(prefix='') {
+    return prefix + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function findPointById(pid) { return points.find(p => p.id === pid) || null; }
+
+  function cleanupSegments() {
+    const ids = new Set(points.map(p => p.id));
+    segments = segments.filter(s => ids.has(s.a_id) && ids.has(s.b_id) && s.a_id !== s.b_id);
+  }
+
+  function worldToScreen(wx, wy) { return { x: origin.x + wx * scale, y: origin.y - wy * scale }; }
+  function screenToWorld(sx, sy) { return { x: (sx - origin.x) / scale, y: (origin.y - sy) / scale }; }
+
+  function getCanvasLocalXY(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+  }
+
+  function hitTestPoint(sx, sy) {
+    let best = null;
+    let bestDist2 = Infinity;
+    for (const p of points) {
+      const s = worldToScreen(p.x, p.y);
+      const dx = s.x - sx, dy = s.y - sy;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < bestDist2) { bestDist2 = d2; best = p; }
+    }
+    if (best && bestDist2 <= HIT_RADIUS_PX * HIT_RADIUS_PX) return best;
+    return null;
+  }
+
+  function setTool(nextTool, anchorBtn=null) {
+    tool = nextTool;
+
+    toolPointBtn.classList.toggle('active', tool === 'point');
+    toolSegmentBtn.classList.toggle('active', tool === 'segment');
+    toolSelectBtn.classList.toggle('active', tool === 'select');
+
+    dragging = false;
+    dragPointerId = null;
+
+    if (tool === 'point') {
+      selectedId = null; segStartId = null;
+      showTip('<b>점 도구</b>: 클릭하면 점이 만들어집니다.', anchorBtn || toolPointBtn);
+    } else if (tool === 'segment') {
+      selectedId = null; segStartId = null;
+      showTip('<b>선분 도구</b>: 첫 점 → 둘째 점 선택/생성하면 선분 생성. (그 다음은 다시 첫 점부터)', anchorBtn || toolSegmentBtn);
+    } else {
+      segStartId = null;
+      showTip('<b>선택/이동</b>: 점 클릭 후 드래그로 이동합니다.', anchorBtn || toolSelectBtn);
+    }
+    draw();
+  }
+
+  function cancelSegmentFirstPoint(anchorBtn=null) {
+    if (tool !== 'segment') {
+      showTip('선분 도구에서만 사용할 수 있습니다.', anchorBtn || btnCancelSeg, 1200);
+      return;
+    }
+    if (segStartId) showTip('선분: <b>첫 점 선택</b>을 취소했습니다.', anchorBtn || btnCancelSeg, 1200);
+    segStartId = null;
+    draw();
+  }
+
+  // Mutations
+  function addPoint(wx, wy) {
+    const p = { id: uid('p-'), x: wx, y: wy };
+    points.push(p);
+    cleanupSegments();
+    saveState();
+    draw();
+    return p.id;
+  }
+
+  function updatePoint(pid, wx, wy) {
+    const idx = points.findIndex(p => p.id === pid);
+    if (idx < 0) return;
+    points[idx].x = wx;
+    points[idx].y = wy;
+    cleanupSegments();
+    saveState();
+    draw();
+  }
+
+  function addSegment(a_id, b_id) {
+    if (a_id === b_id) return;
+    const a = findPointById(a_id), b = findPointById(b_id);
+    if (!a || !b) return;
+    segments.push({ id: uid('s-'), a_id, b_id });
+    cleanupSegments();
+    saveState();
+    draw();
+  }
+
+  function undoPoint() {
+    if (!points.length) { showTip('되돌릴 점이 없습니다.', btnUndoPoint, 900); return; }
+    const removed = points.pop();
+    segments = segments.filter(s => s.a_id !== removed.id && s.b_id !== removed.id);
+    if (selectedId === removed.id) selectedId = null;
+    if (segStartId === removed.id) segStartId = null;
+    cleanupSegments();
+    saveState();
+    draw();
+    showTip('점 되돌리기 완료', btnUndoPoint, 900);
+  }
+
+  function undoSegment() {
+    if (!segments.length) { showTip('되돌릴 선분이 없습니다.', btnUndoSeg, 900); return; }
+    segments.pop();
+    saveState();
+    draw();
+    showTip('선분 되돌리기 완료', btnUndoSeg, 900);
+  }
+
+  function clearAll() {
+    points = []; segments = [];
+    selectedId = null; segStartId = null;
+    saveState();
+    draw();
+    showTip('전체 삭제 완료', btnClearAll, 900);
+  }
+
+  // Drawing
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    origin.x = window.innerWidth / 2;
+    origin.y = window.innerHeight / 2;
+    draw();
+  }
+
+  function drawGrid() {
+    const w = window.innerWidth, h = window.innerHeight;
+    ctx.fillStyle = '#0b0f14';
+    ctx.fillRect(0, 0, w, h);
+
+    const minor = scale, major = scale * 5;
+
+    function drawLines(step, alpha) {
+      ctx.strokeStyle = `rgba(230, 237, 243, ${alpha})`;
+      ctx.lineWidth = 1;
+
+      let x0 = origin.x % step;
+      for (let x = x0; x <= w; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      let y0 = origin.y % step;
+      for (let y = y0; y <= h; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+    }
+
+    drawLines(minor, 0.06);
+    drawLines(major, 0.12);
+
+    ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(w, origin.y); ctx.stroke(); // x
+    ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, h); ctx.stroke(); // y
+
+    function drawArrowhead(x, y, dir) {
+      const size = 10;
+      ctx.fillStyle = 'rgba(230, 237, 243, 0.75)';
+      ctx.beginPath();
+      if (dir === 'right') { ctx.moveTo(x, y); ctx.lineTo(x - size, y - size * 0.55); ctx.lineTo(x - size, y + size * 0.55); }
+      if (dir === 'left')  { ctx.moveTo(x, y); ctx.lineTo(x + size, y - size * 0.55); ctx.lineTo(x + size, y + size * 0.55); }
+      if (dir === 'up')    { ctx.moveTo(x, y); ctx.lineTo(x - size * 0.55, y + size); ctx.lineTo(x + size * 0.55, y + size); }
+      if (dir === 'down')  { ctx.moveTo(x, y); ctx.lineTo(x - size * 0.55, y - size); ctx.lineTo(x + size * 0.55, y - size); }
+      ctx.closePath(); ctx.fill();
+    }
+
+    drawArrowhead(w, origin.y, 'right');
+    drawArrowhead(0, origin.y, 'left');
+    drawArrowhead(origin.x, 0, 'up');
+    drawArrowhead(origin.x, h, 'down');
+
+    ctx.fillStyle = 'rgba(230, 237, 243, 0.75)';
+    ctx.font = '12px system-ui';
+    ctx.fillText('x', w - 18, origin.y - 10);
+    ctx.fillText('y', origin.x + 10, 16);
+
+    ctx.fillStyle = 'rgba(230, 237, 243, 0.85)';
+    ctx.fillText('0', origin.x + 6, origin.y + 14);
+  }
+
+  function drawSegments() {
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(180, 220, 255, 0.75)';
+    for (const seg of segments) {
+      const a = findPointById(seg.a_id), b = findPointById(seg.b_id);
+      if (!a || !b) continue;
+      const sa = worldToScreen(a.x, a.y), sb = worldToScreen(b.x, b.y);
+      ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke();
+    }
+  }
+
+  function drawSegmentPreview() {
+    if (tool !== 'segment' || !segStartId) return;
+    const a = findPointById(segStartId);
+    if (!a) return;
+
+    const sa = worldToScreen(a.x, a.y);
+    const sb = worldToScreen(mouseWorld.x, mouseWorld.y);
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.arc(sa.x, sa.y, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 220, 120, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function drawPoints() {
+    for (const p of points) {
+      const s = worldToScreen(p.x, p.y);
+      const isSelected = (p.id === selectedId);
+      const isSegStart = (tool === 'segment' && p.id === segStartId);
+
+      let radius = 5;
+      if (isSelected) radius = 7;
+      if (isSegStart) radius = 8;
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = isSelected ? 'rgba(255, 220, 120, 0.95)'
+                   : isSegStart ? 'rgba(255, 200, 120, 0.85)'
+                   : 'rgba(120, 200, 255, 0.95)';
+      ctx.fill();
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = isSelected ? 'rgba(255, 255, 255, 0.55)' : 'rgba(255, 255, 255, 0.35)';
+      ctx.stroke();
+
+      const label = `(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`;
+      ctx.font = '12px system-ui';
+      ctx.fillStyle = 'rgba(230, 237, 243, 0.85)';
+      ctx.fillText(label, s.x + 10, s.y - 10);
+    }
+  }
+
+  function draw() {
+    drawGrid();
+    drawSegments();
+    drawSegmentPreview();
+    drawPoints();
+  }
+
+  // Events
+  canvas.addEventListener('pointermove', (e) => {
+    const { sx, sy } = getCanvasLocalXY(e);
+    const w = screenToWorld(sx, sy);
+    mouseWorld = w;
+    readout.textContent = `마우스: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
+    if (tool === 'segment' && segStartId) draw();
+  });
+
+  canvas.addEventListener('click', (e) => {
+    const { sx, sy } = getCanvasLocalXY(e);
+
+    if (tool === 'point') {
+      const w = screenToWorld(sx, sy);
+      addPoint(w.x, w.y);
+      return;
+    }
+
+    if (tool === 'segment') {
+      const hit = hitTestPoint(sx, sy);
+      let pid = hit ? hit.id : addPoint(screenToWorld(sx, sy).x, screenToWorld(sx, sy).y);
+
+      if (!segStartId) {
+        segStartId = pid;
+        showTip('선분: <b>첫 점</b> 선택됨 → 둘째 점을 선택하세요.', toolSegmentBtn, 1400);
+        draw();
+        return;
+      }
+
+      if (segStartId === pid) {
+        segStartId = null;
+        showTip('선분: 첫 점 선택을 <b>취소</b>했습니다.', toolSegmentBtn, 1200);
+        draw();
+        return;
+      }
+
+      addSegment(segStartId, pid);
+      segStartId = null;
+      showTip('선분 생성 완료. 다음 선분은 다시 <b>첫 점</b>부터 선택하세요.', toolSegmentBtn, 1400);
+      draw();
+      return;
+    }
+  });
+
+  // Select tool drag
+  canvas.addEventListener('pointerdown', (e) => {
+    if (tool !== 'select') return;
+
+    const { sx, sy } = getCanvasLocalXY(e);
+    const hit = hitTestPoint(sx, sy);
+
+    if (!hit) { selectedId = null; draw(); return; }
+
+    selectedId = hit.id;
+    dragging = true;
+    dragPointerId = e.pointerId;
+
+    const w = screenToWorld(sx, sy);
+    dragOffset.x = w.x - hit.x;
+    dragOffset.y = w.y - hit.y;
+
+    try { canvas.setPointerCapture(e.pointerId); } catch {}
+    showTip('점 선택됨. 드래그해서 이동하세요.', toolSelectBtn, 1100);
+    draw();
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (tool !== 'select' || !dragging || e.pointerId !== dragPointerId || !selectedId) return;
+    const { sx, sy } = getCanvasLocalXY(e);
+    const w = screenToWorld(sx, sy);
+
+    const idx = points.findIndex(p => p.id === selectedId);
+    if (idx < 0) return;
+
+    points[idx].x = w.x - dragOffset.x;
+    points[idx].y = w.y - dragOffset.y;
+    draw();
+  });
+
+  function endDrag(e) {
+    if (tool !== 'select' || !dragging || e.pointerId !== dragPointerId) return;
+    dragging = false;
+    try { canvas.releasePointerCapture(e.pointerId); } catch {}
+    dragPointerId = null;
+
+    if (!selectedId) return;
+    const p = findPointById(selectedId);
+    if (!p) return;
+
+    updatePoint(selectedId, p.x, p.y);
+    showTip('이동 저장됨', toolSelectBtn, 900);
+  }
+
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  // Buttons
+  toolPointBtn.addEventListener('click', () => setTool('point', toolPointBtn));
+  toolSegmentBtn.addEventListener('click', () => setTool('segment', toolSegmentBtn));
+  toolSelectBtn.addEventListener('click', () => setTool('select', toolSelectBtn));
+
+  btnUndoPoint.addEventListener('click', undoPoint);
+  btnUndoSeg.addEventListener('click', undoSegment);
+  btnClearAll.addEventListener('click', clearAll);
+  btnCancelSeg.addEventListener('click', () => cancelSegmentFirstPoint(btnCancelSeg));
+
+  // Shortcuts
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'p') setTool('point', null);
+    if (k === 's') setTool('segment', null);
+    if (k === 'v') setTool('select', null);
+    if (k === 'escape') cancelSegmentFirstPoint(null);
+  });
+
+  window.addEventListener('resize', resize);
+
+  // init
+  cleanupSegments();
+  saveState();
+  resize();
+  draw();
+
+  if (didPurge) {
+    showTip('이전 저장 찌꺼기를 <b>자동 삭제</b>하고 새 버전으로 시작합니다.', null, 1800);
+  } else {
+    showTip('도구 버튼을 누르면 설명이 <b>바로 옆</b>에 잠깐 뜹니다.', null, 1600);
+  }
+})();
+</script>
+</body>
+</html>
