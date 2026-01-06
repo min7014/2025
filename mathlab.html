@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Math Tool (Dynamic Intersection Points)</title>
+  <title>Math Tool (Dynamic Intersections + Circle)</title>
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -53,7 +53,7 @@
       opacity: 0.85;
       line-height: 1.35;
       z-index: 10;
-      max-width: min(980px, calc(100vw - 24px));
+      max-width: min(1200px, calc(100vw - 24px));
     }
     code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; }
 
@@ -86,6 +86,7 @@
       <button id="toolPoint" class="active" type="button">점 도구</button>
       <button id="toolSegment" type="button">선분 도구</button>
       <button id="toolLine" type="button">직선 도구</button>
+      <button id="toolCircle" type="button">원 도구</button>
       <button id="toolSelect" type="button">선택/이동 도구</button>
       <span class="readout" id="readout"></span>
     </div>
@@ -94,8 +95,9 @@
       <button id="btnUndoPoint" type="button">점 되돌리기</button>
       <button id="btnUndoSeg" type="button">선분 되돌리기</button>
       <button id="btnUndoLine" type="button">직선 되돌리기</button>
+      <button id="btnUndoCircle" type="button">원 되돌리기</button>
       <button id="btnClearAll" type="button">전체 삭제</button>
-      <button id="btnCancelFirst" type="button">2점 도구 1점 취소</button>
+      <button id="btnCancelFirst" type="button">2단계 1단계 취소</button>
     </div>
   </div>
 
@@ -104,9 +106,10 @@
   <div class="footer">
     ✅ 데이터는 브라우저(localStorage)에만 저장(서버 저장 0)<br/>
     선분/직선: (1-2), (3-4), (5-6)… <b>2점씩 짝지어</b> 생성<br/>
-    ⭐ 점 도구: <b>교점 근처 클릭</b> → “동적 교점(종속점)” 생성(직선-직선/선분-선분/직선-선분)<br/>
-    ⛔ 종속점(교점)은 직접 드래그로 이동 불가(부모 선/선분을 움직이면 같이 이동)<br/>
-    단축키: <code>P</code>=점, <code>S</code>=선분, <code>L</code>=직선, <code>V</code>=선택, <code>ESC</code>=1점 취소
+    ⭐ 점 도구(P): 교점 근처 클릭 → <b>동적 교점(종속점)</b> 생성 (직선/선분/원 포함)<br/>
+    ⭐ 원 도구(C): ① 중심점 선택/생성 → ② 점 선택/생성(반지름) 또는 선분 선택(선분 길이 반지름)<br/>
+    ⛔ 종속점(교점)은 직접 드래그 이동 불가(부모가 움직이면 같이 이동)<br/>
+    단축키: <code>P</code>=점, <code>S</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>V</code>=선택, <code>ESC</code>=1단계 취소
   </div>
 
   <div id="tip" class="tip" aria-live="polite"></div>
@@ -116,7 +119,7 @@
   // =========================
   // 0) 자동 찌꺼기 삭제 정책
   // =========================
-  const BUILD_ID = "2026-01-06-build-04-dynamic-intersection";
+  const BUILD_ID = "2026-01-06-build-06-circle-intersections";
   const BUILD_KEY = "mathlab_build_id";
 
   function purgeOldLocalStorageIfNeeded() {
@@ -149,17 +152,19 @@
   const toolPointBtn = document.getElementById('toolPoint');
   const toolSegmentBtn = document.getElementById('toolSegment');
   const toolLineBtn = document.getElementById('toolLine');
+  const toolCircleBtn = document.getElementById('toolCircle');
   const toolSelectBtn = document.getElementById('toolSelect');
 
   const btnUndoPoint = document.getElementById('btnUndoPoint');
   const btnUndoSeg   = document.getElementById('btnUndoSeg');
   const btnUndoLine  = document.getElementById('btnUndoLine');
+  const btnUndoCircle = document.getElementById('btnUndoCircle');
   const btnClearAll  = document.getElementById('btnClearAll');
   const btnCancelFirst = document.getElementById('btnCancelFirst');
 
   if (!canvas || !ctx || !readout || !tipEl ||
-      !toolPointBtn || !toolSegmentBtn || !toolLineBtn || !toolSelectBtn ||
-      !btnUndoPoint || !btnUndoSeg || !btnUndoLine || !btnClearAll || !btnCancelFirst) {
+      !toolPointBtn || !toolSegmentBtn || !toolLineBtn || !toolCircleBtn || !toolSelectBtn ||
+      !btnUndoPoint || !btnUndoSeg || !btnUndoLine || !btnUndoCircle || !btnClearAll || !btnCancelFirst) {
     alert('UI 요소 로딩에 실패했습니다. HTML이 손상되었는지 확인해 주세요.');
     return;
   }
@@ -218,21 +223,30 @@
   // =========================
   // State
   // =========================
-  const STORAGE_KEY = 'mathlab_state_safe_v5_dynamic_intersections';
+  const STORAGE_KEY = 'mathlab_state_safe_v7_circle_intersections';
 
   function sanitizeNumber(x, fallback=0) {
     const n = Number(x);
     return Number.isFinite(n) ? n : fallback;
   }
 
+  function kindRank(k) {
+    if (k === 'line') return 1;
+    if (k === 'segment') return 2;
+    if (k === 'circle') return 3;
+    return 99;
+  }
+
   function sanitizeState(obj) {
-    const safe = { points: [], segments: [], lines: [] };
+    const safe = { points: [], segments: [], lines: [], circles: [] };
     if (!obj || typeof obj !== 'object') return safe;
 
     const pts = Array.isArray(obj.points) ? obj.points : [];
     const segs = Array.isArray(obj.segments) ? obj.segments : [];
     const lns = Array.isArray(obj.lines) ? obj.lines : [];
+    const cirs = Array.isArray(obj.circles) ? obj.circles : [];
 
+    // points
     for (const p of pts) {
       if (!p || typeof p !== 'object') continue;
       if (typeof p.id !== 'string' || !p.id) continue;
@@ -243,28 +257,61 @@
         safe.points.push({ id: p.id, kind: 'free', x: sanitizeNumber(p.x, 0), y: sanitizeNumber(p.y, 0) });
       } else if (kind === 'intersection') {
         const ak = p.a_kind, bk = p.b_kind;
-        if (!((ak === 'line' || ak === 'segment') && (bk === 'line' || bk === 'segment'))) continue;
+        const okKind = (k) => (k === 'line' || k === 'segment' || k === 'circle');
+        if (!okKind(ak) || !okKind(bk)) continue;
         if (typeof p.a_id !== 'string' || typeof p.b_id !== 'string') continue;
-        safe.points.push({ id: p.id, kind: 'intersection', a_kind: ak, a_id: p.a_id, b_kind: bk, b_id: p.b_id });
+
+        const br = Number.isFinite(Number(p.branch)) ? Number(p.branch) : 0;
+        const branch = (br === 1 ? 1 : 0);
+
+        safe.points.push({
+          id: p.id,
+          kind: 'intersection',
+          a_kind: ak, a_id: p.a_id,
+          b_kind: bk, b_id: p.b_id,
+          branch
+        });
       }
     }
 
-    const ids = new Set(safe.points.map(p => p.id));
+    const pointIds = new Set(safe.points.map(p => p.id));
 
+    // segments
     for (const s of segs) {
       if (!s || typeof s !== 'object') continue;
       if (typeof s.id !== 'string' || !s.id) continue;
       if (typeof s.a_id !== 'string' || typeof s.b_id !== 'string') continue;
-      if (!ids.has(s.a_id) || !ids.has(s.b_id) || s.a_id === s.b_id) continue;
+      if (!pointIds.has(s.a_id) || !pointIds.has(s.b_id) || s.a_id === s.b_id) continue;
       safe.segments.push({ id: s.id, a_id: s.a_id, b_id: s.b_id });
     }
 
+    // lines
     for (const l of lns) {
       if (!l || typeof l !== 'object') continue;
       if (typeof l.id !== 'string' || !l.id) continue;
       if (typeof l.a_id !== 'string' || typeof l.b_id !== 'string') continue;
-      if (!ids.has(l.a_id) || !ids.has(l.b_id) || l.a_id === l.b_id) continue;
+      if (!pointIds.has(l.a_id) || !pointIds.has(l.b_id) || l.a_id === l.b_id) continue;
       safe.lines.push({ id: l.id, a_id: l.a_id, b_id: l.b_id });
+    }
+
+    const segIds = new Set(safe.segments.map(s => s.id));
+
+    // circles
+    for (const c of cirs) {
+      if (!c || typeof c !== 'object') continue;
+      if (typeof c.id !== 'string' || !c.id) continue;
+      if (typeof c.center_id !== 'string' || !pointIds.has(c.center_id)) continue;
+
+      const rk = c.r_kind;
+      const rid = c.r_id;
+
+      if (rk === 'point') {
+        if (typeof rid !== 'string' || !pointIds.has(rid)) continue;
+        safe.circles.push({ id: c.id, center_id: c.center_id, r_kind: 'point', r_id: rid });
+      } else if (rk === 'segment') {
+        if (typeof rid !== 'string' || !segIds.has(rid)) continue;
+        safe.circles.push({ id: c.id, center_id: c.center_id, r_kind: 'segment', r_id: rid });
+      }
     }
 
     return safe;
@@ -273,16 +320,16 @@
   function loadState() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { points: [], segments: [], lines: [] };
+      if (!raw) return { points: [], segments: [], lines: [], circles: [] };
       return sanitizeState(JSON.parse(raw));
     } catch {
-      return { points: [], segments: [], lines: [] };
+      return { points: [], segments: [], lines: [], circles: [] };
     }
   }
 
   function saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ points, segments, lines }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ points, segments, lines, circles }));
     } catch {
       showTip('저장에 실패했습니다(브라우저 설정/용량). 그래도 작업은 계속됩니다.', null, 1600);
     }
@@ -292,12 +339,12 @@
   let scale = 40;
   let origin = { x: 0, y: 0 };
 
-  let { points, segments, lines } = loadState();
+  let { points, segments, lines, circles } = loadState();
 
   let tool = 'point';
   let selectedId = null;
 
-  // 2점 도구(선분/직선)
+  // 2단계 도구(선분/직선/원) 공용: 1단계에서 잡아둔 id
   let firstId = null;
   let mouseWorld = { x: 0, y: 0 };
 
@@ -308,6 +355,7 @@
 
   const HIT_RADIUS_PX = 10;
   const INTERSECTION_HIT_PX = 12;
+  const SEG_HIT_PX = 10;
 
   // =========================
   // Geometry core
@@ -315,16 +363,8 @@
   const EPS = 1e-12;
 
   function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
-
-  // p + t r, q + u s
-  function intersectParams(px, py, rx, ry, qx, qy, sx, sy) {
-    const denom = cross(rx, ry, sx, sy);
-    if (Math.abs(denom) < EPS) return null; // 평행 or 일치(겹침)
-    const qmpx = qx - px, qmpy = qy - py;
-    const t = cross(qmpx, qmpy, sx, sy) / denom;
-    const u = cross(qmpx, qmpy, rx, ry) / denom;
-    return { t, u, x: px + t * rx, y: py + t * ry };
-  }
+  function dot(ax, ay, bx, by) { return ax * bx + ay * by; }
+  function dist(ax, ay, bx, by) { const dx = ax - bx, dy = ay - by; return Math.hypot(dx, dy); }
 
   function uid(prefix='') {
     return prefix + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
@@ -333,14 +373,45 @@
   function findPointObj(pid) { return points.find(p => p.id === pid) || null; }
   function findSegObj(sid) { return segments.find(s => s.id === sid) || null; }
   function findLineObj(lid) { return lines.find(l => l.id === lid) || null; }
+  function findCircleObj(cid) { return circles.find(c => c.id === cid) || null; }
 
   function worldToScreen(wx, wy) { return { x: origin.x + wx * scale, y: origin.y - wy * scale }; }
   function screenToWorld(sx, sy) { return { x: (sx - origin.x) / scale, y: (origin.y - sy) / scale }; }
 
-  // ---- 평가(재귀) : 자유점/종속점 모두 좌표를 얻는다. (사이클 방어 포함) ----
+  function getCanvasLocalXY(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+  }
+
+  // p + t r, q + u s
+  function intersectParams(px, py, rx, ry, qx, qy, sx, sy) {
+    const denom = cross(rx, ry, sx, sy);
+    if (Math.abs(denom) < EPS) return null;
+    const qmpx = qx - px, qmpy = qy - py;
+    const t = cross(qmpx, qmpy, sx, sy) / denom;
+    const u = cross(qmpx, qmpy, rx, ry) / denom;
+    return { t, u, x: px + t * rx, y: py + t * ry };
+  }
+
+  function canonicalizePair(a_kind, a_id, b_kind, b_id) {
+    const ra = kindRank(a_kind), rb = kindRank(b_kind);
+    if (ra < rb) return { a_kind, a_id, b_kind, b_id, swapped: false };
+    if (ra > rb) return { a_kind: b_kind, a_id: b_id, b_kind: a_kind, b_id: a_id, swapped: true };
+    // same kind → id sort
+    if (String(a_id) <= String(b_id)) return { a_kind, a_id, b_kind, b_id, swapped: false };
+    return { a_kind: b_kind, a_id: b_id, b_kind: a_kind, b_id: a_id, swapped: true };
+  }
+
+  function intersectionKey(a_kind, a_id, b_kind, b_id, branch) {
+    const c = canonicalizePair(a_kind, a_id, b_kind, b_id);
+    const br = (branch === 1 ? 1 : 0);
+    return `${c.a_kind}:${c.a_id}|${c.b_kind}:${c.b_id}|${br}`;
+  }
+
+  // ---- evaluation (dynamic) ----
   function evalPoint(pid, cache, stack) {
     if (cache.has(pid)) return cache.get(pid);
-    if (stack.has(pid)) { cache.set(pid, null); return null; } // 사이클 방어
+    if (stack.has(pid)) { cache.set(pid, null); return null; }
     stack.add(pid);
 
     const p = findPointObj(pid);
@@ -351,22 +422,16 @@
     if (!p.kind || p.kind === 'free') {
       res = { x: p.x, y: p.y };
     } else if (p.kind === 'intersection') {
-      const A = evalPrimitiveEndpoints(p.a_kind, p.a_id, cache, stack);
-      const B = evalPrimitiveEndpoints(p.b_kind, p.b_id, cache, stack);
-      if (A && B) {
-        const rx = A.bx - A.ax, ry = A.by - A.ay;
-        const sx = B.bx - B.ax, sy = B.by - B.ay;
-        const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
-        if (ip) {
-          const tol = 1e-9;
-          if (p.a_kind === 'segment' && (ip.t < -tol || ip.t > 1 + tol)) {
-            res = null;
-          } else if (p.b_kind === 'segment' && (ip.u < -tol || ip.u > 1 + tol)) {
-            res = null;
-          } else {
-            res = { x: ip.x, y: ip.y };
-          }
-        }
+      const br = (p.branch === 1 ? 1 : 0);
+      const c = canonicalizePair(p.a_kind, p.a_id, p.b_kind, p.b_id);
+      // (구버전 데이터 대비) swapped가 나올 수는 있지만, 원 포함에서는 branch가 뒤집힐 수 있음.
+      // 여기서는 "교점 집합" 자체는 동일하므로, swapped면 branch만 1-branch로 보정.
+      const branchAdj = c.swapped ? (1 - br) : br;
+
+      const sol = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+      if (sol && sol.length) {
+        const pick = sol.find(s => s.branch === branchAdj) || null;
+        res = pick ? { x: pick.x, y: pick.y } : null;
       }
     }
 
@@ -385,93 +450,267 @@
     return { ax: a.x, ay: a.y, bx: b.x, by: b.y };
   }
 
+  function evalCircleParams(cid, cache, stack) {
+    const c = findCircleObj(cid);
+    if (!c) return null;
+    const center = evalPoint(c.center_id, cache, stack);
+    if (!center) return null;
+
+    let r = null;
+    if (c.r_kind === 'point') {
+      const rp = evalPoint(c.r_id, cache, stack);
+      if (!rp) return null;
+      r = dist(center.x, center.y, rp.x, rp.y);
+    } else if (c.r_kind === 'segment') {
+      const seg = evalPrimitiveEndpoints('segment', c.r_id, cache, stack);
+      if (!seg) return null;
+      r = dist(seg.ax, seg.ay, seg.bx, seg.by);
+    }
+    if (!r || r < 1e-12) return null;
+    return { cx: center.x, cy: center.y, r };
+  }
+
+  // ---- intersection solver (canonical order: line < segment < circle) ----
+  function computeIntersectionsCanonical(a_kind, a_id, b_kind, b_id, cache, stack) {
+    const tol = 1e-9;
+
+    // line-line
+    if (a_kind === 'line' && b_kind === 'line') {
+      const A = evalPrimitiveEndpoints('line', a_id, cache, stack);
+      const B = evalPrimitiveEndpoints('line', b_id, cache, stack);
+      if (!A || !B) return [];
+      const rx = A.bx - A.ax, ry = A.by - A.ay;
+      const sx = B.bx - B.ax, sy = B.by - B.ay;
+      const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
+      if (!ip) return [];
+      return [{ x: ip.x, y: ip.y, branch: 0 }];
+    }
+
+    // segment-segment
+    if (a_kind === 'segment' && b_kind === 'segment') {
+      const A = evalPrimitiveEndpoints('segment', a_id, cache, stack);
+      const B = evalPrimitiveEndpoints('segment', b_id, cache, stack);
+      if (!A || !B) return [];
+      const rx = A.bx - A.ax, ry = A.by - A.ay;
+      const sx = B.bx - B.ax, sy = B.by - B.ay;
+      const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
+      if (!ip) return [];
+      if (ip.t < -tol || ip.t > 1 + tol) return [];
+      if (ip.u < -tol || ip.u > 1 + tol) return [];
+      return [{ x: ip.x, y: ip.y, branch: 0 }];
+    }
+
+    // line-segment (canonical: line first)
+    if (a_kind === 'line' && b_kind === 'segment') {
+      const A = evalPrimitiveEndpoints('line', a_id, cache, stack);
+      const B = evalPrimitiveEndpoints('segment', b_id, cache, stack);
+      if (!A || !B) return [];
+      const rx = A.bx - A.ax, ry = A.by - A.ay;
+      const sx = B.bx - B.ax, sy = B.by - B.ay;
+      const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
+      if (!ip) return [];
+      if (ip.u < -tol || ip.u > 1 + tol) return [];
+      return [{ x: ip.x, y: ip.y, branch: 0 }];
+    }
+
+    // line-circle (canonical: line first)
+    if (a_kind === 'line' && b_kind === 'circle') {
+      const L = evalPrimitiveEndpoints('line', a_id, cache, stack);
+      const C = evalCircleParams(b_id, cache, stack);
+      if (!L || !C) return [];
+      const ax = L.ax, ay = L.ay;
+      const dx = L.bx - L.ax, dy = L.by - L.ay; // direction
+      const fx = ax - C.cx, fy = ay - C.cy;
+
+      const A = dot(dx, dy, dx, dy);
+      const B = 2 * dot(dx, dy, fx, fy);
+      const CC = dot(fx, fy, fx, fy) - C.r * C.r;
+
+      const disc = B*B - 4*A*CC;
+      if (disc < -1e-12) return [];
+      if (Math.abs(disc) <= 1e-12) {
+        const t = (-B) / (2*A);
+        return [{ x: ax + t*dx, y: ay + t*dy, branch: 0 }];
+      }
+      const s = Math.sqrt(Math.max(0, disc));
+      const t0 = (-B - s) / (2*A);
+      const t1 = (-B + s) / (2*A);
+      const p0 = { x: ax + t0*dx, y: ay + t0*dy, branch: 0 };
+      const p1 = { x: ax + t1*dx, y: ay + t1*dy, branch: 1 };
+      return (t0 <= t1) ? [p0, p1] : [p1, p0]; // 매우 드물지만 안전
+    }
+
+    // segment-circle (canonical: segment first)
+    if (a_kind === 'segment' && b_kind === 'circle') {
+      const S = evalPrimitiveEndpoints('segment', a_id, cache, stack);
+      const C = evalCircleParams(b_id, cache, stack);
+      if (!S || !C) return [];
+      const ax = S.ax, ay = S.ay;
+      const dx = S.bx - S.ax, dy = S.by - S.ay;
+      const fx = ax - C.cx, fy = ay - C.cy;
+
+      const A = dot(dx, dy, dx, dy);
+      const B = 2 * dot(dx, dy, fx, fy);
+      const CC = dot(fx, fy, fx, fy) - C.r * C.r;
+
+      const disc = B*B - 4*A*CC;
+      if (disc < -1e-12) return [];
+      if (Math.abs(disc) <= 1e-12) {
+        const t = (-B) / (2*A);
+        if (t < -tol || t > 1 + tol) return [];
+        return [{ x: ax + t*dx, y: ay + t*dy, branch: 0 }];
+      }
+      const s = Math.sqrt(Math.max(0, disc));
+      const t0 = (-B - s) / (2*A);
+      const t1 = (-B + s) / (2*A);
+
+      const out = [];
+      if (t0 >= -tol && t0 <= 1 + tol) out.push({ x: ax + t0*dx, y: ay + t0*dy, branch: 0 });
+      if (t1 >= -tol && t1 <= 1 + tol) out.push({ x: ax + t1*dx, y: ay + t1*dy, branch: 1 });
+
+      // 클릭 후보 생성은 "실제로 선분 위에 있는 교점"만
+      return out;
+    }
+
+    // circle-circle (canonical: circle first, id sort)
+    if (a_kind === 'circle' && b_kind === 'circle') {
+      const C0 = evalCircleParams(a_id, cache, stack);
+      const C1 = evalCircleParams(b_id, cache, stack);
+      if (!C0 || !C1) return [];
+
+      const x0 = C0.cx, y0 = C0.cy, r0 = C0.r;
+      const x1 = C1.cx, y1 = C1.cy, r1 = C1.r;
+
+      const dx = x1 - x0, dy = y1 - y0;
+      const d = Math.hypot(dx, dy);
+      if (d < 1e-12) return []; // 동심(무한/0교점) → 여기서는 생성 안 함
+
+      if (d > r0 + r1 + 1e-12) return [];
+      if (d < Math.abs(r0 - r1) - 1e-12) return [];
+
+      const a = (r0*r0 - r1*r1 + d*d) / (2*d);
+      const h2 = r0*r0 - a*a;
+      if (h2 < -1e-12) return [];
+      const xm = x0 + a * dx / d;
+      const ym = y0 + a * dy / d;
+
+      if (Math.abs(h2) <= 1e-12) {
+        return [{ x: xm, y: ym, branch: 0 }]; // 접점
+      }
+
+      const h = Math.sqrt(Math.max(0, h2));
+      const rx = -dy / d;
+      const ry =  dx / d;
+
+      const p0 = { x: xm + h*rx, y: ym + h*ry, branch: 0 };
+      const p1 = { x: xm - h*rx, y: ym - h*ry, branch: 1 };
+      return [p0, p1];
+    }
+
+    return [];
+  }
+
   // -------------------------
-  // Cleanup: 존재하지 않는 primitive를 참조하는 종속점은 제거
-  // (단, 평행/교점없음 등 "일시적 invalid"는 유지 -> 나중에 움직이면 다시 나타남)
+  // Cleanup references
   // -------------------------
   function cleanupReferences() {
     const pointIds = new Set(points.map(p => p.id));
+
     segments = segments.filter(s => pointIds.has(s.a_id) && pointIds.has(s.b_id) && s.a_id !== s.b_id);
     lines = lines.filter(l => pointIds.has(l.a_id) && pointIds.has(l.b_id) && l.a_id !== l.b_id);
 
     const segIds = new Set(segments.map(s => s.id));
     const lineIds = new Set(lines.map(l => l.id));
+    const circleIds = new Set(circles.map(c => c.id));
 
+    // 교점 종속점: 부모 primitive가 없어지면 제거
     points = points.filter(p => {
       if (!p.kind || p.kind === 'free') return true;
       if (p.kind === 'intersection') {
-        const okA = (p.a_kind === 'segment') ? segIds.has(p.a_id) : lineIds.has(p.a_id);
-        const okB = (p.b_kind === 'segment') ? segIds.has(p.b_id) : lineIds.has(p.b_id);
-        return okA && okB;
+        const ok = (k, id) => {
+          if (k === 'segment') return segIds.has(id);
+          if (k === 'line') return lineIds.has(id);
+          if (k === 'circle') return circleIds.has(id);
+          return false;
+        };
+        return ok(p.a_kind, p.a_id) && ok(p.b_kind, p.b_id);
       }
       return true;
+    });
+
+    // 원: center/radius 참조가 없어지면 제거
+    const pointIds2 = new Set(points.map(p => p.id));
+    const segIds2 = new Set(segments.map(s => s.id));
+
+    circles = circles.filter(c => {
+      if (!pointIds2.has(c.center_id)) return false;
+      if (c.r_kind === 'point') return pointIds2.has(c.r_id);
+      if (c.r_kind === 'segment') return segIds2.has(c.r_id);
+      return false;
     });
   }
 
   // =========================
-  // Intersection candidates (클릭 시 종속점 생성용)
+  // Intersection candidates (점도구 교점 생성)
   // =========================
   function buildIntersectionCandidates(cache, stack) {
     const cands = [];
-    const tol = 1e-9;
 
-    // line-line
+    // 1) line-line
     for (let i = 0; i < lines.length; i++) {
-      const A = evalPrimitiveEndpoints('line', lines[i].id, cache, stack);
-      if (!A) continue;
       for (let j = i + 1; j < lines.length; j++) {
-        const B = evalPrimitiveEndpoints('line', lines[j].id, cache, stack);
-        if (!B) continue;
-
-        const rx = A.bx - A.ax, ry = A.by - A.ay;
-        const sx = B.bx - B.ax, sy = B.by - B.ay;
-        const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
-        if (!ip) continue;
-
-        cands.push({ x: ip.x, y: ip.y, a_kind: 'line', a_id: lines[i].id, b_kind: 'line', b_id: lines[j].id });
+        const c = canonicalizePair('line', lines[i].id, 'line', lines[j].id);
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
       }
     }
 
-    // seg-seg
+    // 2) seg-seg
     for (let i = 0; i < segments.length; i++) {
-      const A = evalPrimitiveEndpoints('segment', segments[i].id, cache, stack);
-      if (!A) continue;
       for (let j = i + 1; j < segments.length; j++) {
-        const B = evalPrimitiveEndpoints('segment', segments[j].id, cache, stack);
-        if (!B) continue;
-
-        const rx = A.bx - A.ax, ry = A.by - A.ay;
-        const sx = B.bx - B.ax, sy = B.by - B.ay;
-        const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
-        if (!ip) continue;
-
-        if (ip.t < -tol || ip.t > 1 + tol) continue;
-        if (ip.u < -tol || ip.u > 1 + tol) continue;
-
-        cands.push({ x: ip.x, y: ip.y, a_kind: 'segment', a_id: segments[i].id, b_kind: 'segment', b_id: segments[j].id });
+        const c = canonicalizePair('segment', segments[i].id, 'segment', segments[j].id);
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
       }
     }
 
-    // line-seg
+    // 3) line-seg
     for (let i = 0; i < lines.length; i++) {
-      const A = evalPrimitiveEndpoints('line', lines[i].id, cache, stack);
-      if (!A) continue;
       for (let j = 0; j < segments.length; j++) {
-        const B = evalPrimitiveEndpoints('segment', segments[j].id, cache, stack);
-        if (!B) continue;
-
-        const rx = A.bx - A.ax, ry = A.by - A.ay;
-        const sx = B.bx - B.ax, sy = B.by - B.ay;
-        const ip = intersectParams(A.ax, A.ay, rx, ry, B.ax, B.ay, sx, sy);
-        if (!ip) continue;
-
-        if (ip.u < -tol || ip.u > 1 + tol) continue; // seg 범위만 체크
-
-        cands.push({ x: ip.x, y: ip.y, a_kind: 'line', a_id: lines[i].id, b_kind: 'segment', b_id: segments[j].id });
+        const c = canonicalizePair('line', lines[i].id, 'segment', segments[j].id); // line first by rank
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
       }
     }
 
-    // 위치 중복 완화(너무 겹치면 후보가 과도하게 늘어나는 것 방지)
+    // 4) line-circle
+    for (let i = 0; i < lines.length; i++) {
+      for (let j = 0; j < circles.length; j++) {
+        const c = canonicalizePair('line', lines[i].id, 'circle', circles[j].id); // line first by rank
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
+      }
+    }
+
+    // 5) seg-circle
+    for (let i = 0; i < segments.length; i++) {
+      for (let j = 0; j < circles.length; j++) {
+        const c = canonicalizePair('segment', segments[i].id, 'circle', circles[j].id); // segment first by rank
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
+      }
+    }
+
+    // 6) circle-circle
+    for (let i = 0; i < circles.length; i++) {
+      for (let j = i + 1; j < circles.length; j++) {
+        const c = canonicalizePair('circle', circles[i].id, 'circle', circles[j].id);
+        const sols = computeIntersectionsCanonical(c.a_kind, c.a_id, c.b_kind, c.b_id, cache, stack);
+        for (const s of sols) cands.push({ ...s, a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id });
+      }
+    }
+
+    // 너무 가까운 후보 중복 제거
     const out = [];
     const eps2 = 1e-10;
     for (const p of cands) {
@@ -485,15 +724,11 @@
     return out;
   }
 
-  function pairKey(a_kind, a_id, b_kind, b_id) {
-    const A = `${a_kind}:${a_id}`;
-    const B = `${b_kind}:${b_id}`;
-    return (A < B) ? `${A}|${B}` : `${B}|${A}`;
-  }
-
-  function hasIntersectionPoint(a_kind, a_id, b_kind, b_id) {
-    const key = pairKey(a_kind, a_id, b_kind, b_id);
-    return points.some(p => p.kind === 'intersection' && pairKey(p.a_kind, p.a_id, p.b_kind, p.b_id) === key);
+  function hasIntersectionPoint(a_kind, a_id, b_kind, b_id, branch) {
+    const key = intersectionKey(a_kind, a_id, b_kind, b_id, branch);
+    return points.some(p => p.kind === 'intersection' &&
+      intersectionKey(p.a_kind, p.a_id, p.b_kind, p.b_id, p.branch) === key
+    );
   }
 
   function findNearestIntersectionToScreen(sx, sy) {
@@ -515,7 +750,7 @@
   }
 
   // =========================
-  // Hit test (free + intersection)
+  // Hit tests
   // =========================
   function hitTestPoint(sx, sy) {
     const cache = new Map();
@@ -526,16 +761,50 @@
 
     for (const p of points) {
       const w = evalPoint(p.id, cache, stack);
-      if (!w) continue; // 현재 교점이 존재하지 않으면 숨김
+      if (!w) continue;
       const s = worldToScreen(w.x, w.y);
       const dx = s.x - sx, dy = s.y - sy;
       const d2 = dx*dx + dy*dy;
       if (d2 < bestDist2) { bestDist2 = d2; best = p; }
     }
 
-    if (best && bestDist2 <= HIT_RADIUS_PX * HIT_RADIUS_PX) {
-      return { point: best, dist2: bestDist2 };
+    if (best && bestDist2 <= HIT_RADIUS_PX * HIT_RADIUS_PX) return { point: best, dist2: bestDist2 };
+    return null;
+  }
+
+  function hitTestSegment(sx, sy) {
+    const cache = new Map();
+    const stack = new Set();
+
+    let best = null;
+    let bestDist2 = Infinity;
+
+    for (const seg of segments) {
+      const A = evalPrimitiveEndpoints('segment', seg.id, cache, stack);
+      if (!A) continue;
+
+      const a = worldToScreen(A.ax, A.ay);
+      const b = worldToScreen(A.bx, A.by);
+
+      const vx = b.x - a.x, vy = b.y - a.y;
+      const wx = sx - a.x, wy = sy - a.y;
+
+      const vv = vx*vx + vy*vy;
+      if (vv < 1e-9) continue;
+
+      let t = (wx*vx + wy*vy) / vv;
+      t = Math.max(0, Math.min(1, t));
+
+      const px = a.x + t * vx;
+      const py = a.y + t * vy;
+
+      const dx = sx - px, dy = sy - py;
+      const d2 = dx*dx + dy*dy;
+
+      if (d2 < bestDist2) { bestDist2 = d2; best = seg; }
     }
+
+    if (best && bestDist2 <= SEG_HIT_PX * SEG_HIT_PX) return { seg: best, dist2: bestDist2 };
     return null;
   }
 
@@ -548,33 +817,39 @@
     toolPointBtn.classList.toggle('active', tool === 'point');
     toolSegmentBtn.classList.toggle('active', tool === 'segment');
     toolLineBtn.classList.toggle('active', tool === 'line');
+    toolCircleBtn.classList.toggle('active', tool === 'circle');
     toolSelectBtn.classList.toggle('active', tool === 'select');
 
     dragging = false;
     dragPointerId = null;
 
+    if (tool !== 'segment' && tool !== 'line' && tool !== 'circle') firstId = null;
+
     if (tool === 'point') {
       selectedId = null; firstId = null;
-      showTip('<b>점 도구</b>: 클릭하면 점 생성<br/>⭐ 교점 근처 클릭 → <b>동적 교점(종속점)</b> 생성', anchorBtn || toolPointBtn);
+      showTip('<b>점 도구</b>: 클릭하면 점 생성<br/>⭐ 교점 근처 클릭 → <b>동적 교점(종속점)</b> 생성(원 포함)', anchorBtn || toolPointBtn);
     } else if (tool === 'segment') {
       selectedId = null; firstId = null;
-      showTip('<b>선분 도구</b>: 첫 점 → 둘째 점 선택/생성하면 선분 생성', anchorBtn || toolSegmentBtn);
+      showTip('<b>선분 도구</b>: ① 첫 점 → ② 둘째 점 선택/생성하면 선분 생성', anchorBtn || toolSegmentBtn);
     } else if (tool === 'line') {
       selectedId = null; firstId = null;
-      showTip('<b>직선 도구</b>: 첫 점 → 둘째 점 선택/생성하면 무한 직선 생성', anchorBtn || toolLineBtn);
+      showTip('<b>직선 도구</b>: ① 첫 점 → ② 둘째 점 선택/생성하면 직선 생성', anchorBtn || toolLineBtn);
+    } else if (tool === 'circle') {
+      selectedId = null; firstId = null;
+      showTip('<b>원 도구</b>: ① 중심점 선택/생성 → ② 점(반지름) 또는 선분(길이 반지름) 선택', anchorBtn || toolCircleBtn);
     } else {
       firstId = null;
-      showTip('<b>선택/이동</b>: 자유점만 드래그로 이동 가능(교점=종속점은 이동 불가)', anchorBtn || toolSelectBtn);
+      showTip('<b>선택/이동</b>: 자유점만 드래그 이동 가능(교점=종속점 이동 불가)', anchorBtn || toolSelectBtn);
     }
     draw();
   }
 
-  function cancelFirstPoint(anchorBtn=null) {
-    if (!(tool === 'segment' || tool === 'line')) {
-      showTip('선분/직선 도구에서만 사용할 수 있습니다.', anchorBtn || btnCancelFirst, 1200);
+  function cancelFirstStep(anchorBtn=null) {
+    if (!(tool === 'segment' || tool === 'line' || tool === 'circle')) {
+      showTip('2단계 도구(선분/직선/원)에서만 사용할 수 있습니다.', anchorBtn || btnCancelFirst, 1200);
       return;
     }
-    if (firstId) showTip('2점 도구: <b>첫 점 선택</b>을 취소했습니다.', anchorBtn || btnCancelFirst, 1200);
+    if (firstId) showTip('2단계 도구: <b>1단계 선택</b>을 취소했습니다.', anchorBtn || btnCancelFirst, 1200);
     firstId = null;
     draw();
   }
@@ -588,24 +863,15 @@
     return p.id;
   }
 
-  function addIntersectionPoint(a_kind, a_id, b_kind, b_id) {
-    const p = { id: uid('i-'), kind: 'intersection', a_kind, a_id, b_kind, b_id };
+  function addIntersectionPoint(a_kind, a_id, b_kind, b_id, branch) {
+    const c = canonicalizePair(a_kind, a_id, b_kind, b_id);
+    const br = (branch === 1 ? 1 : 0);
+    const p = { id: uid('i-'), kind: 'intersection', a_kind: c.a_kind, a_id: c.a_id, b_kind: c.b_kind, b_id: c.b_id, branch: br };
     points.push(p);
     cleanupReferences();
     saveState();
     draw();
     return p.id;
-  }
-
-  function updateFreePoint(pid, wx, wy) {
-    const idx = points.findIndex(p => p.id === pid);
-    if (idx < 0) return;
-    if (points[idx].kind === 'intersection') return; // 종속점은 이동 불가
-    points[idx].x = wx;
-    points[idx].y = wy;
-    cleanupReferences();
-    saveState();
-    draw();
   }
 
   function addSegment(a_id, b_id) {
@@ -619,6 +885,24 @@
   function addLine(a_id, b_id) {
     if (a_id === b_id) return;
     lines.push({ id: uid('l-'), a_id, b_id });
+    cleanupReferences();
+    saveState();
+    draw();
+  }
+
+  function addCircle(center_id, r_kind, r_id) {
+    circles.push({ id: uid('c-'), center_id, r_kind, r_id });
+    cleanupReferences();
+    saveState();
+    draw();
+  }
+
+  function updateFreePoint(pid, wx, wy) {
+    const idx = points.findIndex(p => p.id === pid);
+    if (idx < 0) return;
+    if (points[idx].kind === 'intersection') return;
+    points[idx].x = wx;
+    points[idx].y = wy;
     cleanupReferences();
     saveState();
     draw();
@@ -658,8 +942,17 @@
     showTip('직선 되돌리기 완료', btnUndoLine, 900);
   }
 
+  function undoCircle() {
+    if (!circles.length) { showTip('되돌릴 원이 없습니다.', btnUndoCircle, 900); return; }
+    circles.pop();
+    cleanupReferences();
+    saveState();
+    draw();
+    showTip('원 되돌리기 완료', btnUndoCircle, 900);
+  }
+
   function clearAll() {
-    points = []; segments = []; lines = [];
+    points = []; segments = []; lines = []; circles = [];
     selectedId = null; firstId = null;
     saveState();
     draw();
@@ -806,22 +1099,61 @@
     }
   }
 
-  function drawTwoPointPreview() {
-    if (!((tool === 'segment' || tool === 'line') && firstId)) return;
+  function drawCircles() {
+    const cache = new Map();
+    const stack = new Set();
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(120, 255, 180, 0.55)';
+
+    for (const c of circles) {
+      const cp = evalCircleParams(c.id, cache, stack);
+      if (!cp) continue;
+
+      const sc = worldToScreen(cp.cx, cp.cy);
+      const rr = cp.r * scale;
+
+      ctx.beginPath();
+      ctx.arc(sc.x, sc.y, rr, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  function drawTwoStepPreview() {
+    if (!firstId) return;
+    if (!(tool === 'segment' || tool === 'line' || tool === 'circle')) return;
 
     const cache = new Map();
     const stack = new Set();
     const a = evalPoint(firstId, cache, stack);
     if (!a) return;
 
-    const sa = worldToScreen(a.x, a.y);
-    const sb = worldToScreen(mouseWorld.x, mouseWorld.y);
+    if (tool === 'segment' || tool === 'line') {
+      const sa = worldToScreen(a.x, a.y);
+      const sb = worldToScreen(mouseWorld.x, mouseWorld.y);
 
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    ctx.setLineDash([6, 6]);
-    ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke();
-    ctx.setLineDash([]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
+
+    if (tool === 'circle') {
+      const r = dist(a.x, a.y, mouseWorld.x, mouseWorld.y);
+      if (r < 1e-10) return;
+
+      const sc = worldToScreen(a.x, a.y);
+      const rr = r * scale;
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(120, 255, 180, 0.25)';
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.arc(sc.x, sc.y, rr, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      return;
+    }
   }
 
   function drawPoints() {
@@ -834,7 +1166,7 @@
 
       const s = worldToScreen(w.x, w.y);
       const isSelected = (p.id === selectedId);
-      const isFirst = ((tool === 'segment' || tool === 'line') && p.id === firstId);
+      const isFirst = ((tool === 'segment' || tool === 'line' || tool === 'circle') && p.id === firstId);
       const isIntersection = (p.kind === 'intersection');
 
       let radius = 5;
@@ -845,7 +1177,6 @@
       ctx.beginPath();
       ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
 
-      // 교점은 색을 살짝 다르게(종속점 표시)
       ctx.fillStyle =
         isSelected ? 'rgba(255, 220, 120, 0.95)' :
         isFirst ? 'rgba(255, 200, 120, 0.85)' :
@@ -869,39 +1200,35 @@
     drawGrid();
     drawLinesInfinite();
     drawSegments();
-    drawTwoPointPreview();
+    drawCircles();
+    drawTwoStepPreview();
     drawPoints();
   }
 
   // =========================
   // Events
   // =========================
-  function getCanvasLocalXY(e) {
-    const rect = canvas.getBoundingClientRect();
-    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
-  }
-
   canvas.addEventListener('pointermove', (e) => {
     const { sx, sy } = getCanvasLocalXY(e);
     const w = screenToWorld(sx, sy);
     mouseWorld = w;
     readout.textContent = `마우스: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
-    if ((tool === 'segment' || tool === 'line') && firstId) draw();
+    if (firstId && (tool === 'segment' || tool === 'line' || tool === 'circle')) draw();
   });
 
   canvas.addEventListener('click', (e) => {
     const { sx, sy } = getCanvasLocalXY(e);
+    const w = screenToWorld(sx, sy);
 
-    // 점 도구: 교점이면 "종속점"으로 생성
+    // 점 도구: 교점이면 종속점 생성 (원 포함)
     if (tool === 'point') {
-      // 이미 점이 있으면 중복 방지
       const hit = hitTestPoint(sx, sy);
       if (hit) { showTip('이미 점이 있습니다.', toolPointBtn, 900); return; }
 
       const nearest = findNearestIntersectionToScreen(sx, sy);
       if (nearest && nearest.d2px <= INTERSECTION_HIT_PX * INTERSECTION_HIT_PX) {
-        if (!hasIntersectionPoint(nearest.a_kind, nearest.a_id, nearest.b_kind, nearest.b_id)) {
-          addIntersectionPoint(nearest.a_kind, nearest.a_id, nearest.b_kind, nearest.b_id);
+        if (!hasIntersectionPoint(nearest.a_kind, nearest.a_id, nearest.b_kind, nearest.b_id, nearest.branch)) {
+          addIntersectionPoint(nearest.a_kind, nearest.a_id, nearest.b_kind, nearest.b_id, nearest.branch);
           showTip('⭐ 동적 교점(종속점) 생성 완료', toolPointBtn, 1100);
         } else {
           showTip('이미 같은 교점(종속점)이 있습니다.', toolPointBtn, 1100);
@@ -909,21 +1236,18 @@
         return;
       }
 
-      // 일반 자유점 생성
-      const w = screenToWorld(sx, sy);
       addFreePoint(w.x, w.y);
       return;
     }
 
-    // 2점 도구(선분/직선)
+    // 2단계 도구: 선분/직선
     if (tool === 'segment' || tool === 'line') {
       const hit = hitTestPoint(sx, sy);
-      const w = screenToWorld(sx, sy);
       const pid = hit ? hit.point.id : addFreePoint(w.x, w.y);
 
       if (!firstId) {
         firstId = pid;
-        showTip('2점 도구: <b>첫 점</b> 선택됨 → 둘째 점을 선택하세요.',
+        showTip('2단계: <b>1단계(첫 점)</b> 선택됨 → 2단계를 선택하세요.',
           tool === 'segment' ? toolSegmentBtn : toolLineBtn, 1400);
         draw();
         return;
@@ -931,7 +1255,7 @@
 
       if (firstId === pid) {
         firstId = null;
-        showTip('2점 도구: 첫 점 선택을 <b>취소</b>했습니다.',
+        showTip('2단계: 1단계 선택을 <b>취소</b>했습니다.',
           tool === 'segment' ? toolSegmentBtn : toolLineBtn, 1200);
         draw();
         return;
@@ -939,12 +1263,55 @@
 
       if (tool === 'segment') {
         addSegment(firstId, pid);
-        showTip('선분 생성 완료. 다음은 다시 <b>첫 점</b>부터.', toolSegmentBtn, 1400);
+        showTip('선분 생성 완료. 다음은 다시 1단계부터.', toolSegmentBtn, 1400);
       } else {
         addLine(firstId, pid);
-        showTip('직선 생성 완료. 다음은 다시 <b>첫 점</b>부터.', toolLineBtn, 1400);
+        showTip('직선 생성 완료. 다음은 다시 1단계부터.', toolLineBtn, 1400);
       }
       firstId = null;
+      draw();
+      return;
+    }
+
+    // 2단계 도구: 원
+    if (tool === 'circle') {
+      if (!firstId) {
+        const hit = hitTestPoint(sx, sy);
+        const centerId = hit ? hit.point.id : addFreePoint(w.x, w.y);
+        firstId = centerId;
+        showTip('원 도구: <b>중심</b> 선택됨 → 2단계로 반지름을 결정하세요.<br/>(점 선택/생성 또는 선분 선택)',
+          toolCircleBtn, 1700);
+        draw();
+        return;
+      }
+
+      const hitP = hitTestPoint(sx, sy);
+      if (hitP) {
+        const rimId = hitP.point.id;
+        if (rimId === firstId) {
+          showTip('중심과 같은 점은 반지름 점이 될 수 없습니다. 다른 점을 선택해 주세요.', toolCircleBtn, 1600);
+          return;
+        }
+        addCircle(firstId, 'point', rimId);
+        firstId = null;
+        showTip('원 생성 완료(반지름=중심~점 거리). 다음은 다시 중심부터.', toolCircleBtn, 1500);
+        draw();
+        return;
+      }
+
+      const hitS = hitTestSegment(sx, sy);
+      if (hitS) {
+        addCircle(firstId, 'segment', hitS.seg.id);
+        firstId = null;
+        showTip('원 생성 완료(반지름=선분 길이). 다음은 다시 중심부터.', toolCircleBtn, 1500);
+        draw();
+        return;
+      }
+
+      const rimId = addFreePoint(w.x, w.y);
+      addCircle(firstId, 'point', rimId);
+      firstId = null;
+      showTip('원 생성 완료(반지름 점을 새로 생성). 다음은 다시 중심부터.', toolCircleBtn, 1500);
       draw();
       return;
     }
@@ -963,7 +1330,7 @@
     selectedId = p.id;
 
     if (p.kind === 'intersection') {
-      showTip('⛔ 교점은 <b>종속점</b>이라 직접 이동할 수 없습니다.<br/>부모 선/선분의 점을 이동해 주세요.', toolSelectBtn, 1700);
+      showTip('⛔ 교점은 <b>종속점</b>이라 직접 이동할 수 없습니다.<br/>부모 선/선분/원의 점을 이동해 주세요.', toolSelectBtn, 1700);
       draw();
       return;
     }
@@ -1015,13 +1382,15 @@
   toolPointBtn.addEventListener('click', () => setTool('point', toolPointBtn));
   toolSegmentBtn.addEventListener('click', () => setTool('segment', toolSegmentBtn));
   toolLineBtn.addEventListener('click', () => setTool('line', toolLineBtn));
+  toolCircleBtn.addEventListener('click', () => setTool('circle', toolCircleBtn));
   toolSelectBtn.addEventListener('click', () => setTool('select', toolSelectBtn));
 
   btnUndoPoint.addEventListener('click', undoPoint);
   btnUndoSeg.addEventListener('click', undoSegment);
   btnUndoLine.addEventListener('click', undoLine);
+  btnUndoCircle.addEventListener('click', undoCircle);
   btnClearAll.addEventListener('click', clearAll);
-  btnCancelFirst.addEventListener('click', () => cancelFirstPoint(btnCancelFirst));
+  btnCancelFirst.addEventListener('click', () => cancelFirstStep(btnCancelFirst));
 
   // Shortcuts
   window.addEventListener('keydown', (e) => {
@@ -1029,8 +1398,9 @@
     if (k === 'p') setTool('point', null);
     if (k === 's') setTool('segment', null);
     if (k === 'l') setTool('line', null);
+    if (k === 'c') setTool('circle', null);
     if (k === 'v') setTool('select', null);
-    if (k === 'escape') cancelFirstPoint(null);
+    if (k === 'escape') cancelFirstStep(null);
   });
 
   window.addEventListener('resize', resize);
@@ -1044,7 +1414,7 @@
   if (didPurge) {
     showTip('이전 저장 찌꺼기를 <b>자동 삭제</b>하고 새 버전으로 시작합니다.', null, 1800);
   } else {
-    showTip('점 도구에서 교점 근처 클릭하면 <b>동적 교점(종속점)</b>이 생성됩니다.', null, 1800);
+    showTip('점 도구(P): 이제 <b>원-직선/원-선분/원-원</b> 교점도 클릭해서 종속점 생성 가능합니다.', null, 1900);
   }
 })();
 </script>
