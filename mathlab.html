@@ -3,88 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Math Tool - Local (Point/Segment/Line/Circle/Parabola + Intersections)</title>
-
-  <!-- cache hint -->
+  <title>Math Tool - Local (Constrained Points + Parabola-Parabola)</title>
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-
   <style>
     html, body { height: 100%; margin: 0; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b0f14; color: #e6edf3; }
-
-    .topbar {
-      position: fixed; top: 12px; left: 12px; right: 12px;
-      display: flex; gap: 8px; align-items: center; z-index: 10;
-      flex-wrap: wrap;
-    }
-    .panel {
-      background: rgba(20, 26, 34, 0.85);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(8px);
-      border-radius: 12px;
-      padding: 10px 12px;
-      display: flex; gap: 10px; align-items: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-    }
-    button {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e6edf3;
-      padding: 8px 10px;
-      border-radius: 10px;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
-    }
+    .topbar { position: fixed; top: 12px; left: 12px; right: 12px; display:flex; gap:8px; align-items:center; z-index:10; flex-wrap:wrap; }
+    .panel { background: rgba(20,26,34,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px);
+      border-radius: 12px; padding: 10px 12px; display:flex; gap:10px; align-items:center; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color:#e6edf3; padding:8px 10px; border-radius:10px;
+      cursor:pointer; user-select:none; white-space:nowrap; }
     button:hover { background: rgba(255,255,255,0.12); }
-    button.active {
-      background: rgba(120, 200, 255, 0.22);
-      border-color: rgba(120, 200, 255, 0.35);
-    }
-    .readout { opacity: 0.9; font-size: 13px; }
-    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    button.active { background: rgba(120,200,255,0.22); border-color: rgba(120,200,255,0.35); }
+    .readout { opacity:0.9; font-size:13px; }
+    canvas { display:block; width:100%; height:100%; touch-action:none; }
+    .footer { position:fixed; bottom:12px; left:12px; background: rgba(20,26,34,0.75); border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px; padding:10px 12px; font-size:12px; opacity:0.88; line-height:1.35; z-index:10;
+      max-width:min(980px, calc(100vw - 24px)); }
+    code { background: rgba(255,255,255,0.08); padding:2px 6px; border-radius:8px; }
 
-    .footer {
-      position: fixed; bottom: 12px; left: 12px;
-      background: rgba(20, 26, 34, 0.75);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 12px;
-      opacity: 0.85;
-      line-height: 1.35;
-      z-index: 10;
-      max-width: min(900px, calc(100vw - 24px));
-    }
-    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 8px; }
-
-    /* tooltip */
-    .tip {
-      position: fixed;
-      z-index: 9999;
-      display: none;
-      background: rgba(20, 26, 34, 0.94);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 12px;
-      padding: 10px 12px;
-      box-shadow: 0 18px 44px rgba(0,0,0,0.45);
-      backdrop-filter: blur(10px);
-      max-width: min(560px, calc(100vw - 24px));
-      font-size: 13px;
-      line-height: 1.35;
-      opacity: 0;
-      pointer-events: none;
-      transform: translateY(-4px);
-      transition: opacity 160ms ease, transform 160ms ease;
-    }
-    .tip.show { display: block; opacity: 1; transform: translateY(0); }
-    .tip.hide { opacity: 0; transform: translateY(-6px); }
-    .tip b { color: rgba(255, 230, 160, 0.95); }
+    .tip { position:fixed; z-index:9999; display:none; background: rgba(20,26,34,0.94); border:1px solid rgba(255,255,255,0.10);
+      border-radius:12px; padding:10px 12px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); backdrop-filter: blur(10px);
+      max-width:min(560px, calc(100vw - 24px)); font-size:13px; line-height:1.35; opacity:0; pointer-events:none;
+      transform: translateY(-4px); transition: opacity 160ms ease, transform 160ms ease; }
+    .tip.show { display:block; opacity:1; transform: translateY(0); }
+    .tip.hide { opacity:0; transform: translateY(-6px); }
+    .tip b { color: rgba(255,230,160,0.95); }
   </style>
 </head>
-
 <body>
   <div class="topbar">
     <div class="panel">
@@ -112,8 +60,9 @@
 
   <div class="footer">
     ✅ 상태는 <b>브라우저(localStorage)</b>에만 저장됩니다(서버 저장 0)<br/>
-    ✅ <b>점 도구</b>: 교점(포물선-직선/선분/원 포함) 근처를 클릭하면 <b>교점(종속점)</b> 생성<br/>
-    ✅ <b>포물선</b>: 초점(점) 선택 → 준선(직선/선분/두 점) 선택<br/>
+    ✅ <b>점 도구</b>: (1) 교점 근처 클릭 → <b>교점(종속점)</b> 생성 (포물선-포물선 포함)<br/>
+    ✅ <b>점 도구</b>: (2) 선분/직선/원/포물선 위 클릭 → <b>구속점</b> 생성(해당 도형 위에서만 이동)<br/>
+    ✅ <b>선택/이동</b>: 자유점/구속점은 이동 가능, 교점은 이동 불가<br/>
     단축키: <code>P</code>=점, <code>G</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>A</code>=포물선, <code>V</code>=선택, <code>ESC</code>=단계취소
   </div>
 
@@ -121,19 +70,16 @@
 
 <script>
 (() => {
-  // =========================
-  // 0) 자동 찌꺼기 삭제(빌드 버전)
-  // =========================
-  // 새 버전 배포 시 BUILD_ID만 바꾸면:
-  // - 이전 mathlab_ 로 시작하는 localStorage 키를 자동 삭제합니다.
-  const BUILD_ID = "2026-01-08-parabola-html-01";
+  // ================
+  // 0) 찌꺼기 삭제
+  // ================
+  const BUILD_ID = "2026-01-08-constrained-pp-01";
   const BUILD_KEY = "mathlab_build_id";
 
   function purgeOldLocalStorageIfNeeded() {
     try {
       const prev = localStorage.getItem(BUILD_KEY);
       if (prev === BUILD_ID) return false;
-
       const del = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -142,15 +88,11 @@
       for (const k of del) localStorage.removeItem(k);
       localStorage.setItem(BUILD_KEY, BUILD_ID);
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
   const didPurge = purgeOldLocalStorageIfNeeded();
 
-  // -------------------------
-  // DOM refs (방어)
-  // -------------------------
+  // DOM
   const canvas = document.getElementById('c');
   const ctx = canvas?.getContext?.('2d');
   const readout = document.getElementById('readout');
@@ -178,185 +120,182 @@
     return;
   }
 
-  // -------------------------
-  // Tooltip (버튼 옆)
-  // -------------------------
-  let tipTimer = null;
-  let tipHideTimer = null;
-
-  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-  function hideTip() {
-    tipEl.classList.remove('show');
-    tipEl.classList.add('hide');
+  // Tooltip
+  let tipTimer=null, tipHideTimer=null;
+  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+  function hideTip(){
+    tipEl.classList.remove('show'); tipEl.classList.add('hide');
     if (tipHideTimer) clearTimeout(tipHideTimer);
-    tipHideTimer = setTimeout(() => {
-      if (tipEl.classList.contains('hide')) tipEl.style.display = 'none';
-    }, 200);
+    tipHideTimer=setTimeout(()=>{ if (tipEl.classList.contains('hide')) tipEl.style.display='none'; }, 200);
   }
-
-  function positionTip(anchorEl) {
-    const padding = 10, gap = 10;
-    const tw = Math.max(1, tipEl.offsetWidth);
-    const th = Math.max(1, tipEl.offsetHeight);
-
-    if (!anchorEl || !anchorEl.getBoundingClientRect) {
-      const left = Math.round((window.innerWidth - tw) / 2);
-      const top = 72;
-      tipEl.style.left = `${clamp(left, padding, window.innerWidth - padding - tw)}px`;
-      tipEl.style.top  = `${clamp(top,  padding, window.innerHeight - padding - th)}px`;
+  function positionTip(anchorEl){
+    const padding=10, gap=10;
+    const tw=Math.max(1, tipEl.offsetWidth), th=Math.max(1, tipEl.offsetHeight);
+    if (!anchorEl || !anchorEl.getBoundingClientRect){
+      const left=Math.round((window.innerWidth - tw)/2), top=72;
+      tipEl.style.left=`${clamp(left,padding,window.innerWidth-padding-tw)}px`;
+      tipEl.style.top =`${clamp(top ,padding,window.innerHeight-padding-th)}px`;
       return;
     }
-
-    const r = anchorEl.getBoundingClientRect();
-    let left = r.right + gap;
-    let top  = r.top + (r.height - th) / 2;
-
-    if (left + tw > window.innerWidth - padding) left = r.left - gap - tw;
-
-    left = clamp(left, padding, window.innerWidth - padding - tw);
-    top  = clamp(top,  padding, window.innerHeight - padding - th);
-
-    tipEl.style.left = `${Math.round(left)}px`;
-    tipEl.style.top  = `${Math.round(top)}px`;
+    const r=anchorEl.getBoundingClientRect();
+    let left=r.right+gap, top=r.top+(r.height-th)/2;
+    if (left+tw > window.innerWidth-padding) left = r.left-gap-tw;
+    left=clamp(left,padding,window.innerWidth-padding-tw);
+    top =clamp(top ,padding,window.innerHeight-padding-th);
+    tipEl.style.left=`${Math.round(left)}px`;
+    tipEl.style.top =`${Math.round(top)}px`;
   }
-
-  function showTip(html, anchorEl=null, ms=1600) {
+  function showTip(html, anchorEl=null, ms=1600){
     if (tipTimer) clearTimeout(tipTimer);
-    tipEl.innerHTML = html;
-    tipEl.style.display = 'block';
-    tipEl.classList.remove('hide');
-    tipEl.classList.add('show');
-    requestAnimationFrame(() => positionTip(anchorEl));
-    tipTimer = setTimeout(hideTip, ms);
+    tipEl.innerHTML=html;
+    tipEl.style.display='block';
+    tipEl.classList.remove('hide'); tipEl.classList.add('show');
+    requestAnimationFrame(()=>positionTip(anchorEl));
+    tipTimer=setTimeout(hideTip, ms);
   }
-
   window.addEventListener('resize', hideTip);
   window.addEventListener('scroll', hideTip, true);
 
-  // -------------------------
-  // Storage (Local only)
-  // -------------------------
-  const STORAGE_KEY = "mathlab_state_geo_v1";
+  // Storage
+  const STORAGE_KEY="mathlab_state_geo_v2";
+  const safeNum = (x,f=0)=> (Number.isFinite(Number(x)) ? Number(x) : f);
 
-  function safeNum(x, fallback=0) {
-    const n = Number(x);
-    return Number.isFinite(n) ? n : fallback;
-  }
+  function sanitizeState(obj){
+    const safe={ points:[], segments:[], lines:[], circles:[], parabolas:[] };
+    if (!obj || typeof obj!=='object') return safe;
 
-  function sanitizeState(obj) {
-    const safe = { points: [], segments: [], lines: [], circles: [], parabolas: [] };
-    if (!obj || typeof obj !== 'object') return safe;
+    const pts = Array.isArray(obj.points)?obj.points:[];
+    const segs= Array.isArray(obj.segments)?obj.segments:[];
+    const lns = Array.isArray(obj.lines)?obj.lines:[];
+    const cirs= Array.isArray(obj.circles)?obj.circles:[];
+    const pars= Array.isArray(obj.parabolas)?obj.parabolas:[];
 
-    const pts = Array.isArray(obj.points) ? obj.points : [];
-    const segs = Array.isArray(obj.segments) ? obj.segments : [];
-    const lns  = Array.isArray(obj.lines) ? obj.lines : [];
-    const cirs = Array.isArray(obj.circles) ? obj.circles : [];
-    const pars = Array.isArray(obj.parabolas) ? obj.parabolas : [];
+    for (const p of pts){
+      if (!p || typeof p!=='object') continue;
+      if (typeof p.id!=='string' || !p.id) continue;
 
-    for (const p of pts) {
-      if (!p || typeof p !== 'object') continue;
-      if (typeof p.id !== 'string' || !p.id) continue;
-      const kind = (p.kind === 'intersection') ? 'intersection' : 'free';
-      const base = { id: p.id, x: safeNum(p.x, 0), y: safeNum(p.y, 0), kind };
-      if (kind === 'intersection') {
-        const pa = p.parents?.a;
-        const pb = p.parents?.b;
-        if (!pa || !pb) continue;
-        if (typeof pa.kind !== 'string' || typeof pa.id !== 'string') continue;
-        if (typeof pb.kind !== 'string' || typeof pb.id !== 'string') continue;
-        base.parents = { a: { kind: pa.kind, id: pa.id }, b: { kind: pb.kind, id: pb.id } };
+      let kind = 'free';
+      if (p.kind==='intersection') kind='intersection';
+      else if (p.kind==='constrained') kind='constrained';
+
+      const base={ id:p.id, x:safeNum(p.x,0), y:safeNum(p.y,0), kind };
+
+      if (kind==='intersection'){
+        const pa=p.parents?.a, pb=p.parents?.b;
+        if (!pa||!pb) continue;
+        if (typeof pa.kind!=='string'||typeof pa.id!=='string') continue;
+        if (typeof pb.kind!=='string'||typeof pb.id!=='string') continue;
+        base.parents={ a:{kind:pa.kind,id:pa.id}, b:{kind:pb.kind,id:pb.id} };
       }
+
+      if (kind==='constrained'){
+        const c=p.constraint;
+        if (!c || typeof c!=='object') continue;
+        if (typeof c.kind!=='string' || typeof c.id!=='string') continue;
+        const k=c.kind;
+        const out={ kind:k, id:c.id, param:{} };
+        if (k==='segment' || k==='line'){
+          out.param.t = safeNum(c.param?.t, 0);
+        } else if (k==='circle'){
+          out.param.ang = safeNum(c.param?.ang, 0);
+        } else if (k==='parabola'){
+          out.param.u = safeNum(c.param?.u, 0);
+        } else continue;
+        base.constraint=out;
+      }
+
       safe.points.push(base);
     }
 
-    const pointIds = new Set(safe.points.map(p => p.id));
+    const pointIds=new Set(safe.points.map(p=>p.id));
 
-    for (const s of segs) {
-      if (!s || typeof s !== 'object') continue;
-      if (typeof s.id !== 'string' || !s.id) continue;
-      if (typeof s.a_id !== 'string' || typeof s.b_id !== 'string') continue;
-      if (!pointIds.has(s.a_id) || !pointIds.has(s.b_id) || s.a_id === s.b_id) continue;
-      safe.segments.push({ id: s.id, a_id: s.a_id, b_id: s.b_id });
+    for (const s of segs){
+      if (!s||typeof s!=='object') continue;
+      if (typeof s.id!=='string'||!s.id) continue;
+      if (typeof s.a_id!=='string'||typeof s.b_id!=='string') continue;
+      if (!pointIds.has(s.a_id)||!pointIds.has(s.b_id)||s.a_id===s.b_id) continue;
+      safe.segments.push({ id:s.id, a_id:s.a_id, b_id:s.b_id });
     }
-
-    for (const l of lns) {
-      if (!l || typeof l !== 'object') continue;
-      if (typeof l.id !== 'string' || !l.id) continue;
-      if (typeof l.a_id !== 'string' || typeof l.b_id !== 'string') continue;
-      if (!pointIds.has(l.a_id) || !pointIds.has(l.b_id) || l.a_id === l.b_id) continue;
-      safe.lines.push({ id: l.id, a_id: l.a_id, b_id: l.b_id });
+    for (const l of lns){
+      if (!l||typeof l!=='object') continue;
+      if (typeof l.id!=='string'||!l.id) continue;
+      if (typeof l.a_id!=='string'||typeof l.b_id!=='string') continue;
+      if (!pointIds.has(l.a_id)||!pointIds.has(l.b_id)||l.a_id===l.b_id) continue;
+      safe.lines.push({ id:l.id, a_id:l.a_id, b_id:l.b_id });
     }
-
-    for (const c of cirs) {
-      if (!c || typeof c !== 'object') continue;
-      if (typeof c.id !== 'string' || !c.id) continue;
-      if (typeof c.c_id !== 'string' || typeof c.p_id !== 'string') continue;
-      if (!pointIds.has(c.c_id) || !pointIds.has(c.p_id) || c.c_id === c.p_id) continue;
-      safe.circles.push({ id: c.id, c_id: c.c_id, p_id: c.p_id });
+    for (const c of cirs){
+      if (!c||typeof c!=='object') continue;
+      if (typeof c.id!=='string'||!c.id) continue;
+      if (typeof c.c_id!=='string'||typeof c.p_id!=='string') continue;
+      if (!pointIds.has(c.c_id)||!pointIds.has(c.p_id)||c.c_id===c.p_id) continue;
+      safe.circles.push({ id:c.id, c_id:c.c_id, p_id:c.p_id });
     }
-
-    for (const p of pars) {
-      if (!p || typeof p !== 'object') continue;
-      if (typeof p.id !== 'string' || !p.id) continue;
-      if (typeof p.f_id !== 'string' || !pointIds.has(p.f_id)) continue;
-      if (typeof p.d_a_id !== 'string' || typeof p.d_b_id !== 'string') continue;
-      if (!pointIds.has(p.d_a_id) || !pointIds.has(p.d_b_id) || p.d_a_id === p.d_b_id) continue;
-      safe.parabolas.push({ id: p.id, f_id: p.f_id, d_a_id: p.d_a_id, d_b_id: p.d_b_id });
+    for (const p of pars){
+      if (!p||typeof p!=='object') continue;
+      if (typeof p.id!=='string'||!p.id) continue;
+      if (typeof p.f_id!=='string'||!pointIds.has(p.f_id)) continue;
+      if (typeof p.d_a_id!=='string'||typeof p.d_b_id!=='string') continue;
+      if (!pointIds.has(p.d_a_id)||!pointIds.has(p.d_b_id)||p.d_a_id===p.d_b_id) continue;
+      safe.parabolas.push({ id:p.id, f_id:p.f_id, d_a_id:p.d_a_id, d_b_id:p.d_b_id });
     }
 
     return safe;
   }
 
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+  function loadState(){
+    try{
+      const raw=localStorage.getItem(STORAGE_KEY);
       if (!raw) return sanitizeState(null);
       return sanitizeState(JSON.parse(raw));
-    } catch {
-      return sanitizeState(null);
-    }
+    }catch{ return sanitizeState(null); }
+  }
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({points,segments,lines,circles,parabolas})); }
+    catch{ showTip('저장 실패(브라우저 설정/용량). 그래도 작업은 계속됩니다.', null, 1600); }
   }
 
-  function saveState() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ points, segments, lines, circles, parabolas }));
-    } catch {
-      showTip('저장에 실패했습니다(브라우저 설정/용량). 그래도 작업은 계속됩니다.', null, 1600);
-    }
-  }
+  // Geometry
+  const EPS=1e-9;
+  const v=(x,y)=>({x,y});
+  const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
+  const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y});
+  const mul=(a,k)=>({x:a.x*k,y:a.y*k});
+  const dot=(a,b)=>a.x*b.x+a.y*b.y;
+  const cross=(a,b)=>a.x*b.y-a.y*b.x;
+  const len=(a)=>Math.hypot(a.x,a.y);
+  const norm=(a)=>{ const L=len(a); return L<EPS?{x:1,y:0}:{x:a.x/L,y:a.y/L}; };
+  const perp=(a)=>({x:-a.y,y:a.x});
 
-  // -------------------------
-  // Geometry utils
-  // -------------------------
-  const EPS = 1e-9;
-  function v(x,y){ return {x,y}; }
-  function add(a,b){ return {x:a.x+b.x, y:a.y+b.y}; }
-  function sub(a,b){ return {x:a.x-b.x, y:a.y-b.y}; }
-  function mul(a,k){ return {x:a.x*k, y:a.y*k}; }
-  function dot(a,b){ return a.x*b.x + a.y*b.y; }
-  function cross(a,b){ return a.x*b.y - a.y*b.x; }
-  function len(a){ return Math.hypot(a.x,a.y); }
-  function norm(a){ const L=len(a); return L<EPS? {x:1,y:0} : {x:a.x/L, y:a.y/L}; }
-  function perp(a){ return {x:-a.y, y:a.x}; }
-
-  function distPointToLine(P, A, B){
-    const AB=sub(B,A);
-    const n=perp(AB);
-    const nn=len(n);
+  function distPointToLine(P,A,B){
+    const AB=sub(B,A), n=perp(AB), nn=len(n);
     if (nn<EPS) return Infinity;
     return Math.abs(dot(sub(P,A), n))/nn;
   }
-
-  function distPointToSegment(P, A, B){
-    const AB=sub(B,A);
-    const ap=sub(P,A);
-    const ab2=dot(AB,AB);
+  function distPointToSegment(P,A,B){
+    const AB=sub(B,A), ap=sub(P,A), ab2=dot(AB,AB);
     if (ab2<EPS) return len(sub(P,A));
-    let t=dot(ap,AB)/ab2;
-    t=Math.max(0,Math.min(1,t));
+    let t=dot(ap,AB)/ab2; t=Math.max(0,Math.min(1,t));
     const Q=add(A,mul(AB,t));
     return len(sub(P,Q));
+  }
+  function closestPointOnLine(P,A,B){
+    const AB=sub(B,A), ab2=dot(AB,AB);
+    if (ab2<EPS) return {Q:A, t:0};
+    const t=dot(sub(P,A), AB)/ab2;
+    return {Q:add(A,mul(AB,t)), t};
+  }
+  function closestPointOnSegment(P,A,B){
+    const AB=sub(B,A), ab2=dot(AB,AB);
+    if (ab2<EPS) return {Q:A, t:0};
+    let t=dot(sub(P,A), AB)/ab2; t=Math.max(0,Math.min(1,t));
+    return {Q:add(A,mul(AB,t)), t};
+  }
+  function closestPointOnCircle(P,C,r){
+    const d=sub(P,C);
+    let ang=Math.atan2(d.y,d.x);
+    if (!Number.isFinite(ang)) ang=0;
+    const Q=add(C, v(r*Math.cos(ang), r*Math.sin(ang)));
+    return {Q, ang};
   }
 
   function lineLineIntersection(A,B,C,D){
@@ -366,7 +305,6 @@
     const t=cross(sub(C,A), s)/den;
     return add(A,mul(r,t));
   }
-
   function segmentSegmentIntersection(A,B,C,D){
     const r=sub(B,A), s=sub(D,C);
     const den=cross(r,s);
@@ -378,21 +316,17 @@
     return add(A,mul(r,t));
   }
 
-  function circleLineIntersections(C0, r, A, B){
-    const d=sub(B,A);
-    const f=sub(A,C0);
-    const a=dot(d,d);
-    const b=2*dot(f,d);
-    const c=dot(f,f)-r*r;
+  function circleLineIntersections(C0,r,A,B){
+    const d=sub(B,A), f=sub(A,C0);
+    const a=dot(d,d), b=2*dot(f,d), c=dot(f,f)-r*r;
     const disc=b*b-4*a*c;
-    if (disc < -1e-10) return [];
-    if (Math.abs(disc) <= 1e-10) {
+    if (disc<-1e-10) return [];
+    if (Math.abs(disc)<=1e-10){
       const t=-b/(2*a);
       return [ add(A,mul(d,t)) ];
     }
     const s=Math.sqrt(Math.max(0,disc));
-    const t1=(-b - s)/(2*a);
-    const t2=(-b + s)/(2*a);
+    const t1=(-b - s)/(2*a), t2=(-b + s)/(2*a);
     return [ add(A,mul(d,t1)), add(A,mul(d,t2)) ];
   }
 
@@ -403,223 +337,221 @@
     if (d<Math.abs(r1-r2)-1e-10) return [];
     const a=(r1*r1 - r2*r2 + d*d)/(2*d);
     const h2=r1*r1 - a*a;
-    if (h2 < -1e-10) return [];
+    if (h2<-1e-10) return [];
     const h=Math.sqrt(Math.max(0,h2));
     const u=mul(sub(C2,C1), 1/d);
     const P=add(C1, mul(u,a));
     const w=perp(u);
-    if (h < 1e-8) return [P];
-    return [ add(P, mul(w,h)), add(P, mul(w,-h)) ];
+    if (h<1e-8) return [P];
+    return [ add(P,mul(w,h)), add(P,mul(w,-h)) ];
   }
 
-  // Parabola basis (focus F, directrix line through A,B)
-  function parabolaParams(F, A, B){
+  // Parabola
+  function parabolaParams(F,A,B){
     const d0=sub(B,A);
     const d=norm(d0);
     let n=norm(perp(d));
     let vF=dot(sub(F,A), n);
-    if (vF < 0) { n=mul(n,-1); vF=-vF; }
+    if (vF<0){ n=mul(n,-1); vF=-vF; }
     const uF=dot(sub(F,A), d);
     return { A, d, n, uF, vF };
   }
-
-  function worldToUV(X, par){
-    return { u: dot(sub(X,par.A), par.d), v: dot(sub(X,par.A), par.n) };
-  }
-  function uvToWorld(u, v0, par){
-    return add(par.A, add(mul(par.d,u), mul(par.n,v0)));
-  }
-  function parabolaV(u, par){
+  function worldToUV(X,par){ return { u: dot(sub(X,par.A), par.d), v: dot(sub(X,par.A), par.n) }; }
+  function uvToWorld(u,v0,par){ return add(par.A, add(mul(par.d,u), mul(par.n,v0))); }
+  function parabolaV(u,par){
     const vF=par.vF;
-    if (vF < 1e-9) return null;
+    if (vF<1e-9) return null;
     const t=u-par.uF;
     return (t*t + vF*vF)/(2*vF);
   }
 
-  function parabolaLineIntersections(par, P0, P1, restrict01=false){
-    const uv0=worldToUV(P0, par);
-    const uv1=worldToUV(P1, par);
-    const du=uv1.u-uv0.u;
-    const dv=uv1.v-uv0.v;
+  function parabolaLineIntersections(par,P0,P1,restrict01=false){
+    const uv0=worldToUV(P0,par), uv1=worldToUV(P1,par);
+    const du=uv1.u-uv0.u, dv=uv1.v-uv0.v;
+    const a=du*du;
+    const b=2*(uv0.u-par.uF)*du - 2*par.vF*dv;
+    const c=(uv0.u-par.uF)*(uv0.u-par.uF) + par.vF*par.vF - 2*par.vF*uv0.v;
+    const disc=b*b-4*a*c;
 
-    const a = du*du;
-    const b = 2*(uv0.u-par.uF)*du - 2*par.vF*dv;
-    const c = (uv0.u-par.uF)*(uv0.u-par.uF) + par.vF*par.vF - 2*par.vF*uv0.v;
-
-    const disc=b*b - 4*a*c;
-
-    if (Math.abs(a) < 1e-12) {
-      if (Math.abs(b) < 1e-12) return [];
-      const t = -c/b;
-      if (restrict01 && (t < -1e-9 || t > 1+1e-9)) return [];
+    if (Math.abs(a)<1e-12){
+      if (Math.abs(b)<1e-12) return [];
+      const t=-c/b;
+      if (restrict01 && (t<-1e-9 || t>1+1e-9)) return [];
       return [ add(P0, mul(sub(P1,P0), t)) ];
     }
 
-    if (disc < -1e-10) return [];
-    if (Math.abs(disc) <= 1e-10) {
+    if (disc<-1e-10) return [];
+    if (Math.abs(disc)<=1e-10){
       const t=-b/(2*a);
-      if (restrict01 && (t < -1e-9 || t > 1+1e-9)) return [];
+      if (restrict01 && (t<-1e-9 || t>1+1e-9)) return [];
       return [ add(P0, mul(sub(P1,P0), t)) ];
     }
 
     const s=Math.sqrt(Math.max(0,disc));
-    const t1=(-b - s)/(2*a);
-    const t2=(-b + s)/(2*a);
-
+    const t1=(-b - s)/(2*a), t2=(-b + s)/(2*a);
     const out=[];
-    for (const t of [t1,t2]) {
-      if (restrict01 && (t < -1e-9 || t > 1+1e-9)) continue;
+    for (const t of [t1,t2]){
+      if (restrict01 && (t<-1e-9 || t>1+1e-9)) continue;
       out.push(add(P0, mul(sub(P1,P0), t)));
     }
     return out;
   }
 
-  function parabolaCircleIntersections(par, C0, r, uMin, uMax){
-    const N = 220;
+  function parabolaCircleIntersections(par,C0,r,uMin,uMax, quality='fast'){
+    const N = (quality==='accurate') ? 220 : 140;
     const tol = 1e-5;
-    const roots = [];
+    const roots=[];
 
     function f(u){
-      const vv = parabolaV(u, par);
-      if (vv === null) return NaN;
-      const X = uvToWorld(u, vv, par);
-      const dx = X.x - C0.x;
-      const dy = X.y - C0.y;
-      return (dx*dx + dy*dy) - r*r;
+      const vv=parabolaV(u,par);
+      if (vv===null) return NaN;
+      const X=uvToWorld(u,vv,par);
+      const dx=X.x-C0.x, dy=X.y-C0.y;
+      return (dx*dx+dy*dy)-r*r;
     }
 
-    const step = (uMax - uMin) / N;
-    let uPrev = uMin;
-    let fPrev = f(uPrev);
+    const step=(uMax-uMin)/N;
+    let uPrev=uMin, fPrev=f(uPrev);
 
     for (let i=1;i<=N;i++){
-      const uCur = uMin + step*i;
-      const fCur = f(uCur);
+      const uCur=uMin+step*i, fCur=f(uCur);
 
-      if (Number.isFinite(fPrev) && Math.abs(fPrev) < tol) roots.push(uPrev);
-      if (Number.isFinite(fCur) && Math.abs(fCur) < tol) roots.push(uCur);
+      if (Number.isFinite(fPrev) && Math.abs(fPrev)<tol) roots.push(uPrev);
+      if (Number.isFinite(fCur) && Math.abs(fCur)<tol) roots.push(uCur);
 
-      if (Number.isFinite(fPrev) && Number.isFinite(fCur) && fPrev*fCur < 0){
-        let a=uPrev, b=uCur;
-        let fa=fPrev, fb=fCur;
-        for (let k=0;k<40;k++){
-          const m=(a+b)/2;
-          const fm=f(m);
+      if (Number.isFinite(fPrev) && Number.isFinite(fCur) && fPrev*fCur<0){
+        let a=uPrev,b=uCur, fa=fPrev, fb=fCur;
+        for (let k=0;k<35;k++){
+          const m=(a+b)/2, fm=f(m);
           if (!Number.isFinite(fm)) break;
-          if (fa*fm <= 0){ b=m; fb=fm; }
-          else { a=m; fa=fm; }
+          if (fa*fm<=0){ b=m; fb=fm; } else { a=m; fa=fm; }
         }
         roots.push((a+b)/2);
       }
 
-      uPrev=uCur;
-      fPrev=fCur;
+      uPrev=uCur; fPrev=fCur;
     }
 
     roots.sort((x,y)=>x-y);
     const uniq=[];
     for (const u of roots){
-      if (!uniq.length || Math.abs(u-uniq[uniq.length-1]) > 1e-3) uniq.push(u);
+      if (!uniq.length || Math.abs(u-uniq[uniq.length-1])>1e-3) uniq.push(u);
     }
 
     const pts=[];
     for (const u of uniq){
-      const vv = parabolaV(u, par);
-      if (vv === null) continue;
-      pts.push(uvToWorld(u, vv, par));
+      const vv=parabolaV(u,par);
+      if (vv===null) continue;
+      pts.push(uvToWorld(u,vv,par));
     }
     return pts;
   }
 
-  // -------------------------
-  // View / World
-  // -------------------------
-  let scale = 40;
-  let origin = { x: 0, y: 0 };
+  // closest u on parabola (for constrained dragging/creation)
+  function closestPointOnParabola(P, par, uMin, uMax){
+    const N=90;
+    let bestU=uMin, bestD=Infinity;
+    for (let i=0;i<=N;i++){
+      const u=uMin+(uMax-uMin)*i/N;
+      const vv=parabolaV(u,par);
+      if (vv===null) continue;
+      const X=uvToWorld(u,vv,par);
+      const d2=(X.x-P.x)**2 + (X.y-P.y)**2;
+      if (d2<bestD){ bestD=d2; bestU=u; }
+    }
+    // local refine with ternary on [bestU-step, bestU+step]
+    const step=(uMax-uMin)/N;
+    let a=Math.max(uMin, bestU-step), b=Math.min(uMax, bestU+step);
+    function D(u){
+      const vv=parabolaV(u,par);
+      if (vv===null) return Infinity;
+      const X=uvToWorld(u,vv,par);
+      return (X.x-P.x)**2 + (X.y-P.y)**2;
+    }
+    for (let k=0;k<28;k++){
+      const m1=a+(b-a)/3, m2=b-(b-a)/3;
+      if (D(m1) < D(m2)) b=m2; else a=m1;
+    }
+    const u=(a+b)/2;
+    const vv=parabolaV(u,par);
+    const Q=(vv===null) ? P : uvToWorld(u,vv,par);
+    return {Q, u};
+  }
 
-  function worldToScreen(wx, wy) { return { x: origin.x + wx * scale, y: origin.y - wy * scale }; }
-  function screenToWorld(sx, sy) { return { x: (sx - origin.x) / scale, y: (origin.y - sy) / scale }; }
+  // View
+  let scale=40;
+  let origin={x:0,y:0};
+  function worldToScreen(wx,wy){ return {x:origin.x+wx*scale, y:origin.y-wy*scale}; }
+  function screenToWorld(sx,sy){ return {x:(sx-origin.x)/scale, y:(origin.y-sy)/scale}; }
 
-  function resize() {
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(window.innerWidth * dpr);
-    canvas.height = Math.floor(window.innerHeight * dpr);
-    canvas.style.width = window.innerWidth + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    origin.x = window.innerWidth / 2;
-    origin.y = window.innerHeight / 2;
+  function resize(){
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=Math.floor(window.innerWidth*dpr);
+    canvas.height=Math.floor(window.innerHeight*dpr);
+    canvas.style.width=window.innerWidth+'px';
+    canvas.style.height=window.innerHeight+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    origin.x=window.innerWidth/2;
+    origin.y=window.innerHeight/2;
     draw();
   }
-
   function viewWorldBounds(){
-    const w=window.innerWidth, h=window.innerHeight;
-    const p1=screenToWorld(0,0);
-    const p2=screenToWorld(w,h);
-    return {
-      minx: Math.min(p1.x,p2.x), maxx: Math.max(p1.x,p2.x),
-      miny: Math.min(p1.y,p2.y), maxy: Math.max(p1.y,p2.y)
-    };
+    const w=window.innerWidth,h=window.innerHeight;
+    const p1=screenToWorld(0,0), p2=screenToWorld(w,h);
+    return { minx:Math.min(p1.x,p2.x), maxx:Math.max(p1.x,p2.x), miny:Math.min(p1.y,p2.y), maxy:Math.max(p1.y,p2.y) };
   }
 
-  // -------------------------
   // State
-  // -------------------------
-  let st = loadState();
-  let points = st.points;
-  let segments = st.segments;
-  let lines = st.lines;
-  let circles = st.circles;
-  let parabolas = st.parabolas;
+  const st=loadState();
+  let points=st.points, segments=st.segments, lines=st.lines, circles=st.circles, parabolas=st.parabolas;
+  const uid=(prefix='')=> prefix + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
 
-  function uid(prefix='') { return prefix + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8); }
-
-  function getPoint(pid){ return points.find(p=>p.id===pid) || null; }
-  function getSegment(sid){ return segments.find(s=>s.id===sid) || null; }
-  function getLine(lid){ return lines.find(l=>l.id===lid) || null; }
-  function getCircle(cid){ return circles.find(c=>c.id===cid) || null; }
-  function getParabola(pid){ return parabolas.find(p=>p.id===pid) || null; }
+  const getPoint=(pid)=> points.find(p=>p.id===pid)||null;
+  const getSegment=(sid)=> segments.find(s=>s.id===sid)||null;
+  const getLine=(lid)=> lines.find(l=>l.id===lid)||null;
+  const getCircle=(cid)=> circles.find(c=>c.id===cid)||null;
+  const getParabola=(pid)=> parabolas.find(p=>p.id===pid)||null;
 
   function cleanupAll(){
     const pids=new Set(points.map(p=>p.id));
-    segments = segments.filter(s => pids.has(s.a_id) && pids.has(s.b_id) && s.a_id!==s.b_id);
-    lines = lines.filter(l => pids.has(l.a_id) && pids.has(l.b_id) && l.a_id!==l.b_id);
-    circles = circles.filter(c => pids.has(c.c_id) && pids.has(c.p_id) && c.c_id!==c.p_id);
-    parabolas = parabolas.filter(p => pids.has(p.f_id) && pids.has(p.d_a_id) && pids.has(p.d_b_id) && p.d_a_id!==p.d_b_id);
+    segments = segments.filter(s=> pids.has(s.a_id)&&pids.has(s.b_id)&&s.a_id!==s.b_id);
+    lines    = lines.filter(l=> pids.has(l.a_id)&&pids.has(l.b_id)&&l.a_id!==l.b_id);
+    circles  = circles.filter(c=> pids.has(c.c_id)&&pids.has(c.p_id)&&c.c_id!==c.p_id);
+    parabolas= parabolas.filter(p=> pids.has(p.f_id)&&pids.has(p.d_a_id)&&pids.has(p.d_b_id)&&p.d_a_id!==p.d_b_id);
 
-    const exists = (ref) => {
+    // intersection parent exists?
+    const existsRef=(ref)=>{
       if (!ref) return false;
-      if (ref.kind === 'segment') return !!getSegment(ref.id);
-      if (ref.kind === 'line') return !!getLine(ref.id);
-      if (ref.kind === 'circle') return !!getCircle(ref.id);
-      if (ref.kind === 'parabola') return !!getParabola(ref.id);
+      if (ref.kind==='segment') return !!getSegment(ref.id);
+      if (ref.kind==='line') return !!getLine(ref.id);
+      if (ref.kind==='circle') return !!getCircle(ref.id);
+      if (ref.kind==='parabola') return !!getParabola(ref.id);
       return false;
     };
-    points = points.filter(p => {
-      if (p.kind !== 'intersection') return true;
-      return exists(p.parents?.a) && exists(p.parents?.b);
+
+    points = points.filter(p=>{
+      if (p.kind==='intersection') return existsRef(p.parents?.a) && existsRef(p.parents?.b);
+      if (p.kind==='constrained') return existsRef(p.constraint);
+      return true;
     });
   }
 
-  // -------------------------
-  // Tools & step states
-  // -------------------------
-  let tool = 'point'; // point | segment | line | circle | parabola | select
-  let selectedPointId = null;
+  // Tools
+  let tool='point';
+  let selectedPointId=null;
 
-  let stepA = null;             // segment/line first point
-  let circleCenterId = null;    // circle center
-  let parabolaFocusId = null;   // parabola focus
-  let parabolaDirFirstId = null;// directrix by two points (first)
+  let stepA=null;
+  let circleCenterId=null;
+  let parabolaFocusId=null;
+  let parabolaDirFirstId=null;
 
-  let mouseWorld = {x:0,y:0};
+  let mouseWorld={x:0,y:0};
 
   let dragging=false;
   let dragPointerId=null;
   let dragOffset={x:0,y:0};
 
-  const HIT_R = 10; // px for points
+  const HIT_R=10;
 
   function setTool(t, anchor=null){
     tool=t;
@@ -629,243 +561,229 @@
     toolCircleBtn.classList.toggle('active', t==='circle');
     toolParabolaBtn.classList.toggle('active', t==='parabola');
     toolSelectBtn.classList.toggle('active', t==='select');
-
     cancelStep(false);
 
-    const msg = {
-      point: '<b>점</b>: 빈 곳 클릭=자유점, 교점 근처 클릭=<b>교점(종속점)</b> 생성',
-      segment: '<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)',
-      line: '<b>직선</b>: 첫 점 → 둘째 점 (무한 직선)',
-      circle: '<b>원</b>: 중심점 → 원 위의 점',
-      parabola: '<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)',
-      select: '<b>선택/이동</b>: 자유점을 드래그하여 이동'
-    }[t] || '';
+    const msg={
+      point:'<b>점</b>: (1) 교점 근처 클릭=교점 생성, (2) 도형 위 클릭=구속점 생성, (3) 빈 곳 클릭=자유점',
+      segment:'<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)',
+      line:'<b>직선</b>: 첫 점 → 둘째 점',
+      circle:'<b>원</b>: 중심 → 원 위의 점',
+      parabola:'<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)',
+      select:'<b>선택/이동</b>: 자유점/구속점은 이동 가능(구속점은 도형 위로만), 교점은 이동 불가'
+    }[t]||'';
     showTip(msg, anchor, 1800);
     draw();
   }
 
   function cancelStep(showMsg=true){
-    stepA=null;
-    circleCenterId=null;
-    parabolaFocusId=null;
-    parabolaDirFirstId=null;
+    stepA=null; circleCenterId=null; parabolaFocusId=null; parabolaDirFirstId=null;
     if (showMsg) showTip('현재 단계가 취소되었습니다.', btnCancelStep, 1100);
     draw();
   }
 
-  // -------------------------
   // Hit tests
-  // -------------------------
   function getCanvasLocalXY(e){
-    const rect = canvas.getBoundingClientRect();
-    return { sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+    const rect=canvas.getBoundingClientRect();
+    return { sx:e.clientX-rect.left, sy:e.clientY-rect.top };
   }
-
   function hitPoint(sx,sy){
     let best=null, bestD2=Infinity;
     for (const p of points){
-      const s = worldToScreen(p.x, p.y);
+      const s=worldToScreen(p.x,p.y);
       const dx=s.x-sx, dy=s.y-sy;
       const d2=dx*dx+dy*dy;
       if (d2<bestD2){ bestD2=d2; best=p; }
     }
-    return (best && bestD2 <= HIT_R*HIT_R) ? best : null;
+    return (best && bestD2<=HIT_R*HIT_R) ? best : null;
   }
 
-  function hitSegmentObj(sx,sy){
-    let best=null, bestDist=Infinity;
-    const P=screenToWorld(sx,sy);
-    for (const seg of segments){
-      const a=getPoint(seg.a_id), b=getPoint(seg.b_id);
-      if (!a||!b) continue;
-      const d=distPointToSegment(P, v(a.x,a.y), v(b.x,b.y));
-      const dp = d * scale;
-      if (dp < bestDist){ bestDist = dp; best = seg; }
-    }
-    return (best && bestDist <= 10) ? best : null;
-  }
-
-  function hitLineObj(sx,sy){
-    let best=null, bestDist=Infinity;
-    const P=screenToWorld(sx,sy);
-    for (const ln of lines){
-      const a=getPoint(ln.a_id), b=getPoint(ln.b_id);
-      if (!a||!b) continue;
-      const d=distPointToLine(P, v(a.x,a.y), v(b.x,b.y));
-      const dp=d*scale;
-      if (dp < bestDist){ bestDist=dp; best=ln; }
-    }
-    return (best && bestDist <= 10) ? best : null;
-  }
-
-  // -------------------------
-  // Create primitives
-  // -------------------------
+  // Create points
   function addFreePoint(wx,wy){
-    const p={ id: uid('p-'), x: wx, y: wy, kind:'free' };
-    points.push(p);
-    cleanupAll();
-    saveState();
-    draw();
-    return p.id;
+    const p={ id:uid('p-'), x:wx, y:wy, kind:'free' };
+    points.push(p); cleanupAll(); saveState(); draw(); return p.id;
   }
-
   function addIntersectionPoint(wx,wy, refA, refB){
-    const p={
-      id: uid('ip-'),
-      x: wx, y: wy,
-      kind: 'intersection',
-      parents: { a: refA, b: refB }
-    };
-    points.push(p);
-    cleanupAll();
-    saveState();
-    draw();
-    return p.id;
+    const p={ id:uid('ip-'), x:wx, y:wy, kind:'intersection', parents:{a:refA,b:refB} };
+    points.push(p); cleanupAll(); saveState(); draw(); return p.id;
+  }
+  function addConstrainedPoint(kind, objId, paramObj, wx, wy){
+    const p={ id:uid('cp-'), x:wx, y:wy, kind:'constrained', constraint:{ kind, id:objId, param:paramObj } };
+    points.push(p); cleanupAll(); saveState(); draw(); return p.id;
   }
 
-  function addSegment(a_id,b_id){ segments.push({ id: uid('s-'), a_id, b_id }); cleanupAll(); saveState(); draw(); }
-  function addLine(a_id,b_id){ lines.push({ id: uid('l-'), a_id, b_id }); cleanupAll(); saveState(); draw(); }
-  function addCircle(c_id,p_id){ circles.push({ id: uid('c-'), c_id, p_id }); cleanupAll(); saveState(); draw(); }
-  function addParabola(f_id, d_a_id, d_b_id){ parabolas.push({ id: uid('pa-'), f_id, d_a_id, d_b_id }); cleanupAll(); saveState(); draw(); }
+  // Create objects
+  const addSegment=(a_id,b_id)=>{ segments.push({id:uid('s-'),a_id,b_id}); cleanupAll(); saveState(); draw(); };
+  const addLine=(a_id,b_id)=>{ lines.push({id:uid('l-'),a_id,b_id}); cleanupAll(); saveState(); draw(); };
+  const addCircle=(c_id,p_id)=>{ circles.push({id:uid('c-'),c_id,p_id}); cleanupAll(); saveState(); draw(); };
+  const addParabola=(f_id, d_a_id, d_b_id)=>{ parabolas.push({id:uid('pa-'),f_id,d_a_id,d_b_id}); cleanupAll(); saveState(); draw(); };
 
-  // -------------------------
-  // Intersections
-  // -------------------------
-  function getLinePtsFromLineObj(ln){
-    const A=getPoint(ln.a_id), B=getPoint(ln.b_id);
-    if (!A||!B) return null;
-    return {A:v(A.x,A.y), B:v(B.x,B.y)};
-  }
-  function getLinePtsFromSegmentObj(seg){
-    const A=getPoint(seg.a_id), B=getPoint(seg.b_id);
-    if (!A||!B) return null;
-    return {A:v(A.x,A.y), B:v(B.x,B.y)};
-  }
-  function getCircleGeom(c){
-    const C=getPoint(c.c_id), P=getPoint(c.p_id);
-    if (!C||!P) return null;
-    const CC=v(C.x,C.y), PP=v(P.x,P.y);
-    return {C:CC, r: len(sub(PP,CC))};
-  }
-  function getParabolaGeom(pb){
-    const F=getPoint(pb.f_id);
-    const A=getPoint(pb.d_a_id);
-    const B=getPoint(pb.d_b_id);
-    if (!F||!A||!B) return null;
-    return {F:v(F.x,F.y), A:v(A.x,A.y), B:v(B.x,B.y)};
+  // Geometry getters
+  const getLinePtsFromLineObj=(ln)=>{ const A=getPoint(ln.a_id),B=getPoint(ln.b_id); return (A&&B)?{A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
+  const getLinePtsFromSegmentObj=(sg)=>{ const A=getPoint(sg.a_id),B=getPoint(sg.b_id); return (A&&B)?{A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
+  const getCircleGeom=(c)=>{ const C=getPoint(c.c_id),P=getPoint(c.p_id); if(!C||!P) return null; const CC=v(C.x,C.y), PP=v(P.x,P.y); return {C:CC, r:len(sub(PP,CC))}; };
+  const getParabolaGeom=(pb)=>{ const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); return (F&&A&&B)?{F:v(F.x,F.y),A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
+
+  // Parabola polyline intersections (for parabola-parabola)
+  function parabolaPolyline(par, uMin, uMax, N){
+    const pts=[];
+    for (let i=0;i<=N;i++){
+      const u=uMin+(uMax-uMin)*i/N;
+      const vv=parabolaV(u,par);
+      if (vv===null) continue;
+      pts.push(uvToWorld(u,vv,par));
+    }
+    return pts;
   }
 
-  function intersectionsBetween(ref1, ref2){
+  function parabolaParabolaIntersections(par1, uMin1, uMax1, par2, uMin2, uMax2, quality='fast'){
+    const N = (quality==='accurate') ? 140 : 70; // O(N^2) 이므로 업데이트는 가볍게
+    const P1=parabolaPolyline(par1,uMin1,uMax1,N);
+    const P2=parabolaPolyline(par2,uMin2,uMax2,N);
+    const out=[];
+    for (let i=0;i<P1.length-1;i++){
+      const A=P1[i], B=P1[i+1];
+      for (let j=0;j<P2.length-1;j++){
+        const C=P2[j], D=P2[j+1];
+        const X=segmentSegmentIntersection(A,B,C,D);
+        if (X) out.push(X);
+      }
+    }
+    // dedup
+    out.sort((p,q)=>p.x-q.x || p.y-q.y);
+    const uniq=[];
+    for (const X of out){
+      if (!uniq.length) { uniq.push(X); continue; }
+      const Y=uniq[uniq.length-1];
+      if ((X.x-Y.x)**2 + (X.y-Y.y)**2 > 1e-6) uniq.push(X);
+    }
+    return uniq;
+  }
+
+  // intersectionsBetween (mode: 'fast' for per-frame update, 'accurate' for click creation)
+  function intersectionsBetween(ref1, ref2, mode='fast'){
     const k1=ref1.kind, k2=ref2.kind;
     const pair=[k1,k2].sort().join('|');
 
     if (pair==='line|line'){
-      const l1 = (k1==='line') ? getLine(ref1.id) : getLine(ref2.id);
-      const l2 = (k1==='line') ? getLine(ref2.id) : getLine(ref1.id);
-      if (!l1||!l2) return [];
+      const l1=getLine((k1==='line')?ref1.id:ref2.id);
+      const l2=getLine((k1==='line')?ref2.id:ref1.id);
+      if(!l1||!l2) return [];
       const p1=getLinePtsFromLineObj(l1), p2=getLinePtsFromLineObj(l2);
-      if (!p1||!p2) return [];
+      if(!p1||!p2) return [];
       const X=lineLineIntersection(p1.A,p1.B,p2.A,p2.B);
-      return X ? [X] : [];
+      return X?[X]:[];
     }
 
     if (pair==='segment|segment'){
-      const s1 = (k1==='segment') ? getSegment(ref1.id) : getSegment(ref2.id);
-      const s2 = (k1==='segment') ? getSegment(ref2.id) : getSegment(ref1.id);
-      if (!s1||!s2) return [];
+      const s1=getSegment((k1==='segment')?ref1.id:ref2.id);
+      const s2=getSegment((k1==='segment')?ref2.id:ref1.id);
+      if(!s1||!s2) return [];
       const p1=getLinePtsFromSegmentObj(s1), p2=getLinePtsFromSegmentObj(s2);
-      if (!p1||!p2) return [];
+      if(!p1||!p2) return [];
       const X=segmentSegmentIntersection(p1.A,p1.B,p2.A,p2.B);
-      return X ? [X] : [];
+      return X?[X]:[];
     }
 
     if (pair==='line|segment'){
-      const ln = (k1==='line') ? getLine(ref1.id) : getLine(ref2.id);
-      const sg = (k1==='segment') ? getSegment(ref1.id) : getSegment(ref2.id);
-      if (!ln||!sg) return [];
-      const pL=getLinePtsFromLineObj(ln);
-      const pS=getLinePtsFromSegmentObj(sg);
-      if (!pL||!pS) return [];
+      const ln=getLine((k1==='line')?ref1.id:ref2.id);
+      const sg=getSegment((k1==='segment')?ref1.id:ref2.id);
+      if(!ln||!sg) return [];
+      const pL=getLinePtsFromLineObj(ln), pS=getLinePtsFromSegmentObj(sg);
+      if(!pL||!pS) return [];
       const X=lineLineIntersection(pL.A,pL.B,pS.A,pS.B);
-      if (!X) return [];
-      return (distPointToSegment(X,pS.A,pS.B) < 1e-7) ? [X] : [];
+      if(!X) return [];
+      return (distPointToSegment(X,pS.A,pS.B)<1e-7) ? [X] : [];
     }
 
     if (pair==='circle|line'){
-      const cir = (k1==='circle') ? getCircle(ref1.id) : getCircle(ref2.id);
-      const ln  = (k1==='line') ? getLine(ref1.id) : getLine(ref2.id);
-      if (!cir||!ln) return [];
-      const cg=getCircleGeom(cir);
-      const lp=getLinePtsFromLineObj(ln);
-      if (!cg||!lp) return [];
-      return circleLineIntersections(cg.C, cg.r, lp.A, lp.B);
+      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
+      const ln =getLine((k1==='line')?ref1.id:ref2.id);
+      if(!cir||!ln) return [];
+      const cg=getCircleGeom(cir), lp=getLinePtsFromLineObj(ln);
+      if(!cg||!lp) return [];
+      return circleLineIntersections(cg.C,cg.r,lp.A,lp.B);
     }
 
     if (pair==='circle|segment'){
-      const cir = (k1==='circle') ? getCircle(ref1.id) : getCircle(ref2.id);
-      const sg  = (k1==='segment') ? getSegment(ref1.id) : getSegment(ref2.id);
-      if (!cir||!sg) return [];
-      const cg=getCircleGeom(cir);
-      const sp=getLinePtsFromSegmentObj(sg);
-      if (!cg||!sp) return [];
-      const pts=circleLineIntersections(cg.C, cg.r, sp.A, sp.B);
-      return pts.filter(X => distPointToSegment(X, sp.A, sp.B) < 1e-7);
+      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
+      const sg =getSegment((k1==='segment')?ref1.id:ref2.id);
+      if(!cir||!sg) return [];
+      const cg=getCircleGeom(cir), sp=getLinePtsFromSegmentObj(sg);
+      if(!cg||!sp) return [];
+      const pts=circleLineIntersections(cg.C,cg.r,sp.A,sp.B);
+      return pts.filter(X=>distPointToSegment(X,sp.A,sp.B)<1e-7);
     }
 
     if (pair==='circle|circle'){
-      const c1 = getCircle((k1==='circle')?ref1.id:ref2.id);
-      const c2 = getCircle((k1==='circle')?ref2.id:ref1.id);
-      if (!c1||!c2) return [];
+      const c1=getCircle((k1==='circle')?ref1.id:ref2.id);
+      const c2=getCircle((k1==='circle')?ref2.id:ref1.id);
+      if(!c1||!c2) return [];
       const g1=getCircleGeom(c1), g2=getCircleGeom(c2);
-      if (!g1||!g2) return [];
+      if(!g1||!g2) return [];
       return circleCircleIntersections(g1.C,g1.r,g2.C,g2.r);
     }
 
     if (pair==='line|parabola'){
-      const pb = (k1==='parabola') ? getParabola(ref1.id) : getParabola(ref2.id);
-      const ln = (k1==='line') ? getLine(ref1.id) : getLine(ref2.id);
-      if (!pb||!ln) return [];
-      const pg=getParabolaGeom(pb);
-      const lp=getLinePtsFromLineObj(ln);
-      if (!pg||!lp) return [];
-      const par=parabolaParams(pg.F, pg.A, pg.B);
+      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
+      const ln=getLine((k1==='line')?ref1.id:ref2.id);
+      if(!pb||!ln) return [];
+      const pg=getParabolaGeom(pb), lp=getLinePtsFromLineObj(ln);
+      if(!pg||!lp) return [];
+      const par=parabolaParams(pg.F,pg.A,pg.B);
       return parabolaLineIntersections(par, lp.A, lp.B, false);
     }
 
     if (pair==='parabola|segment'){
-      const pb = (k1==='parabola') ? getParabola(ref1.id) : getParabola(ref2.id);
-      const sg = (k1==='segment') ? getSegment(ref1.id) : getSegment(ref2.id);
-      if (!pb||!sg) return [];
-      const pg=getParabolaGeom(pb);
-      const sp=getLinePtsFromSegmentObj(sg);
-      if (!pg||!sp) return [];
-      const par=parabolaParams(pg.F, pg.A, pg.B);
+      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
+      const sg=getSegment((k1==='segment')?ref1.id:ref2.id);
+      if(!pb||!sg) return [];
+      const pg=getParabolaGeom(pb), sp=getLinePtsFromSegmentObj(sg);
+      if(!pg||!sp) return [];
+      const par=parabolaParams(pg.F,pg.A,pg.B);
       return parabolaLineIntersections(par, sp.A, sp.B, true);
     }
 
     if (pair==='circle|parabola'){
-      const pb = (k1==='parabola') ? getParabola(ref1.id) : getParabola(ref2.id);
-      const cir= (k1==='circle') ? getCircle(ref1.id) : getCircle(ref2.id);
-      if (!pb||!cir) return [];
-      const pg=getParabolaGeom(pb);
-      const cg=getCircleGeom(cir);
-      if (!pg||!cg) return [];
-      const par=parabolaParams(pg.F, pg.A, pg.B);
+      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
+      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
+      if(!pb||!cir) return [];
+      const pg=getParabolaGeom(pb), cg=getCircleGeom(cir);
+      if(!pg||!cg) return [];
+      const par=parabolaParams(pg.F,pg.A,pg.B);
 
       const vb=viewWorldBounds();
-      const corners=[v(vb.minx,vb.miny), v(vb.minx,vb.maxy), v(vb.maxx,vb.miny), v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A), par.d));
-      let uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
+      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
+      const us=corners.map(c=>dot(sub(c,par.A),par.d));
+      const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
 
-      return parabolaCircleIntersections(par, cg.C, cg.r, uMin, uMax);
+      return parabolaCircleIntersections(par, cg.C, cg.r, uMin, uMax, (mode==='accurate'?'accurate':'fast'));
+    }
+
+    // ✅ NEW: parabola-parabola
+    if (pair==='parabola|parabola'){
+      const pb1=getParabola(ref1.id);
+      const pb2=getParabola(ref2.id);
+      if(!pb1||!pb2) return [];
+      const g1=getParabolaGeom(pb1), g2=getParabolaGeom(pb2);
+      if(!g1||!g2) return [];
+      const par1=parabolaParams(g1.F,g1.A,g1.B);
+      const par2=parabolaParams(g2.F,g2.A,g2.B);
+
+      const vb=viewWorldBounds();
+      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
+      const us1=corners.map(c=>dot(sub(c,par1.A),par1.d));
+      const us2=corners.map(c=>dot(sub(c,par2.A),par2.d));
+      const uMin1=Math.min(...us1)-4, uMax1=Math.max(...us1)+4;
+      const uMin2=Math.min(...us2)-4, uMax2=Math.max(...us2)+4;
+
+      return parabolaParabolaIntersections(par1,uMin1,uMax1,par2,uMin2,uMax2, (mode==='accurate'?'accurate':'fast'));
     }
 
     return [];
   }
 
   function computeAllIntersections(){
-    const refs = [];
+    const refs=[];
     for (const s of segments) refs.push({kind:'segment', id:s.id});
     for (const l of lines) refs.push({kind:'line', id:l.id});
     for (const c of circles) refs.push({kind:'circle', id:c.id});
@@ -875,10 +793,8 @@
     for (let i=0;i<refs.length;i++){
       for (let j=i+1;j<refs.length;j++){
         const a=refs[i], b=refs[j];
-        const pts = intersectionsBetween(a,b);
-        for (const X of pts){
-          out.push({ x:X.x, y:X.y, a, b });
-        }
+        const pts=intersectionsBetween(a,b,'accurate');
+        for (const X of pts) out.push({x:X.x,y:X.y,a,b});
       }
     }
     return out;
@@ -886,133 +802,201 @@
 
   function updateIntersectionPoints(){
     for (const p of points){
-      if (p.kind !== 'intersection') continue;
+      if (p.kind!=='intersection') continue;
       const a=p.parents?.a, b=p.parents?.b;
-      const pts = intersectionsBetween(a,b);
+      const pts=intersectionsBetween(a,b,'fast');
       if (!pts.length) continue;
       let best=pts[0], bestD=Infinity;
       for (const X of pts){
-        const d=(X.x-p.x)*(X.x-p.x)+(X.y-p.y)*(X.y-p.y);
+        const d=(X.x-p.x)**2 + (X.y-p.y)**2;
         if (d<bestD){ bestD=d; best=X; }
       }
-      p.x = best.x;
-      p.y = best.y;
+      p.x=best.x; p.y=best.y;
     }
   }
 
-  // -------------------------
-  // Point tool: create intersection if near
-  // -------------------------
+  // ✅ NEW: constrained points update
+  function updateConstrainedPoints(){
+    for (const p of points){
+      if (p.kind!=='constrained') continue;
+      const c=p.constraint;
+      if (!c) continue;
+
+      if (c.kind==='segment'){
+        const sg=getSegment(c.id); if (!sg) continue;
+        const sp=getLinePtsFromSegmentObj(sg); if (!sp) continue;
+        const t = c.param?.t ?? 0;
+        const Q = add(sp.A, mul(sub(sp.B,sp.A), Math.max(0,Math.min(1,t))));
+        p.x=Q.x; p.y=Q.y;
+      }
+
+      if (c.kind==='line'){
+        const ln=getLine(c.id); if (!ln) continue;
+        const lp=getLinePtsFromLineObj(ln); if (!lp) continue;
+        const t = c.param?.t ?? 0;
+        const Q = add(lp.A, mul(sub(lp.B,lp.A), t));
+        p.x=Q.x; p.y=Q.y;
+      }
+
+      if (c.kind==='circle'){
+        const cir=getCircle(c.id); if (!cir) continue;
+        const cg=getCircleGeom(cir); if (!cg) continue;
+        const ang = c.param?.ang ?? 0;
+        const Q = add(cg.C, v(cg.r*Math.cos(ang), cg.r*Math.sin(ang)));
+        p.x=Q.x; p.y=Q.y;
+      }
+
+      if (c.kind==='parabola'){
+        const pb=getParabola(c.id); if (!pb) continue;
+        const pg=getParabolaGeom(pb); if (!pg) continue;
+        const par=parabolaParams(pg.F,pg.A,pg.B);
+        const u = c.param?.u ?? 0;
+        const vv=parabolaV(u,par);
+        if (vv===null) continue;
+        const Q=uvToWorld(u,vv,par);
+        p.x=Q.x; p.y=Q.y;
+      }
+    }
+  }
+
+  // Point tool helpers
   function tryCreateIntersectionAtClick(sx,sy){
-    const candidates = computeAllIntersections();
+    const candidates=computeAllIntersections();
     let best=null, bestD2=Infinity;
     for (const it of candidates){
-      const s = worldToScreen(it.x, it.y);
+      const s=worldToScreen(it.x,it.y);
       const dx=s.x-sx, dy=s.y-sy;
       const d2=dx*dx+dy*dy;
-      if (d2 < bestD2){ bestD2=d2; best=it; }
+      if (d2<bestD2){ bestD2=d2; best=it; }
     }
-    if (best && bestD2 <= (12*12)){
-      addIntersectionPoint(best.x, best.y, best.a, best.b);
+    if (best && bestD2 <= 12*12){
+      addIntersectionPoint(best.x,best.y,best.a,best.b);
       showTip('교점이 생성되었습니다(종속점).', toolPointBtn, 1200);
       return true;
     }
     return false;
   }
 
-  // -------------------------
-  // Draw
-  // -------------------------
-  function drawGrid(){
-    const w = window.innerWidth, h = window.innerHeight;
-    ctx.fillStyle = '#0b0f14';
-    ctx.fillRect(0, 0, w, h);
+  // ✅ NEW: find nearest object for constrained point
+  function bestConstraintCandidate(sx,sy){
+    const P=screenToWorld(sx,sy);
+    let best={kind:null, id:null, distPx:Infinity, Q:null, param:null};
 
-    const minor = scale, major = scale * 5;
-
-    function drawLines(step, alpha) {
-      ctx.strokeStyle = `rgba(230, 237, 243, ${alpha})`;
-      ctx.lineWidth = 1;
-
-      let x0 = origin.x % step;
-      for (let x = x0; x <= w; x += step) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-      }
-
-      let y0 = origin.y % step;
-      for (let y = y0; y <= h; y += step) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-      }
+    // segments
+    for (const sg of segments){
+      const sp=getLinePtsFromSegmentObj(sg); if (!sp) continue;
+      const {Q,t}=closestPointOnSegment(P, sp.A, sp.B);
+      const dp = len(sub(Q,P)) * scale;
+      if (dp<best.distPx){ best={kind:'segment', id:sg.id, distPx:dp, Q, param:{t}}; }
+    }
+    // lines
+    for (const ln of lines){
+      const lp=getLinePtsFromLineObj(ln); if (!lp) continue;
+      const {Q,t}=closestPointOnLine(P, lp.A, lp.B);
+      const dp = len(sub(Q,P)) * scale;
+      if (dp<best.distPx){ best={kind:'line', id:ln.id, distPx:dp, Q, param:{t}}; }
+    }
+    // circles
+    for (const cir of circles){
+      const cg=getCircleGeom(cir); if (!cg) continue;
+      const {Q, ang}=closestPointOnCircle(P, cg.C, cg.r);
+      const dp = len(sub(Q,P)) * scale;
+      if (dp<best.distPx){ best={kind:'circle', id:cir.id, distPx:dp, Q, param:{ang}}; }
+    }
+    // parabolas
+    const vb=viewWorldBounds();
+    for (const pb of parabolas){
+      const pg=getParabolaGeom(pb); if (!pg) continue;
+      const par=parabolaParams(pg.F,pg.A,pg.B);
+      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
+      const us=corners.map(c=>dot(sub(c,par.A),par.d));
+      const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
+      const {Q,u}=closestPointOnParabola(P, par, uMin, uMax);
+      const dp = len(sub(Q,P)) * scale;
+      if (dp<best.distPx){ best={kind:'parabola', id:pb.id, distPx:dp, Q, param:{u}}; }
     }
 
-    drawLines(minor, 0.06);
-    drawLines(major, 0.12);
+    return (best.kind && best.distPx<=10) ? best : null;
+  }
 
-    ctx.strokeStyle = 'rgba(230, 237, 243, 0.55)';
-    ctx.lineWidth = 2;
+  function pickOrCreatePoint(sx,sy){
+    const hit=hitPoint(sx,sy);
+    if (hit) return hit.id;
+    const w=screenToWorld(sx,sy);
+    return addFreePoint(w.x,w.y);
+  }
 
-    // axes
-    ctx.beginPath(); ctx.moveTo(0, origin.y); ctx.lineTo(w, origin.y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(origin.x, 0); ctx.lineTo(origin.x, h); ctx.stroke();
+  // Draw
+  function drawGrid(){
+    const w=window.innerWidth,h=window.innerHeight;
+    ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,w,h);
+    const minor=scale, major=scale*5;
 
-    function drawArrowhead(x, y, dir) {
-      const size = 10;
-      ctx.fillStyle = 'rgba(230, 237, 243, 0.75)';
+    function drawLines(step, alpha){
+      ctx.strokeStyle=`rgba(230,237,243,${alpha})`;
+      ctx.lineWidth=1;
+      let x0=origin.x%step;
+      for (let x=x0;x<=w;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+      let y0=origin.y%step;
+      for (let y=y0;y<=h;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    }
+    drawLines(minor,0.06);
+    drawLines(major,0.12);
+
+    ctx.strokeStyle='rgba(230,237,243,0.55)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(0,origin.y); ctx.lineTo(w,origin.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.x,0); ctx.lineTo(origin.x,h); ctx.stroke();
+
+    function drawArrowhead(x,y,dir){
+      const size=10;
+      ctx.fillStyle='rgba(230,237,243,0.75)';
       ctx.beginPath();
-      if (dir === 'right') { ctx.moveTo(x, y); ctx.lineTo(x - size, y - size * 0.55); ctx.lineTo(x - size, y + size * 0.55); }
-      if (dir === 'left')  { ctx.moveTo(x, y); ctx.lineTo(x + size, y - size * 0.55); ctx.lineTo(x + size, y + size * 0.55); }
-      if (dir === 'up')    { ctx.moveTo(x, y); ctx.lineTo(x - size * 0.55, y + size); ctx.lineTo(x + size * 0.55, y + size); }
-      if (dir === 'down')  { ctx.moveTo(x, y); ctx.lineTo(x - size * 0.55, y - size); ctx.lineTo(x + size * 0.55, y - size); }
+      if (dir==='right'){ ctx.moveTo(x,y); ctx.lineTo(x-size,y-size*0.55); ctx.lineTo(x-size,y+size*0.55); }
+      if (dir==='left'){ ctx.moveTo(x,y); ctx.lineTo(x+size,y-size*0.55); ctx.lineTo(x+size,y+size*0.55); }
+      if (dir==='up'){ ctx.moveTo(x,y); ctx.lineTo(x-size*0.55,y+size); ctx.lineTo(x+size*0.55,y+size); }
+      if (dir==='down'){ ctx.moveTo(x,y); ctx.lineTo(x-size*0.55,y-size); ctx.lineTo(x+size*0.55,y-size); }
       ctx.closePath(); ctx.fill();
     }
-    drawArrowhead(w, origin.y, 'right');
-    drawArrowhead(0, origin.y, 'left');
-    drawArrowhead(origin.x, 0, 'up');
-    drawArrowhead(origin.x, h, 'down');
+    drawArrowhead(w,origin.y,'right');
+    drawArrowhead(0,origin.y,'left');
+    drawArrowhead(origin.x,0,'up');
+    drawArrowhead(origin.x,h,'down');
 
-    ctx.fillStyle = 'rgba(230, 237, 243, 0.75)';
-    ctx.font = '12px system-ui';
-    ctx.fillText('x', w - 18, origin.y - 10);
-    ctx.fillText('y', origin.x + 10, 16);
-
-    ctx.fillStyle = 'rgba(230, 237, 243, 0.85)';
-    ctx.fillText('0', origin.x + 6, origin.y + 14);
+    ctx.fillStyle='rgba(230,237,243,0.75)';
+    ctx.font='12px system-ui';
+    ctx.fillText('x', w-18, origin.y-10);
+    ctx.fillText('y', origin.x+10, 16);
+    ctx.fillStyle='rgba(230,237,243,0.85)';
+    ctx.fillText('0', origin.x+6, origin.y+14);
   }
 
   function drawSegments(){
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(180, 220, 255, 0.75)';
-    for (const seg of segments){
-      const a=getPoint(seg.a_id), b=getPoint(seg.b_id);
-      if (!a||!b) continue;
-      const sa=worldToScreen(a.x,a.y);
-      const sb=worldToScreen(b.x,b.y);
-      ctx.beginPath(); ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y); ctx.stroke();
+    ctx.lineWidth=3;
+    ctx.strokeStyle='rgba(180,220,255,0.75)';
+    for (const sg of segments){
+      const a=getPoint(sg.a_id), b=getPoint(sg.b_id);
+      if(!a||!b) continue;
+      const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
+      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
     }
   }
-
   function drawLines(){
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-    const w=window.innerWidth, h=window.innerHeight;
+    ctx.lineWidth=2;
+    ctx.strokeStyle='rgba(255,255,255,0.35)';
+    const w=window.innerWidth,h=window.innerHeight;
 
     for (const ln of lines){
       const a=getPoint(ln.a_id), b=getPoint(ln.b_id);
-      if (!a||!b) continue;
-      const A=worldToScreen(a.x,a.y);
-      const B=worldToScreen(b.x,b.y);
-
+      if(!a||!b) continue;
+      const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
       const dx=B.x-A.x, dy=B.y-A.y;
-      if (Math.hypot(dx,dy) < 1e-6) continue;
+      if (Math.hypot(dx,dy)<1e-6) continue;
 
       const candidates=[];
-      function addIfValid(t){
-        const x=A.x+dx*t, y=A.y+dy*t;
-        if (x>=-1 && x<=w+1 && y>=-1 && y<=h+1) candidates.push({x,y});
-      }
+      const addIfValid=(t)=>{ const x=A.x+dx*t,y=A.y+dy*t; if(x>=-1&&x<=w+1&&y>=-1&&y<=h+1) candidates.push({x,y}); };
       if (Math.abs(dx)>1e-9){ addIfValid((0-A.x)/dx); addIfValid((w-A.x)/dx); }
       if (Math.abs(dy)>1e-9){ addIfValid((0-A.y)/dy); addIfValid((h-A.y)/dy); }
-      if (candidates.length < 2) continue;
+      if (candidates.length<2) continue;
 
       let p0=candidates[0], p1=candidates[1], best=0;
       for (let i=0;i<candidates.length;i++){
@@ -1021,54 +1005,40 @@
           if (dd>best){ best=dd; p0=candidates[i]; p1=candidates[j]; }
         }
       }
-
-      ctx.beginPath();
-      ctx.moveTo(p0.x,p0.y);
-      ctx.lineTo(p1.x,p1.y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
     }
   }
-
   function drawCircles(){
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(200, 255, 200, 0.45)';
+    ctx.lineWidth=2;
+    ctx.strokeStyle='rgba(200,255,200,0.45)';
     for (const c of circles){
-      const C=getPoint(c.c_id), P=getPoint(c.p_id);
-      if (!C||!P) continue;
-      const r=len(sub(v(P.x,P.y), v(C.x,C.y)));
-      const sC=worldToScreen(C.x,C.y);
-      ctx.beginPath();
-      ctx.arc(sC.x,sC.y, r*scale, 0, Math.PI*2);
-      ctx.stroke();
+      const cg=getCircleGeom(c);
+      if(!cg) continue;
+      const sC=worldToScreen(cg.C.x,cg.C.y);
+      ctx.beginPath(); ctx.arc(sC.x,sC.y, cg.r*scale, 0, Math.PI*2); ctx.stroke();
     }
   }
-
   function drawParabolas(){
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = 'rgba(255, 200, 120, 0.65)';
-
+    ctx.lineWidth=2.5;
+    ctx.strokeStyle='rgba(255,200,120,0.65)';
     const vb=viewWorldBounds();
     for (const pb of parabolas){
-      const F=getPoint(pb.f_id);
-      const A=getPoint(pb.d_a_id);
-      const B=getPoint(pb.d_b_id);
-      if (!F||!A||!B) continue;
-
-      const par=parabolaParams(v(F.x,F.y), v(A.x,A.y), v(B.x,B.y));
-      const corners=[v(vb.minx,vb.miny), v(vb.minx,vb.maxy), v(vb.maxx,vb.miny), v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A), par.d));
+      const pg=getParabolaGeom(pb); if(!pg) continue;
+      const par=parabolaParams(pg.F,pg.A,pg.B);
+      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
+      const us=corners.map(c=>dot(sub(c,par.A),par.d));
       let uMin=Math.min(...us)-2, uMax=Math.max(...us)+2;
 
       const N=180;
       let started=false;
       ctx.beginPath();
       for (let i=0;i<=N;i++){
-        const ucur=uMin + (uMax-uMin)*i/N;
-        const vv=parabolaV(ucur, par);
+        const u=uMin+(uMax-uMin)*i/N;
+        const vv=parabolaV(u,par);
         if (vv===null) continue;
-        const X=uvToWorld(ucur, vv, par);
+        const X=uvToWorld(u,vv,par);
         const s=worldToScreen(X.x,X.y);
-        if (!started){ ctx.moveTo(s.x,s.y); started=true; }
+        if(!started){ ctx.moveTo(s.x,s.y); started=true; }
         else ctx.lineTo(s.x,s.y);
       }
       if (started) ctx.stroke();
@@ -1078,49 +1048,41 @@
   function drawPoints(){
     for (const p of points){
       const s=worldToScreen(p.x,p.y);
-      const isSel = (p.id === selectedPointId);
-      const r = isSel ? 7 : 5;
+      const isSel=(p.id===selectedPointId);
+      const r=isSel?7:5;
 
-      ctx.beginPath();
-      ctx.arc(s.x,s.y, r, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(s.x,s.y,r,0,Math.PI*2);
 
-      if (p.kind === 'intersection') ctx.fillStyle = 'rgba(120, 255, 160, 0.95)';
-      else ctx.fillStyle = 'rgba(120, 200, 255, 0.95)';
-      if (isSel) ctx.fillStyle = 'rgba(255, 220, 120, 0.95)';
+      if (p.kind==='intersection') ctx.fillStyle='rgba(120,255,160,0.95)';
+      else if (p.kind==='constrained') ctx.fillStyle='rgba(160,190,255,0.95)';
+      else ctx.fillStyle='rgba(120,200,255,0.95)';
+      if (isSel) ctx.fillStyle='rgba(255,220,120,0.95)';
 
       ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth=2;
+      ctx.strokeStyle='rgba(255,255,255,0.35)';
       ctx.stroke();
     }
   }
 
   function drawStepPreview(){
-    const P = mouseWorld;
-
+    const P=mouseWorld;
     if (tool==='segment' && stepA){
-      const a=getPoint(stepA); if (!a) return;
-      const sa=worldToScreen(a.x,a.y);
-      const sb=worldToScreen(P.x,P.y);
+      const a=getPoint(stepA); if(!a) return;
+      const A=worldToScreen(a.x,a.y), B=worldToScreen(P.x,P.y);
       ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(255,255,255,0.35)';
-      ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(sa.x,sa.y); ctx.lineTo(sb.x,sb.y); ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
       ctx.setLineDash([]);
     }
-
     if (tool==='line' && stepA){
-      const a=getPoint(stepA); if (!a) return;
-      const A=worldToScreen(a.x,a.y);
-      const B=worldToScreen(P.x,P.y);
+      const a=getPoint(stepA); if(!a) return;
+      const A=worldToScreen(a.x,a.y), B=worldToScreen(P.x,P.y);
       const dx=B.x-A.x, dy=B.y-A.y;
       if (Math.hypot(dx,dy)<1e-6) return;
-      const w=window.innerWidth, h=window.innerHeight;
+      const w=window.innerWidth,h=window.innerHeight;
       const candidates=[];
-      function addIfValid(t){
-        const x=A.x+dx*t, y=A.y+dy*t;
-        if (x>=-1 && x<=w+1 && y>=-1 && y<=h+1) candidates.push({x,y});
-      }
+      const addIfValid=(t)=>{ const x=A.x+dx*t,y=A.y+dy*t; if(x>=-1&&x<=w+1&&y>=-1&&y<=h+1) candidates.push({x,y}); };
       if (Math.abs(dx)>1e-9){ addIfValid((0-A.x)/dx); addIfValid((w-A.x)/dx); }
       if (Math.abs(dy)>1e-9){ addIfValid((0-A.y)/dy); addIfValid((h-A.y)/dy); }
       if (candidates.length<2) return;
@@ -1132,25 +1094,24 @@
         }
       }
       ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(255,255,255,0.35)';
-      ctx.lineWidth=2;
+      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
       ctx.setLineDash([]);
     }
-
     if (tool==='circle' && circleCenterId){
-      const c=getPoint(circleCenterId); if (!c) return;
+      const c=getPoint(circleCenterId); if(!c) return;
       const r=len(sub(v(P.x,P.y), v(c.x,c.y)));
-      const sc=worldToScreen(c.x,c.y);
+      const sC=worldToScreen(c.x,c.y);
       ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(200,255,200,0.35)';
-      ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(sc.x,sc.y, r*scale, 0, Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='rgba(200,255,200,0.35)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(sC.x,sC.y, r*scale, 0, Math.PI*2); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
 
   function draw(){
+    // ✅ order: constrained -> intersection (선분/원 등이 변했을 수 있으므로)
+    updateConstrainedPoints();
     updateIntersectionPoints();
     cleanupAll();
     drawGrid();
@@ -1162,33 +1123,33 @@
     drawPoints();
   }
 
-  // -------------------------
-  // Click helpers
-  // -------------------------
-  function pickOrCreatePoint(sx,sy){
-    const hit=hitPoint(sx,sy);
-    if (hit) return hit.id;
-    const w=screenToWorld(sx,sy);
-    return addFreePoint(w.x,w.y);
-  }
-
-  // -------------------------
   // Events
-  // -------------------------
-  canvas.addEventListener('pointermove', (e) => {
+  canvas.addEventListener('pointermove',(e)=>{
     const {sx,sy}=getCanvasLocalXY(e);
     const w=screenToWorld(sx,sy);
     mouseWorld=w;
-    readout.textContent = `마우스: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
-    if ((tool==='segment' && stepA) || (tool==='line' && stepA) || (tool==='circle' && circleCenterId)) draw();
+    readout.textContent=`마우스: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
+    if ((tool==='segment'&&stepA) || (tool==='line'&&stepA) || (tool==='circle'&&circleCenterId)) draw();
   });
 
-  canvas.addEventListener('click', (e) => {
+  canvas.addEventListener('click',(e)=>{
     const {sx,sy}=getCanvasLocalXY(e);
 
     if (tool==='point'){
       if (hitPoint(sx,sy)) return;
+
+      // 1) intersection first
       if (tryCreateIntersectionAtClick(sx,sy)) return;
+
+      // 2) constrained point on nearest object
+      const cand=bestConstraintCandidate(sx,sy);
+      if (cand){
+        addConstrainedPoint(cand.kind, cand.id, cand.param, cand.Q.x, cand.Q.y);
+        showTip('구속점이 생성되었습니다(도형 위에서만 이동).', toolPointBtn, 1200);
+        return;
+      }
+
+      // 3) free point
       const w=screenToWorld(sx,sy);
       addFreePoint(w.x,w.y);
       return;
@@ -1196,39 +1157,19 @@
 
     if (tool==='segment'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){
-        stepA=pid;
-        showTip('선분: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolSegmentBtn, 1300);
-        draw();
-        return;
-      }
-      if (stepA===pid){
-        stepA=null;
-        showTip('선분: 첫 점 선택 취소', toolSegmentBtn, 1100);
-        draw();
-        return;
-      }
-      addSegment(stepA, pid);
-      stepA=null; // pair reset
+      if (!stepA){ stepA=pid; showTip('선분: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolSegmentBtn, 1300); draw(); return; }
+      if (stepA===pid){ stepA=null; showTip('선분: 첫 점 선택 취소', toolSegmentBtn, 1100); draw(); return; }
+      addSegment(stepA,pid);
+      stepA=null;
       showTip('선분 생성 완료', toolSegmentBtn, 900);
       return;
     }
 
     if (tool==='line'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){
-        stepA=pid;
-        showTip('직선: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolLineBtn, 1300);
-        draw();
-        return;
-      }
-      if (stepA===pid){
-        stepA=null;
-        showTip('직선: 첫 점 선택 취소', toolLineBtn, 1100);
-        draw();
-        return;
-      }
-      addLine(stepA, pid);
+      if (!stepA){ stepA=pid; showTip('직선: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolLineBtn, 1300); draw(); return; }
+      if (stepA===pid){ stepA=null; showTip('직선: 첫 점 선택 취소', toolLineBtn, 1100); draw(); return; }
+      addLine(stepA,pid);
       stepA=null;
       showTip('직선 생성 완료', toolLineBtn, 900);
       return;
@@ -1236,19 +1177,9 @@
 
     if (tool==='circle'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!circleCenterId){
-        circleCenterId=pid;
-        showTip('원: 중심 선택됨 → 원 위의 점을 선택하세요.', toolCircleBtn, 1300);
-        draw();
-        return;
-      }
-      if (circleCenterId===pid){
-        circleCenterId=null;
-        showTip('원: 중심 선택 취소', toolCircleBtn, 1100);
-        draw();
-        return;
-      }
-      addCircle(circleCenterId, pid);
+      if (!circleCenterId){ circleCenterId=pid; showTip('원: 중심 선택됨 → 원 위의 점을 선택하세요.', toolCircleBtn, 1300); draw(); return; }
+      if (circleCenterId===pid){ circleCenterId=null; showTip('원: 중심 선택 취소', toolCircleBtn, 1100); draw(); return; }
+      addCircle(circleCenterId,pid);
       circleCenterId=null;
       showTip('원 생성 완료', toolCircleBtn, 900);
       return;
@@ -1256,33 +1187,31 @@
 
     if (tool==='parabola'){
       if (!parabolaFocusId){
-        parabolaFocusId = pickOrCreatePoint(sx,sy);
+        parabolaFocusId=pickOrCreatePoint(sx,sy);
         showTip('포물선: 초점 선택됨 → 준선을 선택하세요(직선/선분/두 점).', toolParabolaBtn, 1500);
         draw();
         return;
       }
 
-      // choose directrix by clicking line or segment
-      const hitL = hitLineObj(sx,sy);
-      if (hitL){
-        addParabola(parabolaFocusId, hitL.a_id, hitL.b_id);
-        parabolaFocusId=null;
-        parabolaDirFirstId=null;
-        showTip('포물선 생성 완료(준선=직선).', toolParabolaBtn, 1200);
-        return;
+      // directrix by clicking near line/segment first
+      // (간단히: 도형 위 클릭을 구분하기 위해 가까운 도형을 찾음)
+      const cand=bestConstraintCandidate(sx,sy);
+      if (cand && (cand.kind==='line' || cand.kind==='segment')){
+        // use that object's defining points as directrix
+        if (cand.kind==='line'){
+          const ln=getLine(cand.id);
+          if (ln){ addParabola(parabolaFocusId, ln.a_id, ln.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
+            showTip('포물선 생성 완료(준선=직선).', toolParabolaBtn, 1200); return; }
+        }
+        if (cand.kind==='segment'){
+          const sg=getSegment(cand.id);
+          if (sg){ addParabola(parabolaFocusId, sg.a_id, sg.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
+            showTip('포물선 생성 완료(준선=선분의 연장선).', toolParabolaBtn, 1400); return; }
+        }
       }
 
-      const hitS = hitSegmentObj(sx,sy);
-      if (hitS){
-        addParabola(parabolaFocusId, hitS.a_id, hitS.b_id);
-        parabolaFocusId=null;
-        parabolaDirFirstId=null;
-        showTip('포물선 생성 완료(준선=선분의 연장선).', toolParabolaBtn, 1400);
-        return;
-      }
-
-      // else: directrix by two points
-      const pid = pickOrCreatePoint(sx,sy);
+      // else directrix by two points
+      const pid=pickOrCreatePoint(sx,sy);
       if (!parabolaDirFirstId){
         parabolaDirFirstId=pid;
         showTip('포물선: 준선 첫 점 선택됨 → 준선 둘째 점을 선택하세요.', toolParabolaBtn, 1500);
@@ -1295,27 +1224,22 @@
         draw();
         return;
       }
-
       addParabola(parabolaFocusId, parabolaDirFirstId, pid);
-      parabolaFocusId=null;
-      parabolaDirFirstId=null;
+      parabolaFocusId=null; parabolaDirFirstId=null;
       showTip('포물선 생성 완료(준선=두 점을 잇는 직선).', toolParabolaBtn, 1400);
       return;
     }
   });
 
-  // -------------------------
-  // Select/Move tool
-  // -------------------------
-  canvas.addEventListener('pointerdown', (e) => {
-    if (tool !== 'select') return;
+  // Select/Move (free + constrained draggable, intersection not)
+  canvas.addEventListener('pointerdown',(e)=>{
+    if (tool!=='select') return;
     const {sx,sy}=getCanvasLocalXY(e);
     const hit=hitPoint(sx,sy);
-
     if (!hit){ selectedPointId=null; draw(); return; }
-    selectedPointId = hit.id;
+    selectedPointId=hit.id;
 
-    if (hit.kind === 'intersection') {
+    if (hit.kind==='intersection'){
       showTip('교점(종속점)은 이동할 수 없습니다.', toolSelectBtn, 1200);
       draw();
       return;
@@ -1328,93 +1252,103 @@
     dragOffset.x = w.x - hit.x;
     dragOffset.y = w.y - hit.y;
 
-    try { canvas.setPointerCapture(e.pointerId); } catch {}
-    showTip('자유점 선택됨. 드래그하여 이동하세요.', toolSelectBtn, 1000);
+    try{ canvas.setPointerCapture(e.pointerId); }catch{}
+    showTip(hit.kind==='constrained' ? '구속점 선택됨. 도형 위에서만 이동합니다.' : '자유점 선택됨. 드래그하여 이동하세요.',
+            toolSelectBtn, 1200);
     draw();
   });
 
-  canvas.addEventListener('pointermove', (e) => {
-    if (tool !== 'select') return;
+  canvas.addEventListener('pointermove',(e)=>{
+    if (tool!=='select') return;
     if (!dragging) return;
-    if (e.pointerId !== dragPointerId) return;
+    if (e.pointerId!==dragPointerId) return;
     if (!selectedPointId) return;
 
     const p=getPoint(selectedPointId);
-    if (!p || p.kind !== 'free') return;
+    if (!p) return;
 
     const {sx,sy}=getCanvasLocalXY(e);
     const w=screenToWorld(sx,sy);
-    p.x = w.x - dragOffset.x;
-    p.y = w.y - dragOffset.y;
+    const target=v(w.x - dragOffset.x, w.y - dragOffset.y);
 
-    draw();
+    if (p.kind==='free'){
+      p.x=target.x; p.y=target.y;
+      draw();
+      return;
+    }
+
+    if (p.kind==='constrained'){
+      const c=p.constraint;
+      if (!c) return;
+
+      if (c.kind==='segment'){
+        const sg=getSegment(c.id); if(!sg) return;
+        const sp=getLinePtsFromSegmentObj(sg); if(!sp) return;
+        const {Q,t}=closestPointOnSegment(target, sp.A, sp.B);
+        c.param.t=t; p.x=Q.x; p.y=Q.y;
+        draw(); return;
+      }
+      if (c.kind==='line'){
+        const ln=getLine(c.id); if(!ln) return;
+        const lp=getLinePtsFromLineObj(ln); if(!lp) return;
+        const {Q,t}=closestPointOnLine(target, lp.A, lp.B);
+        c.param.t=t; p.x=Q.x; p.y=Q.y;
+        draw(); return;
+      }
+      if (c.kind==='circle'){
+        const cir=getCircle(c.id); if(!cir) return;
+        const cg=getCircleGeom(cir); if(!cg) return;
+        const {Q,ang}=closestPointOnCircle(target, cg.C, cg.r);
+        c.param.ang=ang; p.x=Q.x; p.y=Q.y;
+        draw(); return;
+      }
+      if (c.kind==='parabola'){
+        const pb=getParabola(c.id); if(!pb) return;
+        const pg=getParabolaGeom(pb); if(!pg) return;
+        const par=parabolaParams(pg.F,pg.A,pg.B);
+        const vb=viewWorldBounds();
+        const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
+        const us=corners.map(cc=>dot(sub(cc,par.A),par.d));
+        const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
+        const {Q,u}=closestPointOnParabola(target, par, uMin, uMax);
+        c.param.u=u; p.x=Q.x; p.y=Q.y;
+        draw(); return;
+      }
+    }
   });
 
   function endDrag(e){
-    if (tool !== 'select') return;
+    if (tool!=='select') return;
     if (!dragging) return;
-    if (e.pointerId !== dragPointerId) return;
-
+    if (e.pointerId!==dragPointerId) return;
     dragging=false;
-    try { canvas.releasePointerCapture(e.pointerId); } catch {}
+    try{ canvas.releasePointerCapture(e.pointerId); }catch{}
     dragPointerId=null;
-
     saveState();
     showTip('이동이 저장되었습니다.', toolSelectBtn, 900);
   }
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
 
-  // -------------------------
-  // Undo / Clear
-  // -------------------------
-  function undoPoint(){
-    if (!points.length){ showTip('되돌릴 점이 없습니다.', btnUndoPoint, 900); return; }
-    points.pop();
-    cleanupAll(); saveState(); draw();
-    showTip('점 되돌리기 완료', btnUndoPoint, 900);
-  }
-  function undoSeg(){
-    if (!segments.length){ showTip('되돌릴 선분이 없습니다.', btnUndoSeg, 900); return; }
-    segments.pop();
-    cleanupAll(); saveState(); draw();
-    showTip('선분 되돌리기 완료', btnUndoSeg, 900);
-  }
-  function undoLine(){
-    if (!lines.length){ showTip('되돌릴 직선이 없습니다.', btnUndoLine, 900); return; }
-    lines.pop();
-    cleanupAll(); saveState(); draw();
-    showTip('직선 되돌리기 완료', btnUndoLine, 900);
-  }
-  function undoCircle(){
-    if (!circles.length){ showTip('되돌릴 원이 없습니다.', btnUndoCircle, 900); return; }
-    circles.pop();
-    cleanupAll(); saveState(); draw();
-    showTip('원 되돌리기 완료', btnUndoCircle, 900);
-  }
-  function undoParabola(){
-    if (!parabolas.length){ showTip('되돌릴 포물선이 없습니다.', btnUndoParabola, 900); return; }
-    parabolas.pop();
-    cleanupAll(); saveState(); draw();
-    showTip('포물선 되돌리기 완료', btnUndoParabola, 900);
-  }
+  // Undo/Clear
+  function undoPoint(){ if(!points.length){ showTip('되돌릴 점이 없습니다.', btnUndoPoint, 900); return; } points.pop(); cleanupAll(); saveState(); draw(); showTip('점 되돌리기 완료', btnUndoPoint, 900); }
+  function undoSeg(){ if(!segments.length){ showTip('되돌릴 선분이 없습니다.', btnUndoSeg, 900); return; } segments.pop(); cleanupAll(); saveState(); draw(); showTip('선분 되돌리기 완료', btnUndoSeg, 900); }
+  function undoLine(){ if(!lines.length){ showTip('되돌릴 직선이 없습니다.', btnUndoLine, 900); return; } lines.pop(); cleanupAll(); saveState(); draw(); showTip('직선 되돌리기 완료', btnUndoLine, 900); }
+  function undoCircle(){ if(!circles.length){ showTip('되돌릴 원이 없습니다.', btnUndoCircle, 900); return; } circles.pop(); cleanupAll(); saveState(); draw(); showTip('원 되돌리기 완료', btnUndoCircle, 900); }
+  function undoParabola(){ if(!parabolas.length){ showTip('되돌릴 포물선이 없습니다.', btnUndoParabola, 900); return; } parabolas.pop(); cleanupAll(); saveState(); draw(); showTip('포물선 되돌리기 완료', btnUndoParabola, 900); }
   function clearAll(){
     points=[]; segments=[]; lines=[]; circles=[]; parabolas=[];
-    selectedPointId=null;
-    cancelStep(false);
-    saveState(); draw();
-    showTip('전체 삭제 완료', btnClearAll, 900);
+    selectedPointId=null; cancelStep(false);
+    saveState(); draw(); showTip('전체 삭제 완료', btnClearAll, 900);
   }
 
-  // -------------------------
   // Buttons
-  // -------------------------
-  toolPointBtn.addEventListener('click', () => setTool('point', toolPointBtn));
-  toolSegmentBtn.addEventListener('click', () => setTool('segment', toolSegmentBtn));
-  toolLineBtn.addEventListener('click', () => setTool('line', toolLineBtn));
-  toolCircleBtn.addEventListener('click', () => setTool('circle', toolCircleBtn));
-  toolParabolaBtn.addEventListener('click', () => setTool('parabola', toolParabolaBtn));
-  toolSelectBtn.addEventListener('click', () => setTool('select', toolSelectBtn));
+  toolPointBtn.addEventListener('click',()=>setTool('point', toolPointBtn));
+  toolSegmentBtn.addEventListener('click',()=>setTool('segment', toolSegmentBtn));
+  toolLineBtn.addEventListener('click',()=>setTool('line', toolLineBtn));
+  toolCircleBtn.addEventListener('click',()=>setTool('circle', toolCircleBtn));
+  toolParabolaBtn.addEventListener('click',()=>setTool('parabola', toolParabolaBtn));
+  toolSelectBtn.addEventListener('click',()=>setTool('select', toolSelectBtn));
 
   btnUndoPoint.addEventListener('click', undoPoint);
   btnUndoSeg.addEventListener('click', undoSeg);
@@ -1422,18 +1356,18 @@
   btnUndoCircle.addEventListener('click', undoCircle);
   btnUndoParabola.addEventListener('click', undoParabola);
   btnClearAll.addEventListener('click', clearAll);
-  btnCancelStep.addEventListener('click', () => cancelStep(true));
+  btnCancelStep.addEventListener('click', ()=>cancelStep(true));
 
   // Shortcuts
-  window.addEventListener('keydown', (e) => {
-    const k = e.key.toLowerCase();
-    if (k === 'p') setTool('point', null);
-    if (k === 'g') setTool('segment', null);
-    if (k === 'l') setTool('line', null);
-    if (k === 'c') setTool('circle', null);
-    if (k === 'a') setTool('parabola', null);
-    if (k === 'v') setTool('select', null);
-    if (k === 'escape') cancelStep(true);
+  window.addEventListener('keydown',(e)=>{
+    const k=e.key.toLowerCase();
+    if (k==='p') setTool('point', null);
+    if (k==='g') setTool('segment', null);
+    if (k==='l') setTool('line', null);
+    if (k==='c') setTool('circle', null);
+    if (k==='a') setTool('parabola', null);
+    if (k==='v') setTool('select', null);
+    if (k==='escape') cancelStep(true);
   });
 
   // init
@@ -1443,8 +1377,8 @@
   resize();
   draw();
 
-  if (didPurge) showTip('이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.', null, 1800);
-  else showTip('HTML 단일 파일 버전입니다. (포물선 + 교점 생성 포함)', null, 1800);
+  if (didPurge) showTip('이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.', null, 1900);
+  else showTip('업데이트: 구속점 + 포물선-포물선 교점 지원', null, 1900);
 })();
 </script>
 </body>
