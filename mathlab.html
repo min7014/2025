@@ -19,9 +19,53 @@
     button.active { background: rgba(120,200,255,0.22); border-color: rgba(120,200,255,0.35); }
     .readout { opacity:0.9; font-size:13px; }
     canvas { display:block; width:100%; height:100%; touch-action:none; }
-    .footer { position:fixed; bottom:12px; left:12px; background: rgba(20,26,34,0.75); border:1px solid rgba(255,255,255,0.08);
-      border-radius:12px; padding:10px 12px; font-size:12px; opacity:0.88; line-height:1.35; z-index:10;
-      max-width:min(980px, calc(100vw - 24px)); }
+
+    /* ✅ 좌측하단 링크 버튼 */
+    .siteBtn {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 12;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(20,26,34,0.85);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e6edf3;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      backdrop-filter: blur(8px);
+      font-size: 13px;
+      user-select: none;
+    }
+    .siteBtn:hover { background: rgba(255,255,255,0.12); }
+    .siteBtn .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(120,200,255,0.18);
+      border: 1px solid rgba(120,200,255,0.25);
+      opacity: 0.95;
+    }
+
+    /* footer가 링크 버튼과 겹치지 않도록 위로 올림 */
+    .footer {
+      position:fixed;
+      bottom:64px; /* 기존 12px → 64px */
+      left:12px;
+      background: rgba(20,26,34,0.75);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:12px;
+      opacity:0.88;
+      line-height:1.35;
+      z-index:10;
+      max-width:min(980px, calc(100vw - 24px));
+    }
+
     code { background: rgba(255,255,255,0.08); padding:2px 6px; border-radius:8px; }
 
     /* language "tab" feel */
@@ -51,7 +95,7 @@
       <span class="readout" id="readout"></span>
     </div>
 
-    <!-- ✅ Language selection tab -->
+    <!-- Language selection tab -->
     <div class="panel">
       <div class="langWrap" role="tablist" aria-label="Language">
         <button id="langKo" class="active" type="button" role="tab" aria-selected="true">한국어</button>
@@ -72,8 +116,13 @@
 
   <canvas id="c"></canvas>
 
-  <div class="footer" id="footer"></div>
+  <!-- ✅ 좌측하단 링크 버튼 -->
+  <a id="siteBtn" class="siteBtn" href="https://min7014.github.io" target="_blank" rel="noopener noreferrer">
+    <span class="badge" id="siteBadge">LINK</span>
+    <span id="siteText">min7014.github.io</span>
+  </a>
 
+  <div class="footer" id="footer"></div>
   <div id="tip" class="tip" aria-live="polite"></div>
 
 <script>
@@ -81,7 +130,7 @@
   // =================
   // 0) 찌꺼기 삭제
   // =================
-  const BUILD_ID = "2026-01-08-i18n-tabs-01";
+  const BUILD_ID = "2026-01-08-i18n-tabs-linkbtn-01";
   const BUILD_KEY = "mathlab_build_id";
 
   function purgeOldLocalStorageIfNeeded() {
@@ -107,6 +156,10 @@
   const tipEl = document.getElementById('tip');
   const footerEl = document.getElementById('footer');
 
+  const siteBtn = document.getElementById('siteBtn');
+  const siteBadge = document.getElementById('siteBadge');
+  const siteText = document.getElementById('siteText');
+
   const toolPointBtn = document.getElementById('toolPoint');
   const toolSegmentBtn = document.getElementById('toolSegment');
   const toolLineBtn = document.getElementById('toolLine');
@@ -126,6 +179,7 @@
   const btnCancelStep = document.getElementById('btnCancelStep');
 
   if (!canvas || !ctx || !readout || !tipEl || !footerEl ||
+      !siteBtn || !siteBadge || !siteText ||
       !toolPointBtn || !toolSegmentBtn || !toolLineBtn || !toolCircleBtn || !toolParabolaBtn || !toolSelectBtn ||
       !langKoBtn || !langEnBtn ||
       !btnUndoPoint || !btnUndoSeg || !btnUndoLine || !btnUndoCircle || !btnUndoParabola || !btnClearAll || !btnCancelStep) {
@@ -141,7 +195,6 @@
 
   const I18N = {
     ko: {
-      // buttons
       toolPoint: "점",
       toolSegment: "선분",
       toolLine: "직선",
@@ -157,7 +210,9 @@
       cancelStep: "현재 단계 취소(ESC)",
       mouse: "마우스",
 
-      // tool tips (html)
+      site_badge: "이동",
+      site_title: "min7014.github.io 로 이동",
+
       tooltip_point: "<b>점</b>: (1) 교점 근처 클릭=교점 생성, (2) 도형 위 클릭=구속점 생성, (3) 빈 곳 클릭=자유점",
       tooltip_segment: "<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)",
       tooltip_line: "<b>직선</b>: 첫 점 → 둘째 점",
@@ -165,7 +220,6 @@
       tooltip_parabola: "<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)",
       tooltip_select: "<b>선택/이동</b>: 자유점/구속점 이동 가능(구속점은 도형 위로만), 교점은 이동 불가",
 
-      // footer (html)
       footer_html:
         "✅ 상태는 <b>브라우저(localStorage)</b>에만 저장됩니다(서버 저장 0)<br/>" +
         "✅ <b>점 도구</b>: (1) 교점 근처 클릭 → <b>교점(종속점)</b> 생성 (포물선-포물선 포함)<br/>" +
@@ -173,7 +227,6 @@
         "✅ <b>선택/이동</b>: 자유점/구속점은 이동 가능, 교점은 이동 불가<br/>" +
         "단축키: <code>P</code>=점, <code>G</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>A</code>=포물선, <code>V</code>=선택, <code>ESC</code>=단계취소",
 
-      // messages
       step_cancelled: "현재 단계가 취소되었습니다.",
       intersection_created: "교점이 생성되었습니다(종속점).",
       constrained_created: "구속점이 생성되었습니다(도형 위에서만 이동).",
@@ -212,7 +265,6 @@
       lang_switched: "언어가 변경되었습니다."
     },
     en: {
-      // buttons
       toolPoint: "Point",
       toolSegment: "Segment",
       toolLine: "Line",
@@ -228,7 +280,9 @@
       cancelStep: "Cancel Step (ESC)",
       mouse: "Mouse",
 
-      // tool tips (html)
+      site_badge: "GO",
+      site_title: "Go to min7014.github.io",
+
       tooltip_point: "<b>Point</b>: (1) Click near an intersection → intersection point, (2) Click on an object → constrained point, (3) Click empty space → free point",
       tooltip_segment: "<b>Segment</b>: first point → second point (creates in pairs)",
       tooltip_line: "<b>Line</b>: first point → second point",
@@ -236,7 +290,6 @@
       tooltip_parabola: "<b>Parabola</b>: focus(point) → directrix(line/segment/two points)",
       tooltip_select: "<b>Select/Move</b>: free & constrained points are draggable (constrained stays on object), intersections are not draggable",
 
-      // footer (html)
       footer_html:
         "✅ State is stored <b>only in your browser (localStorage)</b> (no server storage)<br/>" +
         "✅ <b>Point tool</b>: (1) Click near an intersection → <b>dependent intersection point</b> (includes parabola–parabola)<br/>" +
@@ -244,7 +297,6 @@
         "✅ <b>Select/Move</b>: free & constrained points can move; intersection points cannot<br/>" +
         "Shortcuts: <code>P</code>=Point, <code>G</code>=Segment, <code>L</code>=Line, <code>C</code>=Circle, <code>A</code>=Parabola, <code>V</code>=Select, <code>ESC</code>=Cancel",
 
-      // messages
       step_cancelled: "Current step has been cancelled.",
       intersection_created: "Intersection point created (dependent).",
       constrained_created: "Constrained point created (moves only on the object).",
@@ -287,10 +339,8 @@
   function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.ko[key] || key; }
 
   function applyLanguageToUI(){
-    // html lang
     document.documentElement.lang = (lang === "en") ? "en" : "ko";
 
-    // tool buttons
     toolPointBtn.textContent = t("toolPoint");
     toolSegmentBtn.textContent = t("toolSegment");
     toolLineBtn.textContent = t("toolLine");
@@ -298,7 +348,6 @@
     toolParabolaBtn.textContent = t("toolParabola");
     toolSelectBtn.textContent = t("toolSelect");
 
-    // action buttons
     btnUndoPoint.textContent = t("undoPoint");
     btnUndoSeg.textContent = t("undoSeg");
     btnUndoLine.textContent = t("undoLine");
@@ -307,21 +356,24 @@
     btnClearAll.textContent = t("clearAll");
     btnCancelStep.textContent = t("cancelStep");
 
-    // footer
+    // ✅ link button i18n
+    siteBadge.textContent = t("site_badge");
+    siteBtn.title = t("site_title");
+    siteBtn.setAttribute("aria-label", t("site_title"));
+
     footerEl.innerHTML = t("footer_html");
 
-    // lang tabs visual
     langKoBtn.classList.toggle("active", lang === "ko");
     langEnBtn.classList.toggle("active", lang === "en");
     langKoBtn.setAttribute("aria-selected", lang === "ko" ? "true" : "false");
     langEnBtn.setAttribute("aria-selected", lang === "en" ? "true" : "false");
   }
 
-  function setLang(newLang, anchor=null){
+  function setLang(newLang){
     lang = (newLang === "en") ? "en" : "ko";
     localStorage.setItem(LANG_KEY, lang);
     applyLanguageToUI();
-    showTip(t("lang_switched"), anchor, 900);
+    showTip(t("lang_switched"), (lang==="en") ? langEnBtn : langKoBtn, 900);
     draw();
   }
 
@@ -459,7 +511,7 @@
     catch{ showTip('Storage error.', null, 1600); }
   }
 
-  // Geometry
+  // Geometry helpers
   const EPS=1e-9;
   const v=(x,y)=>({x,y});
   const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
@@ -471,13 +523,8 @@
   const norm=(a)=>{ const L=len(a); return L<EPS?{x:1,y:0}:{x:a.x/L,y:a.y/L}; };
   const perp=(a)=>({x:-a.y,y:a.x});
 
-  function distPointToLine(P,A,B){
-    const AB=sub(B,A), n=perp(AB), nn=len(n);
-    if (nn<EPS) return Infinity;
-    return Math.abs(dot(sub(P,A), n))/nn;
-  }
   function distPointToSegment(P,A,B){
-    const AB=sub(B,A), ap=sub(P,A), ab2=dot(AB,AB);
+    const AB=sub(B,A), ab2=dot(AB,AB);
     if (ab2<EPS) return len(sub(P,A));
     let t=dot(sub(P,A),AB)/ab2; t=Math.max(0,Math.min(1,t));
     const Q=add(A,mul(AB,t));
@@ -534,7 +581,6 @@
     const t1=(-b - s)/(2*a), t2=(-b + s)/(2*a);
     return [ add(A,mul(d,t1)), add(A,mul(d,t2)) ];
   }
-
   function circleCircleIntersections(C1,r1,C2,r2){
     const d=len(sub(C2,C1));
     if (d<EPS) return [];
@@ -569,7 +615,6 @@
     const t=u-par.uF;
     return (t*t + vF*vF)/(2*vF);
   }
-
   function parabolaLineIntersections(par,P0,P1,restrict01=false){
     const uv0=worldToUV(P0,par), uv1=worldToUV(P1,par);
     const du=uv1.u-uv0.u, dv=uv1.v-uv0.v;
@@ -825,7 +870,6 @@
   const getCircleGeom=(c)=>{ const C=getPoint(c.c_id),P=getPoint(c.p_id); if(!C||!P) return null; const CC=v(C.x,C.y), PP=v(P.x,P.y); return {C:CC, r:len(sub(PP,CC))}; };
   const getParabolaGeom=(pb)=>{ const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); return (F&&A&&B)?{F:v(F.x,F.y),A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
 
-  // parabola-parabola (polyline)
   function parabolaPolyline(par, uMin, uMax, N){
     const pts=[];
     for (let i=0;i<=N;i++){
@@ -1316,7 +1360,8 @@
 
   // Events
   canvas.addEventListener('pointermove',(e)=>{
-    const {sx,sy}=getCanvasLocalXY(e);
+    const rect=canvas.getBoundingClientRect();
+    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
     const w=screenToWorld(sx,sy);
     mouseWorld=w;
     readout.textContent=`${t("mouse")}: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
@@ -1324,11 +1369,11 @@
   });
 
   canvas.addEventListener('click',(e)=>{
-    const {sx,sy}=getCanvasLocalXY(e);
+    const rect=canvas.getBoundingClientRect();
+    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
 
     if (tool==='point'){
       if (hitPoint(sx,sy)) return;
-
       if (tryCreateIntersectionAtClick(sx,sy)) return;
 
       const cand=bestConstraintCandidate(sx,sy);
@@ -1337,7 +1382,6 @@
         showTip(t("constrained_created"), toolPointBtn, 1200);
         return;
       }
-
       const w=screenToWorld(sx,sy);
       addFreePoint(w.x,w.y);
       return;
@@ -1384,12 +1428,12 @@
       const cand=bestConstraintCandidate(sx,sy);
       if (cand && (cand.kind==='line' || cand.kind==='segment')){
         if (cand.kind==='line'){
-          const ln=getLine(cand.id);
+          const ln=lines.find(x=>x.id===cand.id);
           if (ln){ addParabola(parabolaFocusId, ln.a_id, ln.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
             showTip(t("parabola_done_line"), toolParabolaBtn, 1200); return; }
         }
         if (cand.kind==='segment'){
-          const sg=getSegment(cand.id);
+          const sg=segments.find(x=>x.id===cand.id);
           if (sg){ addParabola(parabolaFocusId, sg.a_id, sg.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
             showTip(t("parabola_done_segment"), toolParabolaBtn, 1400); return; }
         }
@@ -1418,7 +1462,8 @@
   // Select/Move
   canvas.addEventListener('pointerdown',(e)=>{
     if (tool!=='select') return;
-    const {sx,sy}=getCanvasLocalXY(e);
+    const rect=canvas.getBoundingClientRect();
+    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
     const hit=hitPoint(sx,sy);
     if (!hit){ selectedPointId=null; draw(); return; }
     selectedPointId=hit.id;
@@ -1450,7 +1495,8 @@
     const p=getPoint(selectedPointId);
     if (!p) return;
 
-    const {sx,sy}=getCanvasLocalXY(e);
+    const rect=canvas.getBoundingClientRect();
+    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
     const w=screenToWorld(sx,sy);
     const target=v(w.x - dragOffset.x, w.y - dragOffset.y);
 
@@ -1529,8 +1575,8 @@
   toolParabolaBtn.addEventListener('click',()=>setTool('parabola', toolParabolaBtn));
   toolSelectBtn.addEventListener('click',()=>setTool('select', toolSelectBtn));
 
-  langKoBtn.addEventListener('click', ()=> setLang("ko", langKoBtn));
-  langEnBtn.addEventListener('click', ()=> setLang("en", langEnBtn));
+  langKoBtn.addEventListener('click', ()=> setLang("ko"));
+  langEnBtn.addEventListener('click', ()=> setLang("en"));
 
   btnUndoPoint.addEventListener('click', undoPoint);
   btnUndoSeg.addEventListener('click', undoSeg);
