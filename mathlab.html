@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Math Tool - Local (Constrained Points + Parabola-Parabola)</title>
+  <title>Math Tool - Local (i18n KO/EN)</title>
   <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -23,6 +23,12 @@
       border-radius:12px; padding:10px 12px; font-size:12px; opacity:0.88; line-height:1.35; z-index:10;
       max-width:min(980px, calc(100vw - 24px)); }
     code { background: rgba(255,255,255,0.08); padding:2px 6px; border-radius:8px; }
+
+    /* language "tab" feel */
+    .langWrap { display:flex; gap:0; overflow:hidden; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); }
+    .langWrap button { border-radius:0; border:none; background: rgba(255,255,255,0.06); padding:8px 12px; }
+    .langWrap button + button { border-left: 1px solid rgba(255,255,255,0.12); }
+    .langWrap button.active { background: rgba(255,255,255,0.14); }
 
     .tip { position:fixed; z-index:9999; display:none; background: rgba(20,26,34,0.94); border:1px solid rgba(255,255,255,0.10);
       border-radius:12px; padding:10px 12px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); backdrop-filter: blur(10px);
@@ -45,6 +51,14 @@
       <span class="readout" id="readout"></span>
     </div>
 
+    <!-- ✅ Language selection tab -->
+    <div class="panel">
+      <div class="langWrap" role="tablist" aria-label="Language">
+        <button id="langKo" class="active" type="button" role="tab" aria-selected="true">한국어</button>
+        <button id="langEn" type="button" role="tab" aria-selected="false">English</button>
+      </div>
+    </div>
+
     <div class="panel">
       <button id="btnUndoPoint" type="button">점 되돌리기</button>
       <button id="btnUndoSeg" type="button">선분 되돌리기</button>
@@ -58,22 +72,16 @@
 
   <canvas id="c"></canvas>
 
-  <div class="footer">
-    ✅ 상태는 <b>브라우저(localStorage)</b>에만 저장됩니다(서버 저장 0)<br/>
-    ✅ <b>점 도구</b>: (1) 교점 근처 클릭 → <b>교점(종속점)</b> 생성 (포물선-포물선 포함)<br/>
-    ✅ <b>점 도구</b>: (2) 선분/직선/원/포물선 위 클릭 → <b>구속점</b> 생성(해당 도형 위에서만 이동)<br/>
-    ✅ <b>선택/이동</b>: 자유점/구속점은 이동 가능, 교점은 이동 불가<br/>
-    단축키: <code>P</code>=점, <code>G</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>A</code>=포물선, <code>V</code>=선택, <code>ESC</code>=단계취소
-  </div>
+  <div class="footer" id="footer"></div>
 
   <div id="tip" class="tip" aria-live="polite"></div>
 
 <script>
 (() => {
-  // ================
+  // =================
   // 0) 찌꺼기 삭제
-  // ================
-  const BUILD_ID = "2026-01-08-constrained-pp-01";
+  // =================
+  const BUILD_ID = "2026-01-08-i18n-tabs-01";
   const BUILD_KEY = "mathlab_build_id";
 
   function purgeOldLocalStorageIfNeeded() {
@@ -97,6 +105,7 @@
   const ctx = canvas?.getContext?.('2d');
   const readout = document.getElementById('readout');
   const tipEl = document.getElementById('tip');
+  const footerEl = document.getElementById('footer');
 
   const toolPointBtn = document.getElementById('toolPoint');
   const toolSegmentBtn = document.getElementById('toolSegment');
@@ -104,6 +113,9 @@
   const toolCircleBtn = document.getElementById('toolCircle');
   const toolParabolaBtn = document.getElementById('toolParabola');
   const toolSelectBtn = document.getElementById('toolSelect');
+
+  const langKoBtn = document.getElementById('langKo');
+  const langEnBtn = document.getElementById('langEn');
 
   const btnUndoPoint = document.getElementById('btnUndoPoint');
   const btnUndoSeg = document.getElementById('btnUndoSeg');
@@ -113,11 +125,204 @@
   const btnClearAll = document.getElementById('btnClearAll');
   const btnCancelStep = document.getElementById('btnCancelStep');
 
-  if (!canvas || !ctx || !readout || !tipEl ||
+  if (!canvas || !ctx || !readout || !tipEl || !footerEl ||
       !toolPointBtn || !toolSegmentBtn || !toolLineBtn || !toolCircleBtn || !toolParabolaBtn || !toolSelectBtn ||
+      !langKoBtn || !langEnBtn ||
       !btnUndoPoint || !btnUndoSeg || !btnUndoLine || !btnUndoCircle || !btnUndoParabola || !btnClearAll || !btnCancelStep) {
     alert('UI 요소 로딩에 실패했습니다. HTML이 손상되었는지 확인해 주세요.');
     return;
+  }
+
+  // =================
+  // 1) i18n (KO/EN)
+  // =================
+  const LANG_KEY = "mathlab_lang";
+  let lang = (localStorage.getItem(LANG_KEY) === "en") ? "en" : "ko";
+
+  const I18N = {
+    ko: {
+      // buttons
+      toolPoint: "점",
+      toolSegment: "선분",
+      toolLine: "직선",
+      toolCircle: "원",
+      toolParabola: "포물선",
+      toolSelect: "선택/이동",
+      undoPoint: "점 되돌리기",
+      undoSeg: "선분 되돌리기",
+      undoLine: "직선 되돌리기",
+      undoCircle: "원 되돌리기",
+      undoParabola: "포물선 되돌리기",
+      clearAll: "전체 삭제",
+      cancelStep: "현재 단계 취소(ESC)",
+      mouse: "마우스",
+
+      // tool tips (html)
+      tooltip_point: "<b>점</b>: (1) 교점 근처 클릭=교점 생성, (2) 도형 위 클릭=구속점 생성, (3) 빈 곳 클릭=자유점",
+      tooltip_segment: "<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)",
+      tooltip_line: "<b>직선</b>: 첫 점 → 둘째 점",
+      tooltip_circle: "<b>원</b>: 중심 → 원 위의 점",
+      tooltip_parabola: "<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)",
+      tooltip_select: "<b>선택/이동</b>: 자유점/구속점 이동 가능(구속점은 도형 위로만), 교점은 이동 불가",
+
+      // footer (html)
+      footer_html:
+        "✅ 상태는 <b>브라우저(localStorage)</b>에만 저장됩니다(서버 저장 0)<br/>" +
+        "✅ <b>점 도구</b>: (1) 교점 근처 클릭 → <b>교점(종속점)</b> 생성 (포물선-포물선 포함)<br/>" +
+        "✅ <b>점 도구</b>: (2) 선분/직선/원/포물선 위 클릭 → <b>구속점</b> 생성(해당 도형 위에서만 이동)<br/>" +
+        "✅ <b>선택/이동</b>: 자유점/구속점은 이동 가능, 교점은 이동 불가<br/>" +
+        "단축키: <code>P</code>=점, <code>G</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>A</code>=포물선, <code>V</code>=선택, <code>ESC</code>=단계취소",
+
+      // messages
+      step_cancelled: "현재 단계가 취소되었습니다.",
+      intersection_created: "교점이 생성되었습니다(종속점).",
+      constrained_created: "구속점이 생성되었습니다(도형 위에서만 이동).",
+      seg_first: "선분: 첫 점 선택됨 → 둘째 점을 선택하세요.",
+      seg_first_cancel: "선분: 첫 점 선택 취소",
+      seg_done: "선분 생성 완료",
+      line_first: "직선: 첫 점 선택됨 → 둘째 점을 선택하세요.",
+      line_first_cancel: "직선: 첫 점 선택 취소",
+      line_done: "직선 생성 완료",
+      circle_center: "원: 중심 선택됨 → 원 위의 점을 선택하세요.",
+      circle_center_cancel: "원: 중심 선택 취소",
+      circle_done: "원 생성 완료",
+      parabola_focus: "포물선: 초점 선택됨 → 준선을 선택하세요(직선/선분/두 점).",
+      parabola_dir_first: "포물선: 준선 첫 점 선택됨 → 준선 둘째 점을 선택하세요.",
+      parabola_dir_first_cancel: "포물선: 준선 첫 점 선택 취소",
+      parabola_done_line: "포물선 생성 완료(준선=직선).",
+      parabola_done_segment: "포물선 생성 완료(준선=선분의 연장선).",
+      parabola_done_2pts: "포물선 생성 완료(준선=두 점을 잇는 직선).",
+      intersection_immovable: "교점(종속점)은 이동할 수 없습니다.",
+      free_selected: "자유점 선택됨. 드래그하여 이동하세요.",
+      constrained_selected: "구속점 선택됨. 도형 위에서만 이동합니다.",
+      moved_saved: "이동이 저장되었습니다.",
+      nothing_undo_point: "되돌릴 점이 없습니다.",
+      nothing_undo_seg: "되돌릴 선분이 없습니다.",
+      nothing_undo_line: "되돌릴 직선이 없습니다.",
+      nothing_undo_circle: "되돌릴 원이 없습니다.",
+      nothing_undo_parabola: "되돌릴 포물선이 없습니다.",
+      undo_point_done: "점 되돌리기 완료",
+      undo_seg_done: "선분 되돌리기 완료",
+      undo_line_done: "직선 되돌리기 완료",
+      undo_circle_done: "원 되돌리기 완료",
+      undo_parabola_done: "포물선 되돌리기 완료",
+      cleared: "전체 삭제 완료",
+      init_purged: "이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.",
+      init_ok: "언어 선택 탭(KO/EN) 지원 버전입니다.",
+      lang_switched: "언어가 변경되었습니다."
+    },
+    en: {
+      // buttons
+      toolPoint: "Point",
+      toolSegment: "Segment",
+      toolLine: "Line",
+      toolCircle: "Circle",
+      toolParabola: "Parabola",
+      toolSelect: "Select/Move",
+      undoPoint: "Undo Point",
+      undoSeg: "Undo Segment",
+      undoLine: "Undo Line",
+      undoCircle: "Undo Circle",
+      undoParabola: "Undo Parabola",
+      clearAll: "Clear All",
+      cancelStep: "Cancel Step (ESC)",
+      mouse: "Mouse",
+
+      // tool tips (html)
+      tooltip_point: "<b>Point</b>: (1) Click near an intersection → intersection point, (2) Click on an object → constrained point, (3) Click empty space → free point",
+      tooltip_segment: "<b>Segment</b>: first point → second point (creates in pairs)",
+      tooltip_line: "<b>Line</b>: first point → second point",
+      tooltip_circle: "<b>Circle</b>: center → point on circle",
+      tooltip_parabola: "<b>Parabola</b>: focus(point) → directrix(line/segment/two points)",
+      tooltip_select: "<b>Select/Move</b>: free & constrained points are draggable (constrained stays on object), intersections are not draggable",
+
+      // footer (html)
+      footer_html:
+        "✅ State is stored <b>only in your browser (localStorage)</b> (no server storage)<br/>" +
+        "✅ <b>Point tool</b>: (1) Click near an intersection → <b>dependent intersection point</b> (includes parabola–parabola)<br/>" +
+        "✅ <b>Point tool</b>: (2) Click on segment/line/circle/parabola → <b>constrained point</b> (moves only on that object)<br/>" +
+        "✅ <b>Select/Move</b>: free & constrained points can move; intersection points cannot<br/>" +
+        "Shortcuts: <code>P</code>=Point, <code>G</code>=Segment, <code>L</code>=Line, <code>C</code>=Circle, <code>A</code>=Parabola, <code>V</code>=Select, <code>ESC</code>=Cancel",
+
+      // messages
+      step_cancelled: "Current step has been cancelled.",
+      intersection_created: "Intersection point created (dependent).",
+      constrained_created: "Constrained point created (moves only on the object).",
+      seg_first: "Segment: first point selected → choose the second point.",
+      seg_first_cancel: "Segment: first point selection cancelled.",
+      seg_done: "Segment created.",
+      line_first: "Line: first point selected → choose the second point.",
+      line_first_cancel: "Line: first point selection cancelled.",
+      line_done: "Line created.",
+      circle_center: "Circle: center selected → choose a point on the circle.",
+      circle_center_cancel: "Circle: center selection cancelled.",
+      circle_done: "Circle created.",
+      parabola_focus: "Parabola: focus selected → choose the directrix (line/segment/two points).",
+      parabola_dir_first: "Parabola: first directrix point selected → choose the second point.",
+      parabola_dir_first_cancel: "Parabola: first directrix point selection cancelled.",
+      parabola_done_line: "Parabola created (directrix = line).",
+      parabola_done_segment: "Parabola created (directrix = extension of segment).",
+      parabola_done_2pts: "Parabola created (directrix = line through two points).",
+      intersection_immovable: "Intersection (dependent) points cannot be dragged.",
+      free_selected: "Free point selected. Drag to move.",
+      constrained_selected: "Constrained point selected. It stays on the object.",
+      moved_saved: "Move saved.",
+      nothing_undo_point: "No point to undo.",
+      nothing_undo_seg: "No segment to undo.",
+      nothing_undo_line: "No line to undo.",
+      nothing_undo_circle: "No circle to undo.",
+      nothing_undo_parabola: "No parabola to undo.",
+      undo_point_done: "Point undone.",
+      undo_seg_done: "Segment undone.",
+      undo_line_done: "Line undone.",
+      undo_circle_done: "Circle undone.",
+      undo_parabola_done: "Parabola undone.",
+      cleared: "Cleared.",
+      init_purged: "Old leftovers were removed and a fresh version started.",
+      init_ok: "This version supports the language tabs (KO/EN).",
+      lang_switched: "Language switched."
+    }
+  };
+
+  function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.ko[key] || key; }
+
+  function applyLanguageToUI(){
+    // html lang
+    document.documentElement.lang = (lang === "en") ? "en" : "ko";
+
+    // tool buttons
+    toolPointBtn.textContent = t("toolPoint");
+    toolSegmentBtn.textContent = t("toolSegment");
+    toolLineBtn.textContent = t("toolLine");
+    toolCircleBtn.textContent = t("toolCircle");
+    toolParabolaBtn.textContent = t("toolParabola");
+    toolSelectBtn.textContent = t("toolSelect");
+
+    // action buttons
+    btnUndoPoint.textContent = t("undoPoint");
+    btnUndoSeg.textContent = t("undoSeg");
+    btnUndoLine.textContent = t("undoLine");
+    btnUndoCircle.textContent = t("undoCircle");
+    btnUndoParabola.textContent = t("undoParabola");
+    btnClearAll.textContent = t("clearAll");
+    btnCancelStep.textContent = t("cancelStep");
+
+    // footer
+    footerEl.innerHTML = t("footer_html");
+
+    // lang tabs visual
+    langKoBtn.classList.toggle("active", lang === "ko");
+    langEnBtn.classList.toggle("active", lang === "en");
+    langKoBtn.setAttribute("aria-selected", lang === "ko" ? "true" : "false");
+    langEnBtn.setAttribute("aria-selected", lang === "en" ? "true" : "false");
+  }
+
+  function setLang(newLang, anchor=null){
+    lang = (newLang === "en") ? "en" : "ko";
+    localStorage.setItem(LANG_KEY, lang);
+    applyLanguageToUI();
+    showTip(t("lang_switched"), anchor, 900);
+    draw();
   }
 
   // Tooltip
@@ -251,7 +456,7 @@
   }
   function saveState(){
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({points,segments,lines,circles,parabolas})); }
-    catch{ showTip('저장 실패(브라우저 설정/용량). 그래도 작업은 계속됩니다.', null, 1600); }
+    catch{ showTip('Storage error.', null, 1600); }
   }
 
   // Geometry
@@ -274,7 +479,7 @@
   function distPointToSegment(P,A,B){
     const AB=sub(B,A), ap=sub(P,A), ab2=dot(AB,AB);
     if (ab2<EPS) return len(sub(P,A));
-    let t=dot(ap,AB)/ab2; t=Math.max(0,Math.min(1,t));
+    let t=dot(sub(P,A),AB)/ab2; t=Math.max(0,Math.min(1,t));
     const Q=add(A,mul(AB,t));
     return len(sub(P,Q));
   }
@@ -447,7 +652,6 @@
     return pts;
   }
 
-  // closest u on parabola (for constrained dragging/creation)
   function closestPointOnParabola(P, par, uMin, uMax){
     const N=90;
     let bestU=uMin, bestD=Infinity;
@@ -459,7 +663,6 @@
       const d2=(X.x-P.x)**2 + (X.y-P.y)**2;
       if (d2<bestD){ bestD=d2; bestU=u; }
     }
-    // local refine with ternary on [bestU-step, bestU+step]
     const step=(uMax-uMin)/N;
     let a=Math.max(uMin, bestU-step), b=Math.min(uMax, bestU+step);
     function D(u){
@@ -519,7 +722,6 @@
     circles  = circles.filter(c=> pids.has(c.c_id)&&pids.has(c.p_id)&&c.c_id!==c.p_id);
     parabolas= parabolas.filter(p=> pids.has(p.f_id)&&pids.has(p.d_a_id)&&pids.has(p.d_b_id)&&p.d_a_id!==p.d_b_id);
 
-    // intersection parent exists?
     const existsRef=(ref)=>{
       if (!ref) return false;
       if (ref.kind==='segment') return !!getSegment(ref.id);
@@ -553,31 +755,33 @@
 
   const HIT_R=10;
 
-  function setTool(t, anchor=null){
-    tool=t;
-    toolPointBtn.classList.toggle('active', t==='point');
-    toolSegmentBtn.classList.toggle('active', t==='segment');
-    toolLineBtn.classList.toggle('active', t==='line');
-    toolCircleBtn.classList.toggle('active', t==='circle');
-    toolParabolaBtn.classList.toggle('active', t==='parabola');
-    toolSelectBtn.classList.toggle('active', t==='select');
-    cancelStep(false);
-
-    const msg={
-      point:'<b>점</b>: (1) 교점 근처 클릭=교점 생성, (2) 도형 위 클릭=구속점 생성, (3) 빈 곳 클릭=자유점',
-      segment:'<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)',
-      line:'<b>직선</b>: 첫 점 → 둘째 점',
-      circle:'<b>원</b>: 중심 → 원 위의 점',
-      parabola:'<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)',
-      select:'<b>선택/이동</b>: 자유점/구속점은 이동 가능(구속점은 도형 위로만), 교점은 이동 불가'
-    }[t]||'';
-    showTip(msg, anchor, 1800);
+  function cancelStep(showMsg=true){
+    stepA=null; circleCenterId=null; parabolaFocusId=null; parabolaDirFirstId=null;
+    if (showMsg) showTip(t("step_cancelled"), btnCancelStep, 1100);
     draw();
   }
 
-  function cancelStep(showMsg=true){
-    stepA=null; circleCenterId=null; parabolaFocusId=null; parabolaDirFirstId=null;
-    if (showMsg) showTip('현재 단계가 취소되었습니다.', btnCancelStep, 1100);
+  function setTool(tname, anchor=null){
+    tool=tname;
+    toolPointBtn.classList.toggle('active', tname==='point');
+    toolSegmentBtn.classList.toggle('active', tname==='segment');
+    toolLineBtn.classList.toggle('active', tname==='line');
+    toolCircleBtn.classList.toggle('active', tname==='circle');
+    toolParabolaBtn.classList.toggle('active', tname==='parabola');
+    toolSelectBtn.classList.toggle('active', tname==='select');
+
+    cancelStep(false);
+
+    const msg = {
+      point: t("tooltip_point"),
+      segment: t("tooltip_segment"),
+      line: t("tooltip_line"),
+      circle: t("tooltip_circle"),
+      parabola: t("tooltip_parabola"),
+      select: t("tooltip_select")
+    }[tname] || "";
+
+    showTip(msg, anchor, 1800);
     draw();
   }
 
@@ -597,7 +801,7 @@
     return (best && bestD2<=HIT_R*HIT_R) ? best : null;
   }
 
-  // Create points
+  // Create points/objects
   function addFreePoint(wx,wy){
     const p={ id:uid('p-'), x:wx, y:wy, kind:'free' };
     points.push(p); cleanupAll(); saveState(); draw(); return p.id;
@@ -610,8 +814,6 @@
     const p={ id:uid('cp-'), x:wx, y:wy, kind:'constrained', constraint:{ kind, id:objId, param:paramObj } };
     points.push(p); cleanupAll(); saveState(); draw(); return p.id;
   }
-
-  // Create objects
   const addSegment=(a_id,b_id)=>{ segments.push({id:uid('s-'),a_id,b_id}); cleanupAll(); saveState(); draw(); };
   const addLine=(a_id,b_id)=>{ lines.push({id:uid('l-'),a_id,b_id}); cleanupAll(); saveState(); draw(); };
   const addCircle=(c_id,p_id)=>{ circles.push({id:uid('c-'),c_id,p_id}); cleanupAll(); saveState(); draw(); };
@@ -623,7 +825,7 @@
   const getCircleGeom=(c)=>{ const C=getPoint(c.c_id),P=getPoint(c.p_id); if(!C||!P) return null; const CC=v(C.x,C.y), PP=v(P.x,P.y); return {C:CC, r:len(sub(PP,CC))}; };
   const getParabolaGeom=(pb)=>{ const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); return (F&&A&&B)?{F:v(F.x,F.y),A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
 
-  // Parabola polyline intersections (for parabola-parabola)
+  // parabola-parabola (polyline)
   function parabolaPolyline(par, uMin, uMax, N){
     const pts=[];
     for (let i=0;i<=N;i++){
@@ -634,9 +836,8 @@
     }
     return pts;
   }
-
   function parabolaParabolaIntersections(par1, uMin1, uMax1, par2, uMin2, uMax2, quality='fast'){
-    const N = (quality==='accurate') ? 140 : 70; // O(N^2) 이므로 업데이트는 가볍게
+    const N = (quality==='accurate') ? 140 : 70;
     const P1=parabolaPolyline(par1,uMin1,uMax1,N);
     const P2=parabolaPolyline(par2,uMin2,uMax2,N);
     const out=[];
@@ -648,7 +849,6 @@
         if (X) out.push(X);
       }
     }
-    // dedup
     out.sort((p,q)=>p.x-q.x || p.y-q.y);
     const uniq=[];
     for (const X of out){
@@ -659,7 +859,6 @@
     return uniq;
   }
 
-  // intersectionsBetween (mode: 'fast' for per-frame update, 'accurate' for click creation)
   function intersectionsBetween(ref1, ref2, mode='fast'){
     const k1=ref1.kind, k2=ref2.kind;
     const pair=[k1,k2].sort().join('|');
@@ -759,7 +958,6 @@
       return parabolaCircleIntersections(par, cg.C, cg.r, uMin, uMax, (mode==='accurate'?'accurate':'fast'));
     }
 
-    // ✅ NEW: parabola-parabola
     if (pair==='parabola|parabola'){
       const pb1=getParabola(ref1.id);
       const pb2=getParabola(ref2.id);
@@ -815,7 +1013,6 @@
     }
   }
 
-  // ✅ NEW: constrained points update
   function updateConstrainedPoints(){
     for (const p of points){
       if (p.kind!=='constrained') continue;
@@ -825,8 +1022,9 @@
       if (c.kind==='segment'){
         const sg=getSegment(c.id); if (!sg) continue;
         const sp=getLinePtsFromSegmentObj(sg); if (!sp) continue;
-        const t = c.param?.t ?? 0;
-        const Q = add(sp.A, mul(sub(sp.B,sp.A), Math.max(0,Math.min(1,t))));
+        const t0 = c.param?.t ?? 0;
+        const t1 = Math.max(0,Math.min(1,t0));
+        const Q = add(sp.A, mul(sub(sp.B,sp.A), t1));
         p.x=Q.x; p.y=Q.y;
       }
 
@@ -859,7 +1057,6 @@
     }
   }
 
-  // Point tool helpers
   function tryCreateIntersectionAtClick(sx,sy){
     const candidates=computeAllIntersections();
     let best=null, bestD2=Infinity;
@@ -871,39 +1068,34 @@
     }
     if (best && bestD2 <= 12*12){
       addIntersectionPoint(best.x,best.y,best.a,best.b);
-      showTip('교점이 생성되었습니다(종속점).', toolPointBtn, 1200);
+      showTip(t("intersection_created"), toolPointBtn, 1200);
       return true;
     }
     return false;
   }
 
-  // ✅ NEW: find nearest object for constrained point
   function bestConstraintCandidate(sx,sy){
     const P=screenToWorld(sx,sy);
     let best={kind:null, id:null, distPx:Infinity, Q:null, param:null};
 
-    // segments
     for (const sg of segments){
       const sp=getLinePtsFromSegmentObj(sg); if (!sp) continue;
       const {Q,t}=closestPointOnSegment(P, sp.A, sp.B);
       const dp = len(sub(Q,P)) * scale;
       if (dp<best.distPx){ best={kind:'segment', id:sg.id, distPx:dp, Q, param:{t}}; }
     }
-    // lines
     for (const ln of lines){
       const lp=getLinePtsFromLineObj(ln); if (!lp) continue;
       const {Q,t}=closestPointOnLine(P, lp.A, lp.B);
       const dp = len(sub(Q,P)) * scale;
       if (dp<best.distPx){ best={kind:'line', id:ln.id, distPx:dp, Q, param:{t}}; }
     }
-    // circles
     for (const cir of circles){
       const cg=getCircleGeom(cir); if (!cg) continue;
       const {Q, ang}=closestPointOnCircle(P, cg.C, cg.r);
       const dp = len(sub(Q,P)) * scale;
       if (dp<best.distPx){ best={kind:'circle', id:cir.id, distPx:dp, Q, param:{ang}}; }
     }
-    // parabolas
     const vb=viewWorldBounds();
     for (const pb of parabolas){
       const pg=getParabolaGeom(pb); if (!pg) continue;
@@ -1110,7 +1302,6 @@
   }
 
   function draw(){
-    // ✅ order: constrained -> intersection (선분/원 등이 변했을 수 있으므로)
     updateConstrainedPoints();
     updateIntersectionPoints();
     cleanupAll();
@@ -1128,7 +1319,7 @@
     const {sx,sy}=getCanvasLocalXY(e);
     const w=screenToWorld(sx,sy);
     mouseWorld=w;
-    readout.textContent=`마우스: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
+    readout.textContent=`${t("mouse")}: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
     if ((tool==='segment'&&stepA) || (tool==='line'&&stepA) || (tool==='circle'&&circleCenterId)) draw();
   });
 
@@ -1138,18 +1329,15 @@
     if (tool==='point'){
       if (hitPoint(sx,sy)) return;
 
-      // 1) intersection first
       if (tryCreateIntersectionAtClick(sx,sy)) return;
 
-      // 2) constrained point on nearest object
       const cand=bestConstraintCandidate(sx,sy);
       if (cand){
         addConstrainedPoint(cand.kind, cand.id, cand.param, cand.Q.x, cand.Q.y);
-        showTip('구속점이 생성되었습니다(도형 위에서만 이동).', toolPointBtn, 1200);
+        showTip(t("constrained_created"), toolPointBtn, 1200);
         return;
       }
 
-      // 3) free point
       const w=screenToWorld(sx,sy);
       addFreePoint(w.x,w.y);
       return;
@@ -1157,81 +1345,77 @@
 
     if (tool==='segment'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){ stepA=pid; showTip('선분: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolSegmentBtn, 1300); draw(); return; }
-      if (stepA===pid){ stepA=null; showTip('선분: 첫 점 선택 취소', toolSegmentBtn, 1100); draw(); return; }
+      if (!stepA){ stepA=pid; showTip(t("seg_first"), toolSegmentBtn, 1300); draw(); return; }
+      if (stepA===pid){ stepA=null; showTip(t("seg_first_cancel"), toolSegmentBtn, 1100); draw(); return; }
       addSegment(stepA,pid);
       stepA=null;
-      showTip('선분 생성 완료', toolSegmentBtn, 900);
+      showTip(t("seg_done"), toolSegmentBtn, 900);
       return;
     }
 
     if (tool==='line'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){ stepA=pid; showTip('직선: 첫 점 선택됨 → 둘째 점을 선택하세요.', toolLineBtn, 1300); draw(); return; }
-      if (stepA===pid){ stepA=null; showTip('직선: 첫 점 선택 취소', toolLineBtn, 1100); draw(); return; }
+      if (!stepA){ stepA=pid; showTip(t("line_first"), toolLineBtn, 1300); draw(); return; }
+      if (stepA===pid){ stepA=null; showTip(t("line_first_cancel"), toolLineBtn, 1100); draw(); return; }
       addLine(stepA,pid);
       stepA=null;
-      showTip('직선 생성 완료', toolLineBtn, 900);
+      showTip(t("line_done"), toolLineBtn, 900);
       return;
     }
 
     if (tool==='circle'){
       const pid=pickOrCreatePoint(sx,sy);
-      if (!circleCenterId){ circleCenterId=pid; showTip('원: 중심 선택됨 → 원 위의 점을 선택하세요.', toolCircleBtn, 1300); draw(); return; }
-      if (circleCenterId===pid){ circleCenterId=null; showTip('원: 중심 선택 취소', toolCircleBtn, 1100); draw(); return; }
+      if (!circleCenterId){ circleCenterId=pid; showTip(t("circle_center"), toolCircleBtn, 1300); draw(); return; }
+      if (circleCenterId===pid){ circleCenterId=null; showTip(t("circle_center_cancel"), toolCircleBtn, 1100); draw(); return; }
       addCircle(circleCenterId,pid);
       circleCenterId=null;
-      showTip('원 생성 완료', toolCircleBtn, 900);
+      showTip(t("circle_done"), toolCircleBtn, 900);
       return;
     }
 
     if (tool==='parabola'){
       if (!parabolaFocusId){
         parabolaFocusId=pickOrCreatePoint(sx,sy);
-        showTip('포물선: 초점 선택됨 → 준선을 선택하세요(직선/선분/두 점).', toolParabolaBtn, 1500);
+        showTip(t("parabola_focus"), toolParabolaBtn, 1500);
         draw();
         return;
       }
 
-      // directrix by clicking near line/segment first
-      // (간단히: 도형 위 클릭을 구분하기 위해 가까운 도형을 찾음)
       const cand=bestConstraintCandidate(sx,sy);
       if (cand && (cand.kind==='line' || cand.kind==='segment')){
-        // use that object's defining points as directrix
         if (cand.kind==='line'){
           const ln=getLine(cand.id);
           if (ln){ addParabola(parabolaFocusId, ln.a_id, ln.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
-            showTip('포물선 생성 완료(준선=직선).', toolParabolaBtn, 1200); return; }
+            showTip(t("parabola_done_line"), toolParabolaBtn, 1200); return; }
         }
         if (cand.kind==='segment'){
           const sg=getSegment(cand.id);
           if (sg){ addParabola(parabolaFocusId, sg.a_id, sg.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
-            showTip('포물선 생성 완료(준선=선분의 연장선).', toolParabolaBtn, 1400); return; }
+            showTip(t("parabola_done_segment"), toolParabolaBtn, 1400); return; }
         }
       }
 
-      // else directrix by two points
       const pid=pickOrCreatePoint(sx,sy);
       if (!parabolaDirFirstId){
         parabolaDirFirstId=pid;
-        showTip('포물선: 준선 첫 점 선택됨 → 준선 둘째 점을 선택하세요.', toolParabolaBtn, 1500);
+        showTip(t("parabola_dir_first"), toolParabolaBtn, 1500);
         draw();
         return;
       }
       if (parabolaDirFirstId===pid){
         parabolaDirFirstId=null;
-        showTip('포물선: 준선 첫 점 선택 취소', toolParabolaBtn, 1200);
+        showTip(t("parabola_dir_first_cancel"), toolParabolaBtn, 1200);
         draw();
         return;
       }
       addParabola(parabolaFocusId, parabolaDirFirstId, pid);
       parabolaFocusId=null; parabolaDirFirstId=null;
-      showTip('포물선 생성 완료(준선=두 점을 잇는 직선).', toolParabolaBtn, 1400);
+      showTip(t("parabola_done_2pts"), toolParabolaBtn, 1400);
       return;
     }
   });
 
-  // Select/Move (free + constrained draggable, intersection not)
+  // Select/Move
   canvas.addEventListener('pointerdown',(e)=>{
     if (tool!=='select') return;
     const {sx,sy}=getCanvasLocalXY(e);
@@ -1240,7 +1424,7 @@
     selectedPointId=hit.id;
 
     if (hit.kind==='intersection'){
-      showTip('교점(종속점)은 이동할 수 없습니다.', toolSelectBtn, 1200);
+      showTip(t("intersection_immovable"), toolSelectBtn, 1200);
       draw();
       return;
     }
@@ -1253,8 +1437,7 @@
     dragOffset.y = w.y - hit.y;
 
     try{ canvas.setPointerCapture(e.pointerId); }catch{}
-    showTip(hit.kind==='constrained' ? '구속점 선택됨. 도형 위에서만 이동합니다.' : '자유점 선택됨. 드래그하여 이동하세요.',
-            toolSelectBtn, 1200);
+    showTip(hit.kind==='constrained' ? t("constrained_selected") : t("free_selected"), toolSelectBtn, 1200);
     draw();
   });
 
@@ -1284,23 +1467,20 @@
       if (c.kind==='segment'){
         const sg=getSegment(c.id); if(!sg) return;
         const sp=getLinePtsFromSegmentObj(sg); if(!sp) return;
-        const {Q,t}=closestPointOnSegment(target, sp.A, sp.B);
-        c.param.t=t; p.x=Q.x; p.y=Q.y;
-        draw(); return;
+        const {Q,t0}=closestPointOnSegment(target, sp.A, sp.B);
+        c.param.t=t0; p.x=Q.x; p.y=Q.y; draw(); return;
       }
       if (c.kind==='line'){
         const ln=getLine(c.id); if(!ln) return;
         const lp=getLinePtsFromLineObj(ln); if(!lp) return;
-        const {Q,t}=closestPointOnLine(target, lp.A, lp.B);
-        c.param.t=t; p.x=Q.x; p.y=Q.y;
-        draw(); return;
+        const {Q,t0}=closestPointOnLine(target, lp.A, lp.B);
+        c.param.t=t0; p.x=Q.x; p.y=Q.y; draw(); return;
       }
       if (c.kind==='circle'){
         const cir=getCircle(c.id); if(!cir) return;
         const cg=getCircleGeom(cir); if(!cg) return;
         const {Q,ang}=closestPointOnCircle(target, cg.C, cg.r);
-        c.param.ang=ang; p.x=Q.x; p.y=Q.y;
-        draw(); return;
+        c.param.ang=ang; p.x=Q.x; p.y=Q.y; draw(); return;
       }
       if (c.kind==='parabola'){
         const pb=getParabola(c.id); if(!pb) return;
@@ -1311,8 +1491,7 @@
         const us=corners.map(cc=>dot(sub(cc,par.A),par.d));
         const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
         const {Q,u}=closestPointOnParabola(target, par, uMin, uMax);
-        c.param.u=u; p.x=Q.x; p.y=Q.y;
-        draw(); return;
+        c.param.u=u; p.x=Q.x; p.y=Q.y; draw(); return;
       }
     }
   });
@@ -1325,21 +1504,21 @@
     try{ canvas.releasePointerCapture(e.pointerId); }catch{}
     dragPointerId=null;
     saveState();
-    showTip('이동이 저장되었습니다.', toolSelectBtn, 900);
+    showTip(t("moved_saved"), toolSelectBtn, 900);
   }
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
 
   // Undo/Clear
-  function undoPoint(){ if(!points.length){ showTip('되돌릴 점이 없습니다.', btnUndoPoint, 900); return; } points.pop(); cleanupAll(); saveState(); draw(); showTip('점 되돌리기 완료', btnUndoPoint, 900); }
-  function undoSeg(){ if(!segments.length){ showTip('되돌릴 선분이 없습니다.', btnUndoSeg, 900); return; } segments.pop(); cleanupAll(); saveState(); draw(); showTip('선분 되돌리기 완료', btnUndoSeg, 900); }
-  function undoLine(){ if(!lines.length){ showTip('되돌릴 직선이 없습니다.', btnUndoLine, 900); return; } lines.pop(); cleanupAll(); saveState(); draw(); showTip('직선 되돌리기 완료', btnUndoLine, 900); }
-  function undoCircle(){ if(!circles.length){ showTip('되돌릴 원이 없습니다.', btnUndoCircle, 900); return; } circles.pop(); cleanupAll(); saveState(); draw(); showTip('원 되돌리기 완료', btnUndoCircle, 900); }
-  function undoParabola(){ if(!parabolas.length){ showTip('되돌릴 포물선이 없습니다.', btnUndoParabola, 900); return; } parabolas.pop(); cleanupAll(); saveState(); draw(); showTip('포물선 되돌리기 완료', btnUndoParabola, 900); }
+  function undoPoint(){ if(!points.length){ showTip(t("nothing_undo_point"), btnUndoPoint, 900); return; } points.pop(); cleanupAll(); saveState(); draw(); showTip(t("undo_point_done"), btnUndoPoint, 900); }
+  function undoSeg(){ if(!segments.length){ showTip(t("nothing_undo_seg"), btnUndoSeg, 900); return; } segments.pop(); cleanupAll(); saveState(); draw(); showTip(t("undo_seg_done"), btnUndoSeg, 900); }
+  function undoLine(){ if(!lines.length){ showTip(t("nothing_undo_line"), btnUndoLine, 900); return; } lines.pop(); cleanupAll(); saveState(); draw(); showTip(t("undo_line_done"), btnUndoLine, 900); }
+  function undoCircle(){ if(!circles.length){ showTip(t("nothing_undo_circle"), btnUndoCircle, 900); return; } circles.pop(); cleanupAll(); saveState(); draw(); showTip(t("undo_circle_done"), btnUndoCircle, 900); }
+  function undoParabola(){ if(!parabolas.length){ showTip(t("nothing_undo_parabola"), btnUndoParabola, 900); return; } parabolas.pop(); cleanupAll(); saveState(); draw(); showTip(t("undo_parabola_done"), btnUndoParabola, 900); }
   function clearAll(){
     points=[]; segments=[]; lines=[]; circles=[]; parabolas=[];
     selectedPointId=null; cancelStep(false);
-    saveState(); draw(); showTip('전체 삭제 완료', btnClearAll, 900);
+    saveState(); draw(); showTip(t("cleared"), btnClearAll, 900);
   }
 
   // Buttons
@@ -1349,6 +1528,9 @@
   toolCircleBtn.addEventListener('click',()=>setTool('circle', toolCircleBtn));
   toolParabolaBtn.addEventListener('click',()=>setTool('parabola', toolParabolaBtn));
   toolSelectBtn.addEventListener('click',()=>setTool('select', toolSelectBtn));
+
+  langKoBtn.addEventListener('click', ()=> setLang("ko", langKoBtn));
+  langEnBtn.addEventListener('click', ()=> setLang("en", langEnBtn));
 
   btnUndoPoint.addEventListener('click', undoPoint);
   btnUndoSeg.addEventListener('click', undoSeg);
@@ -1371,14 +1553,15 @@
   });
 
   // init
+  applyLanguageToUI();
   cleanupAll();
   saveState();
   window.addEventListener('resize', resize);
   resize();
   draw();
 
-  if (didPurge) showTip('이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.', null, 1900);
-  else showTip('업데이트: 구속점 + 포물선-포물선 교점 지원', null, 1900);
+  if (didPurge) showTip(t("init_purged"), null, 1900);
+  else showTip(t("init_ok"), null, 1900);
 })();
 </script>
 </body>
