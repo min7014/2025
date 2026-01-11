@@ -123,7 +123,7 @@
   // =================
   // 0) 찌꺼기 삭제(버전 바뀌면 localStorage 정리)
   // =================
-  const BUILD_ID = "2026-01-11-i18n-ellipse-undo-redo-unified-01";
+  const BUILD_ID = "2026-01-11-i18n-ellipse-undo-redo-unified-delayedtip-01";
   const BUILD_KEY = "mathlab_build_id";
 
   function purgeOldLocalStorageIfNeeded() {
@@ -259,7 +259,7 @@
 
       cleared: "전체 삭제 완료",
       init_purged: "이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.",
-      init_ok: "Undo/Redo 통합(이전/다음 단계) 버전입니다.",
+      init_ok: "버튼 설명: 클릭 후 1초간 정지 시에만 표시됩니다.",
       lang_switched: "언어가 변경되었습니다."
     },
     en: {
@@ -336,7 +336,7 @@
 
       cleared: "Cleared.",
       init_purged: "Old leftovers were removed and a fresh version started.",
-      init_ok: "Undo/Redo unified (Prev/Next step) version.",
+      init_ok: "Button tooltips: shown only after 1s of idle after click.",
       lang_switched: "Language switched."
     }
   };
@@ -414,6 +414,44 @@
   }
   window.addEventListener('resize', hideTip);
   window.addEventListener('scroll', hideTip, true);
+
+  // ===== Delayed tooltip: show only if idle for 1s after tool-button click =====
+  let pendingToolTip = null; // { timer, html, anchorEl, startX, startY }
+  let lastClientPos = { x: null, y: null };
+
+  function cancelPendingToolTip(){
+    if (pendingToolTip?.timer) clearTimeout(pendingToolTip.timer);
+    pendingToolTip = null;
+  }
+
+  function scheduleToolTip(html, anchorEl, startX, startY, delayMs=1000){
+    cancelPendingToolTip();
+    pendingToolTip = { html, anchorEl, startX, startY, timer: null };
+    pendingToolTip.timer = setTimeout(() => {
+      if (!pendingToolTip) return;
+      const p = pendingToolTip;
+      pendingToolTip = null;
+      showTip(p.html, p.anchorEl, 1800);
+    }, delayMs);
+  }
+
+  // 이동/클릭/스크롤/키입력 등 "다른 동작"이 발생하면 예약된 툴팁은 표시하지 않음
+  window.addEventListener('pointermove', (e) => {
+    lastClientPos.x = e.clientX;
+    lastClientPos.y = e.clientY;
+
+    if (!pendingToolTip) return;
+    const sx = pendingToolTip.startX, sy = pendingToolTip.startY;
+    if (sx == null || sy == null) { cancelPendingToolTip(); return; }
+
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (dx*dx + dy*dy > 9) cancelPendingToolTip(); // 3px 초과 이동 시 취소
+  }, true);
+
+  window.addEventListener('pointerdown', () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
+  window.addEventListener('wheel',      () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
+  window.addEventListener('keydown',    () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
+  window.addEventListener('touchstart', () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
 
   // =================
   // 2) State + History (Undo/Redo 통합: index 방식)
@@ -560,7 +598,6 @@
     try{
       localStorage.setItem(HISTORY_BUNDLE_KEY, JSON.stringify(historyBundle));
     }catch{
-      // 용량 문제 등: 오래된 것부터 줄여서 재시도
       try{
         if (historyBundle.stack.length > 10){
           const cut = historyBundle.stack.length - 10;
@@ -581,20 +618,17 @@
     const snap = snapshotState();
     const cur = historyBundle.stack[historyBundle.idx];
 
-    // 동일 상태 연속 저장 방지
     if (cur && JSON.stringify(cur) === JSON.stringify(snap)) {
       updateHistoryButtons();
       return;
     }
 
-    // Undo 후 새 동작을 하면 "미래(redo)"는 버림
     if (historyBundle.idx < historyBundle.stack.length - 1) {
       historyBundle.stack = historyBundle.stack.slice(0, historyBundle.idx + 1);
     }
 
     historyBundle.stack.push(snap);
 
-    // MAX_HISTORY 유지 (앞에서 잘라내고 idx 보정)
     if (historyBundle.stack.length > MAX_HISTORY) {
       const cut = historyBundle.stack.length - MAX_HISTORY;
       historyBundle.stack = historyBundle.stack.slice(cut);
@@ -612,7 +646,7 @@
   }
 
   // =================
-  // 3) Geometry helpers (아래는 기존과 동일)
+  // 3) Geometry helpers
   // =================
   const EPS=1e-9;
   const v=(x,y)=>({x,y});
@@ -982,11 +1016,9 @@
 
   // History bundle init
   let historyBundle = loadHistoryBundle({points,segments,lines,circles,parabolas,ellipses});
-  // 현재 로드된 state가 history의 현재 idx와 다르면 뒤에 붙이고 idx를 끝으로
   const curSnapInit = snapshotState();
   const curHistSnap = historyBundle.stack[historyBundle.idx];
   if (!curHistSnap || JSON.stringify(curHistSnap) !== JSON.stringify(curSnapInit)) {
-    // idx 이후는 잘라내고 새 스냅샷 추가
     historyBundle.stack = historyBundle.stack.slice(0, historyBundle.idx + 1);
     historyBundle.stack.push(curSnapInit);
     historyBundle.idx = historyBundle.stack.length - 1;
@@ -1079,7 +1111,8 @@
     draw();
   }
 
-  function setTool(tname, anchor=null){
+  // ✅ setTool: "버튼 클릭 후 1초 정지"일 때만 설명 표시
+  function setTool(tname, anchor=null, ev=null){
     tool=tname;
     toolPointBtn.classList.toggle('active', tname==='point');
     toolSegmentBtn.classList.toggle('active', tname==='segment');
@@ -1091,6 +1124,9 @@
 
     cancelStep(false);
 
+    // 새 도구 선택 시 이전 예약(대기중) 툴팁은 취소
+    cancelPendingToolTip();
+
     const msg = {
       point: t("tooltip_point"),
       segment: t("tooltip_segment"),
@@ -1101,7 +1137,13 @@
       select: t("tooltip_select")
     }[tname] || "";
 
-    showTip(msg, anchor, 1800);
+    // "버튼 클릭"으로 들어온 경우에만 1초 지연 표시 예약
+    if (ev && anchor) {
+      const sx = ev.clientX ?? lastClientPos.x;
+      const sy = ev.clientY ?? lastClientPos.y;
+      scheduleToolTip(msg, anchor, sx, sy, 1000);
+    }
+
     draw();
   }
 
@@ -2009,14 +2051,14 @@
     showTip(t("cleared"), btnClearAll, 900);
   }
 
-  // Buttons
-  toolPointBtn.addEventListener('click',()=>setTool('point', toolPointBtn));
-  toolSegmentBtn.addEventListener('click',()=>setTool('segment', toolSegmentBtn));
-  toolLineBtn.addEventListener('click',()=>setTool('line', toolLineBtn));
-  toolCircleBtn.addEventListener('click',()=>setTool('circle', toolCircleBtn));
-  toolParabolaBtn.addEventListener('click',()=>setTool('parabola', toolParabolaBtn));
-  toolEllipseBtn.addEventListener('click',()=>setTool('ellipse', toolEllipseBtn));
-  toolSelectBtn.addEventListener('click',()=>setTool('select', toolSelectBtn));
+  // Buttons (✅ click 이벤트 e를 setTool에 전달)
+  toolPointBtn.addEventListener('click',(e)=>setTool('point', toolPointBtn, e));
+  toolSegmentBtn.addEventListener('click',(e)=>setTool('segment', toolSegmentBtn, e));
+  toolLineBtn.addEventListener('click',(e)=>setTool('line', toolLineBtn, e));
+  toolCircleBtn.addEventListener('click',(e)=>setTool('circle', toolCircleBtn, e));
+  toolParabolaBtn.addEventListener('click',(e)=>setTool('parabola', toolParabolaBtn, e));
+  toolEllipseBtn.addEventListener('click',(e)=>setTool('ellipse', toolEllipseBtn, e));
+  toolSelectBtn.addEventListener('click',(e)=>setTool('select', toolSelectBtn, e));
 
   langKoBtn.addEventListener('click', ()=> setLang("ko"));
   langEnBtn.addEventListener('click', ()=> setLang("en"));
@@ -2029,26 +2071,24 @@
   // Shortcuts
   window.addEventListener('keydown',(e)=>{
     const k=e.key.toLowerCase();
-    if (k==='p') setTool('point', null);
-    if (k==='g') setTool('segment', null);
-    if (k==='l') setTool('line', null);
-    if (k==='c') setTool('circle', null);
-    if (k==='a') setTool('parabola', null);
-    if (k==='e') setTool('ellipse', null);
-    if (k==='v') setTool('select', null);
+    // 키보드로 도구 변경 시에는 버튼설명(1초 대기 툴팁)을 띄우지 않습니다.
+    if (k==='p') setTool('point', null, null);
+    if (k==='g') setTool('segment', null, null);
+    if (k==='l') setTool('line', null, null);
+    if (k==='c') setTool('circle', null, null);
+    if (k==='a') setTool('parabola', null, null);
+    if (k==='e') setTool('ellipse', null, null);
+    if (k==='v') setTool('select', null, null);
     if (k==='escape') cancelStep(true);
 
-    // Ctrl+Z / Cmd+Z = Undo
     if ((e.ctrlKey || e.metaKey) && k==='z' && !e.shiftKey){
       e.preventDefault();
       undoOneStep();
     }
-    // Ctrl+Y / Cmd+Y = Redo (Windows style)
     if ((e.ctrlKey || e.metaKey) && k==='y'){
       e.preventDefault();
       redoOneStep();
     }
-    // Ctrl+Shift+Z / Cmd+Shift+Z = Redo (common)
     if ((e.ctrlKey || e.metaKey) && k==='z' && e.shiftKey){
       e.preventDefault();
       redoOneStep();
