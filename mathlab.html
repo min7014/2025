@@ -2,2111 +2,1689 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Math Tool - Local (i18n KO/EN)</title>
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MathLab (GeoGebra-like) - Single HTML</title>
+
+  <!-- KaTeX (LaTeX 렌더링) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
   <style>
-    html, body { height: 100%; margin: 0; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #0b0f14; color: #e6edf3; }
-    .topbar { position: fixed; top: 12px; left: 12px; right: 12px; display:flex; gap:8px; align-items:center; z-index:10; flex-wrap:wrap; }
-    .panel { background: rgba(20,26,34,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px);
-      border-radius: 12px; padding: 10px 12px; display:flex; gap:10px; align-items:center; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
-    button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color:#e6edf3; padding:8px 10px; border-radius:10px;
-      cursor:pointer; user-select:none; white-space:nowrap; }
-    button:hover { background: rgba(255,255,255,0.12); }
-    button.active { background: rgba(120,200,255,0.22); border-color: rgba(120,200,255,0.35); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .readout { opacity:0.9; font-size:13px; }
-    canvas { display:block; width:100%; height:100%; touch-action:none; }
-
-    .siteBtn {
-      position: fixed;
-      left: 12px;
-      bottom: 12px;
-      z-index: 12;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: rgba(20,26,34,0.85);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #e6edf3;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-      backdrop-filter: blur(8px);
-      font-size: 13px;
-      user-select: none;
-    }
-    .siteBtn:hover { background: rgba(255,255,255,0.12); }
-    .siteBtn .badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(120,200,255,0.18);
-      border: 1px solid rgba(120,200,255,0.25);
-      opacity: 0.95;
+    :root{
+      --bg:#0b0f14;
+      --border:#24314a;
+      --text:#e8eefc;
+      --muted:#aab6d1;
+      --accent:#5aa2ff;
+      --danger:#ff5a7a;
+      --shadow:0 12px 40px rgba(0,0,0,.45);
+      --btnRadius:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
 
-    .footer {
-      position:fixed;
-      bottom:64px;
-      left:12px;
-      background: rgba(20,26,34,0.75);
-      border:1px solid rgba(255,255,255,0.08);
-      border-radius:12px;
+    html,body{
+      margin:0; height:100%;
+      background:var(--bg);
+      color:var(--text);
+      font-family:var(--font);
+      overflow:hidden;
+      user-select:none;
+    }
+
+    #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
+
+    #topbar{
+      display:flex; align-items:center; gap:10px;
       padding:10px 12px;
-      font-size:12px;
-      opacity:0.88;
-      line-height:1.35;
+      background:linear-gradient(180deg, rgba(18,24,38,.95), rgba(18,24,38,.70));
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
       z-index:10;
-      max-width:min(980px, calc(100vw - 24px));
     }
-    code { background: rgba(255,255,255,0.08); padding:2px 6px; border-radius:8px; }
 
-    .langWrap { display:flex; gap:0; overflow:hidden; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); }
-    .langWrap button { border-radius:0; border:none; background: rgba(255,255,255,0.06); padding:8px 12px; }
-    .langWrap button + button { border-left: 1px solid rgba(255,255,255,0.12); }
-    .langWrap button.active { background: rgba(255,255,255,0.14); }
+    .group{
+      display:flex; gap:8px; align-items:center;
+      padding:6px;
+      background:rgba(15,21,34,.55);
+      border:1px solid rgba(36,49,74,.65);
+      border-radius:16px;
+    }
 
-    .tip { position:fixed; z-index:9999; display:none; background: rgba(20,26,34,0.94); border:1px solid rgba(255,255,255,0.10);
-      border-radius:12px; padding:10px 12px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); backdrop-filter: blur(10px);
-      max-width:min(560px, calc(100vw - 24px)); font-size:13px; line-height:1.35; opacity:0; pointer-events:none;
-      transform: translateY(-4px); transition: opacity 160ms ease, transform 160ms ease; }
-    .tip.show { display:block; opacity:1; transform: translateY(0); }
-    .tip.hide { opacity:0; transform: translateY(-6px); }
-    .tip b { color: rgba(255,230,160,0.95); }
+    .btn{
+      appearance:none;
+      border:1px solid rgba(36,49,74,.9);
+      background:rgba(18,24,38,.65);
+      color:var(--text);
+      padding:9px 10px;
+      border-radius:var(--btnRadius);
+      cursor:pointer;
+      font-size:13px;
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+    }
+    .btn:hover{ background:rgba(24,32,52,.75); border-color:rgba(90,162,255,.6); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.active{
+      border-color: rgba(90,162,255,.9);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.18) inset;
+      background: rgba(90,162,255,.12);
+    }
+    .btn.danger{ border-color: rgba(255,90,122,.55); }
+    .btn.danger:hover{ border-color: rgba(255,90,122,.9); background: rgba(255,90,122,.12); }
+
+    .sep{ width:1px; height:26px; background:rgba(36,49,74,.75); margin:0 4px; }
+
+    #hint{
+      margin-left:auto;
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 44vw;
+    }
+
+    #canvasWrap{ position:relative; flex:1; overflow:hidden; }
+    canvas{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      display:block;
+      cursor:crosshair;
+    }
+
+    #overlay{ position:absolute; inset:0; pointer-events:none; z-index:6; }
+
+    .textItem{
+      position:absolute;
+      pointer-events:auto;
+      white-space:pre-wrap;
+      color:var(--text);
+      font-size:16px;
+      line-height:1.25;
+      padding:4px 6px;
+      border-radius:10px;
+      background: rgba(18,24,38,.0);
+      border:1px solid rgba(0,0,0,0);
+      transform: translate(-50%, -50%);
+    }
+    .textItem.selected{
+      background: rgba(90,162,255,.10);
+      border-color: rgba(90,162,255,.50);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
+    }
+
+    .labelItem{
+      position:absolute;
+      pointer-events:none;
+      transform: translate(-50%, -120%);
+      font-size:13px;
+      color: rgba(232,238,252,.92);
+      background: rgba(18,24,38,.55);
+      border: 1px solid rgba(36,49,74,.7);
+      border-radius:10px;
+      padding:3px 6px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.30);
+      white-space:nowrap;
+    }
+
+    #floatingTip{
+      position:fixed;
+      z-index:50;
+      max-width: 360px;
+      background: rgba(18,24,38,.92);
+      border:1px solid rgba(36,49,74,.9);
+      border-radius: 14px;
+      padding:10px 12px;
+      box-shadow: var(--shadow);
+      display:none;
+      font-size:12px;
+      color: var(--text);
+    }
+    #floatingTip .t{ font-weight:700; margin-bottom:6px; font-size:12px; }
+    #floatingTip .d{ color: var(--muted); line-height:1.35; }
+
+    .panel{
+      position:fixed;
+      z-index:60;
+      width: 340px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding:12px;
+      display:none;
+      user-select:text;
+    }
+    .panel h3{ margin:0 0 8px 0; font-size:14px; color: var(--text); }
+
+    .row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
+    .row label{ width:88px; color: var(--muted); font-size:12px; }
+    .row input, .row textarea{
+      flex:1;
+      background: rgba(15,21,34,.85);
+      border:1px solid rgba(36,49,74,.85);
+      color: var(--text);
+      border-radius: 12px;
+      padding:8px 10px;
+      font-size:12px;
+      outline:none;
+    }
+    .row textarea{
+      min-height: 80px;
+      resize: vertical;
+      font-family: var(--font);
+    }
+    .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+    .mini{ font-size:12px; padding:8px 10px; border-radius: 12px; }
+
+    #siteLink{
+      position:fixed;
+      left:12px;
+      bottom:12px;
+      z-index:20;
+      text-decoration:none;
+    }
+
+    @media (max-width: 820px){
+      #hint{ display:none; }
+      .panel{ width: 90vw; }
+    }
   </style>
 </head>
+
 <body>
-  <div class="topbar">
-    <div class="panel">
-      <button id="toolPoint" class="active" type="button">점</button>
-      <button id="toolSegment" type="button">선분</button>
-      <button id="toolLine" type="button">직선</button>
-      <button id="toolCircle" type="button">원</button>
-      <button id="toolParabola" type="button">포물선</button>
-      <button id="toolEllipse" type="button">타원</button>
-      <button id="toolSelect" type="button">선택/이동</button>
-      <span class="readout" id="readout"></span>
+<div id="app">
+  <div id="topbar">
+    <div class="group" id="toolGroup">
+      <button class="btn" data-tool="select"  id="btnSelect">선택/이동</button>
+      <button class="btn" data-tool="point"   id="btnPoint">점</button>
+      <button class="btn" data-tool="segment" id="btnSeg">선분</button>
+      <button class="btn" data-tool="line"    id="btnLine">직선</button>
+      <button class="btn" data-tool="circle"  id="btnCircle">원</button>
+      <button class="btn" data-tool="parabola" id="btnParabola">포물선</button>
+      <button class="btn" data-tool="ellipse"  id="btnEllipse">타원</button>
+      <button class="btn" data-tool="text"    id="btnText">텍스트</button>
     </div>
 
-    <div class="panel">
-      <div class="langWrap" role="tablist" aria-label="Language">
-        <button id="langKo" class="active" type="button" role="tab" aria-selected="true">한국어</button>
-        <button id="langEn" type="button" role="tab" aria-selected="false">English</button>
-      </div>
+    <div class="group">
+      <button class="btn" id="btnUndo">이전(Undo)</button>
+      <button class="btn" id="btnRedo">다음(Redo)</button>
+      <div class="sep"></div>
+      <button class="btn" id="btnLang">KO</button>
     </div>
 
-    <div class="panel">
-      <button id="btnUndo" type="button">이전 단계</button>
-      <button id="btnRedo" type="button">다음 단계</button>
-      <button id="btnClearAll" type="button">전체 삭제</button>
-      <button id="btnCancelStep" type="button">현재 단계 취소(ESC)</button>
-    </div>
+    <div id="hint"></div>
   </div>
 
-  <canvas id="c"></canvas>
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
+    <div id="overlay"></div>
+  </div>
+</div>
 
-  <a id="siteBtn" class="siteBtn" href="https://min7014.github.io" target="_blank" rel="noopener noreferrer">
-    <span class="badge" id="siteBadge">LINK</span>
-    <span id="siteText">min7014.github.io</span>
-  </a>
+<a id="siteLink" class="btn" href="https://min7014.github.io" target="_blank" rel="noopener">min7014.github.io</a>
 
-  <div class="footer" id="footer"></div>
-  <div id="tip" class="tip" aria-live="polite"></div>
+<div id="floatingTip">
+  <div class="t" id="tipTitle"></div>
+  <div class="d" id="tipDesc"></div>
+</div>
+
+<div class="panel" id="objEditor">
+  <h3 id="objTitle">객체 속성</h3>
+  <div class="row"><label id="lblKind">종류</label><input id="objKind" readonly /></div>
+  <div class="row"><label>ID</label><input id="objId" readonly /></div>
+  <div class="row"><label id="lblName">이름</label><input id="objName" placeholder="예: A, l1, c1 ..." /></div>
+  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $y=x^2$ 처럼 $...$ 안은 LaTeX"></textarea></div>
+  <div class="row" id="rowX"><label>X</label><input id="objX" /></div>
+  <div class="row" id="rowY"><label>Y</label><input id="objY" /></div>
+  <div class="actions">
+    <button class="btn mini danger" id="btnObjCancel">취소</button>
+    <button class="btn mini" id="btnObjSave">저장</button>
+  </div>
+</div>
+
+<div class="panel" id="textEditor">
+  <h3 id="textTitle">텍스트 편집</h3>
+  <div class="row"><label id="lblText">내용</label><textarea id="textContent" placeholder="텍스트. $...$ 안은 LaTeX로 렌더링됩니다."></textarea></div>
+  <div class="actions">
+    <button class="btn mini danger" id="btnTextCancel">취소</button>
+    <button class="btn mini" id="btnTextSave">저장</button>
+  </div>
+</div>
 
 <script>
 (() => {
-  // =================
-  // 0) 찌꺼기 삭제(버전 바뀌면 localStorage 정리)
-  // =================
-  const BUILD_ID = "2026-01-11-i18n-ellipse-undo-redo-unified-delayedtip-01";
-  const BUILD_KEY = "mathlab_build_id";
+  "use strict";
 
-  function purgeOldLocalStorageIfNeeded() {
-    try {
-      const prev = localStorage.getItem(BUILD_KEY);
-      if (prev === BUILD_ID) return false;
-      const del = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith("mathlab_")) del.push(k);
-      }
-      for (const k of del) localStorage.removeItem(k);
-      localStorage.setItem(BUILD_KEY, BUILD_ID);
-      return true;
-    } catch { return false; }
-  }
-  const didPurge = purgeOldLocalStorageIfNeeded();
-
-  // DOM
-  const canvas = document.getElementById('c');
-  const ctx = canvas?.getContext?.('2d');
-  const readout = document.getElementById('readout');
-  const tipEl = document.getElementById('tip');
-  const footerEl = document.getElementById('footer');
-
-  const siteBtn = document.getElementById('siteBtn');
-  const siteBadge = document.getElementById('siteBadge');
-  const siteText = document.getElementById('siteText');
-
-  const toolPointBtn = document.getElementById('toolPoint');
-  const toolSegmentBtn = document.getElementById('toolSegment');
-  const toolLineBtn = document.getElementById('toolLine');
-  const toolCircleBtn = document.getElementById('toolCircle');
-  const toolParabolaBtn = document.getElementById('toolParabola');
-  const toolEllipseBtn = document.getElementById('toolEllipse');
-  const toolSelectBtn = document.getElementById('toolSelect');
-
-  const langKoBtn = document.getElementById('langKo');
-  const langEnBtn = document.getElementById('langEn');
-
-  const btnUndo = document.getElementById('btnUndo');
-  const btnRedo = document.getElementById('btnRedo');
-  const btnClearAll = document.getElementById('btnClearAll');
-  const btnCancelStep = document.getElementById('btnCancelStep');
-
-  if (!canvas || !ctx || !readout || !tipEl || !footerEl ||
-      !siteBtn || !siteBadge || !siteText ||
-      !toolPointBtn || !toolSegmentBtn || !toolLineBtn || !toolCircleBtn || !toolParabolaBtn || !toolEllipseBtn || !toolSelectBtn ||
-      !langKoBtn || !langEnBtn ||
-      !btnUndo || !btnRedo || !btnClearAll || !btnCancelStep) {
-    alert('UI 요소 로딩에 실패했습니다. HTML이 손상되었는지 확인해 주세요.');
-    return;
-  }
-
-  // =================
-  // 1) i18n
-  // =================
-  const LANG_KEY = "mathlab_lang";
-  let lang = (localStorage.getItem(LANG_KEY) === "en") ? "en" : "ko";
-
+  /* =========================
+     i18n
+  ========================= */
   const I18N = {
     ko: {
-      toolPoint: "점",
-      toolSegment: "선분",
-      toolLine: "직선",
-      toolCircle: "원",
-      toolParabola: "포물선",
-      toolEllipse: "타원",
-      toolSelect: "선택/이동",
-
-      undo: "이전 단계",
-      redo: "다음 단계",
-      clearAll: "전체 삭제",
-      cancelStep: "현재 단계 취소(ESC)",
-      mouse: "마우스",
-
-      site_badge: "이동",
-      site_title: "min7014.github.io 로 이동",
-
-      tooltip_point: "<b>점</b>: (1) 교점 근처 클릭=교점 생성, (2) 도형 위 클릭=구속점 생성, (3) 빈 곳 클릭=자유점",
-      tooltip_segment: "<b>선분</b>: 첫 점 → 둘째 점 (2점씩 짝지어 생성)",
-      tooltip_line: "<b>직선</b>: 첫 점 → 둘째 점",
-      tooltip_circle: "<b>원</b>: 중심 → 원 위의 점",
-      tooltip_parabola: "<b>포물선</b>: 초점(점) → 준선(직선/선분/두 점)",
-      tooltip_ellipse: "<b>타원</b>: 초점1(점) → 초점2(점) → 타원 위의 점",
-      tooltip_select: "<b>선택/이동</b>: 자유점/구속점 이동 가능(구속점은 도형 위로만), 교점은 이동 불가",
-
-      footer_html:
-        "✅ 상태는 <b>브라우저(localStorage)</b>에만 저장됩니다(서버 저장 0)<br/>" +
-        "✅ <b>되돌리기</b>=이전 단계, <b>복원</b>=다음 단계(Undo/Redo 통합)<br/>" +
-        "✅ <b>점 도구</b>: (1) 교점 근처 클릭 → <b>교점(종속점)</b> 생성 (포물선-포물선, 타원-타원 포함)<br/>" +
-        "✅ <b>점 도구</b>: (2) 선분/직선/원/포물선/타원 위 클릭 → <b>구속점</b> 생성(해당 도형 위에서만 이동)<br/>" +
-        "✅ <b>선택/이동</b>: 자유점/구속점은 이동 가능, 교점은 이동 불가<br/>" +
-        "단축키: <code>P</code>=점, <code>G</code>=선분, <code>L</code>=직선, <code>C</code>=원, <code>A</code>=포물선, <code>E</code>=타원, <code>V</code>=선택, <code>ESC</code>=단계취소, <code>Ctrl+Z</code>=이전, <code>Ctrl+Y</code>=다음, <code>Ctrl+Shift+Z</code>=다음",
-
-      step_cancelled: "현재 단계가 취소되었습니다.",
-      intersection_created: "교점이 생성되었습니다(종속점).",
-      constrained_created: "구속점이 생성되었습니다(도형 위에서만 이동).",
-
-      seg_first: "선분: 첫 점 선택됨 → 둘째 점을 선택하세요.",
-      seg_first_cancel: "선분: 첫 점 선택 취소",
-      seg_done: "선분 생성 완료",
-
-      line_first: "직선: 첫 점 선택됨 → 둘째 점을 선택하세요.",
-      line_first_cancel: "직선: 첫 점 선택 취소",
-      line_done: "직선 생성 완료",
-
-      circle_center: "원: 중심 선택됨 → 원 위의 점을 선택하세요.",
-      circle_center_cancel: "원: 중심 선택 취소",
-      circle_done: "원 생성 완료",
-
-      parabola_focus: "포물선: 초점 선택됨 → 준선을 선택하세요(직선/선분/두 점).",
-      parabola_dir_first: "포물선: 준선 첫 점 선택됨 → 준선 둘째 점을 선택하세요.",
-      parabola_dir_first_cancel: "포물선: 준선 첫 점 선택 취소",
-      parabola_done_line: "포물선 생성 완료(준선=직선).",
-      parabola_done_segment: "포물선 생성 완료(준선=선분의 연장선).",
-      parabola_done_2pts: "포물선 생성 완료(준선=두 점을 잇는 직선).",
-
-      ellipse_f1: "타원: 초점1 선택됨 → 초점2를 선택하세요.",
-      ellipse_f2: "타원: 초점2 선택됨 → 타원 위의 점(세 번째 점)을 선택하세요.",
-      ellipse_f2_cancel: "타원: 초점2 선택 취소",
-      ellipse_done: "타원 생성 완료",
-
-      intersection_immovable: "교점(종속점)은 이동할 수 없습니다.",
-      free_selected: "자유점 선택됨. 드래그하여 이동하세요.",
-      constrained_selected: "구속점 선택됨. 도형 위에서만 이동합니다.",
-      moved_saved: "이동이 저장되었습니다.",
-
-      nothing_undo: "되돌릴 이전 단계가 없습니다.",
-      undo_done: "이전 단계로 되돌렸습니다.",
-      nothing_redo: "복원할 다음 단계가 없습니다.",
-      redo_done: "다음 단계로 복원했습니다.",
-
-      cleared: "전체 삭제 완료",
-      init_purged: "이전 찌꺼기를 자동 삭제하고 새 버전으로 시작합니다.",
-      init_ok: "버튼 설명: 클릭 후 1초간 정지 시에만 표시됩니다.",
-      lang_switched: "언어가 변경되었습니다."
+      tools: {
+        select: { name:"선택/이동", desc:"객체 선택 후 드래그로 이동합니다. 선택된 객체에서 Enter 키를 누르면 속성창이 열립니다." },
+        point:  { name:"점", desc:"화면 클릭으로 점 생성. 선/선분/원/곡선 위 클릭이면 그 위에서만 움직이는 종속점 생성. 교점도 생성 가능." },
+        segment:{ name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성하면 선분 생성. 선분 1개 생성 후 다음 클릭은 새 선분의 첫 점입니다." },
+        line:   { name:"직선", desc:"두 점 선택/생성하면 그 두 점을 지나는 직선 생성." },
+        circle: { name:"원", desc:"중심점 선택/생성 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:{ name:"포물선", desc:"초점 점 선택/생성 → 준선(직선/선분) 선택 또는 두 점으로 준선 지정 시 포물선 생성." },
+        ellipse:{ name:"타원", desc:"초점1 → 초점2 → 타원 위 점(3번째 점)으로 타원 생성." },
+        text:   { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다." },
+      },
+      ui: {
+        hint:"팁: 선택도구에서 객체 선택 후 Enter → 속성창 / 텍스트 더블클릭 → 내용 편집 / Shift+더블클릭 → 속성창",
+        objTitle:"객체 속성",
+        kind:"종류",
+        name:"이름",
+        caption:"캡션",
+        textTitle:"텍스트 편집",
+        content:"내용",
+        undo:"이전(Undo)",
+        redo:"다음(Redo)",
+      }
     },
     en: {
-      toolPoint: "Point",
-      toolSegment: "Segment",
-      toolLine: "Line",
-      toolCircle: "Circle",
-      toolParabola: "Parabola",
-      toolEllipse: "Ellipse",
-      toolSelect: "Select/Move",
-
-      undo: "Undo",
-      redo: "Redo",
-      clearAll: "Clear All",
-      cancelStep: "Cancel Step (ESC)",
-      mouse: "Mouse",
-
-      site_badge: "GO",
-      site_title: "Go to min7014.github.io",
-
-      tooltip_point: "<b>Point</b>: (1) Click near an intersection → intersection point, (2) Click on an object → constrained point, (3) Click empty space → free point",
-      tooltip_segment: "<b>Segment</b>: first point → second point (creates in pairs)",
-      tooltip_line: "<b>Line</b>: first point → second point",
-      tooltip_circle: "<b>Circle</b>: center → point on circle",
-      tooltip_parabola: "<b>Parabola</b>: focus(point) → directrix(line/segment/two points)",
-      tooltip_ellipse: "<b>Ellipse</b>: focus1(point) → focus2(point) → a point on ellipse",
-      tooltip_select: "<b>Select/Move</b>: free & constrained points are draggable (constrained stays on object), intersections are not draggable",
-
-      footer_html:
-        "✅ State is stored <b>only in your browser (localStorage)</b> (no server storage)<br/>" +
-        "✅ Unified <b>Undo</b> & <b>Redo</b> (Previous/Next step)<br/>" +
-        "✅ <b>Point tool</b>: (1) Click near an intersection → <b>dependent intersection point</b> (includes parabola–parabola, ellipse–ellipse)<br/>" +
-        "✅ <b>Point tool</b>: (2) Click on segment/line/circle/parabola/ellipse → <b>constrained point</b> (moves only on that object)<br/>" +
-        "✅ <b>Select/Move</b>: free & constrained points can move; intersection points cannot<br/>" +
-        "Shortcuts: <code>P</code>=Point, <code>G</code>=Segment, <code>L</code>=Line, <code>C</code>=Circle, <code>A</code>=Parabola, <code>E</code>=Ellipse, <code>V</code>=Select, <code>ESC</code>=Cancel, <code>Ctrl+Z</code>=Undo, <code>Ctrl+Y</code>=Redo, <code>Ctrl+Shift+Z</code>=Redo",
-
-      step_cancelled: "Current step has been cancelled.",
-      intersection_created: "Intersection point created (dependent).",
-      constrained_created: "Constrained point created (moves only on the object).",
-
-      seg_first: "Segment: first point selected → choose the second point.",
-      seg_first_cancel: "Segment: first point selection cancelled.",
-      seg_done: "Segment created.",
-
-      line_first: "Line: first point selected → choose the second point.",
-      line_first_cancel: "Line: first point selection cancelled.",
-      line_done: "Line created.",
-
-      circle_center: "Circle: center selected → choose a point on the circle.",
-      circle_center_cancel: "Circle: center selection cancelled.",
-      circle_done: "Circle created.",
-
-      parabola_focus: "Parabola: focus selected → choose the directrix (line/segment/two points).",
-      parabola_dir_first: "Parabola: first directrix point selected → choose the second point.",
-      parabola_dir_first_cancel: "Parabola: first directrix point selection cancelled.",
-      parabola_done_line: "Parabola created (directrix = line).",
-      parabola_done_segment: "Parabola created (directrix = extension of segment).",
-      parabola_done_2pts: "Parabola created (directrix = line through two points).",
-
-      ellipse_f1: "Ellipse: focus1 selected → choose focus2.",
-      ellipse_f2: "Ellipse: focus2 selected → choose a point on the ellipse (third point).",
-      ellipse_f2_cancel: "Ellipse: focus2 selection cancelled.",
-      ellipse_done: "Ellipse created.",
-
-      intersection_immovable: "Intersection (dependent) points cannot be dragged.",
-      free_selected: "Free point selected. Drag to move.",
-      constrained_selected: "Constrained point selected. It stays on the object.",
-      moved_saved: "Move saved.",
-
-      nothing_undo: "No previous step to undo.",
-      undo_done: "Undone.",
-      nothing_redo: "No next step to redo.",
-      redo_done: "Redone.",
-
-      cleared: "Cleared.",
-      init_purged: "Old leftovers were removed and a fresh version started.",
-      init_ok: "Button tooltips: shown only after 1s of idle after click.",
-      lang_switched: "Language switched."
+      tools: {
+        select: { name:"Select/Move", desc:"Select and drag to move. Press Enter on a selected object to open properties." },
+        point:  { name:"Point", desc:"Click to create a point. Click on objects to create dependent constrained points (also intersections)." },
+        segment:{ name:"Segment", desc:"Pick/create first point → pick/create second point to create a segment. Then it resets for a new segment." },
+        line:   { name:"Line", desc:"Pick/create two points to create a line." },
+        circle: { name:"Circle", desc:"Pick/create center → pick/create a point on circle." },
+        parabola:{ name:"Parabola", desc:"Pick/create focus → choose directrix (line/segment) or define by two points." },
+        ellipse:{ name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        text:   { name:"Text", desc:"Click to create text. Anything inside $...$ is rendered as LaTeX." },
+      },
+      ui: {
+        hint:"Tip: Select tool + Enter opens properties / Double-click text edits content / Shift+Double-click opens properties",
+        objTitle:"Object Properties",
+        kind:"Kind",
+        name:"Name",
+        caption:"Caption",
+        textTitle:"Edit Text",
+        content:"Content",
+        undo:"Undo",
+        redo:"Redo",
+      }
     }
   };
 
-  function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.ko[key] || key; }
+  let lang = "ko";
+  const t = () => I18N[lang];
 
-  function applyLanguageToUI(){
-    document.documentElement.lang = (lang === "en") ? "en" : "ko";
+  /* =========================
+     Utils
+  ========================= */
+  const $ = (id) => document.getElementById(id);
+  const rndId = () => Math.random().toString(36).slice(2, 10);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const dist2 = (ax,ay,bx,by) => (ax-bx)*(ax-bx)+(ay-by)*(ay-by);
+  const dist = (ax,ay,bx,by) => Math.hypot(ax-bx, ay-by);
+  const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
-    toolPointBtn.textContent = t("toolPoint");
-    toolSegmentBtn.textContent = t("toolSegment");
-    toolLineBtn.textContent = t("toolLine");
-    toolCircleBtn.textContent = t("toolCircle");
-    toolParabolaBtn.textContent = t("toolParabola");
-    toolEllipseBtn.textContent = t("toolEllipse");
-    toolSelectBtn.textContent = t("toolSelect");
-
-    btnUndo.textContent = t("undo");
-    btnRedo.textContent = t("redo");
-    btnClearAll.textContent = t("clearAll");
-    btnCancelStep.textContent = t("cancelStep");
-
-    siteBadge.textContent = t("site_badge");
-    siteBtn.title = t("site_title");
-    siteBtn.setAttribute("aria-label", t("site_title"));
-
-    footerEl.innerHTML = t("footer_html");
-
-    langKoBtn.classList.toggle("active", lang === "ko");
-    langEnBtn.classList.toggle("active", lang === "en");
-    langKoBtn.setAttribute("aria-selected", lang === "ko" ? "true" : "false");
-    langEnBtn.setAttribute("aria-selected", lang === "en" ? "true" : "false");
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
   }
 
-  function setLang(newLang){
-    lang = (newLang === "en") ? "en" : "ko";
-    localStorage.setItem(LANG_KEY, lang);
-    applyLanguageToUI();
-    showTip(t("lang_switched"), (lang==="en") ? langEnBtn : langKoBtn, 900);
-    draw();
-  }
+  function renderMixedLatex(raw){
+    if (!raw) return "";
+    const hasKaTeX = typeof katex !== "undefined" && katex.renderToString;
+    if (!hasKaTeX) return escapeHtml(raw);
 
-  // Tooltip
-  let tipTimer=null, tipHideTimer=null;
-  const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
-  function hideTip(){
-    tipEl.classList.remove('show'); tipEl.classList.add('hide');
-    if (tipHideTimer) clearTimeout(tipHideTimer);
-    tipHideTimer=setTimeout(()=>{ if (tipEl.classList.contains('hide')) tipEl.style.display='none'; }, 200);
-  }
-  function positionTip(anchorEl){
-    const padding=10, gap=10;
-    const tw=Math.max(1, tipEl.offsetWidth), th=Math.max(1, tipEl.offsetHeight);
-    if (!anchorEl || !anchorEl.getBoundingClientRect){
-      const left=Math.round((window.innerWidth - tw)/2), top=72;
-      tipEl.style.left=`${clamp(left,padding,window.innerWidth-padding-tw)}px`;
-      tipEl.style.top =`${clamp(top ,padding,window.innerHeight-padding-th)}px`;
-      return;
-    }
-    const r=anchorEl.getBoundingClientRect();
-    let left=r.right+gap, top=r.top+(r.height-th)/2;
-    if (left+tw > window.innerWidth-padding) left = r.left-gap-tw;
-    left=clamp(left,padding,window.innerWidth-padding-tw);
-    top =clamp(top ,padding,window.innerHeight-padding-th);
-    tipEl.style.left=`${Math.round(left)}px`;
-    tipEl.style.top =`${Math.round(top)}px`;
-  }
-  function showTip(html, anchorEl=null, ms=1600){
-    if (tipTimer) clearTimeout(tipTimer);
-    tipEl.innerHTML=html;
-    tipEl.style.display='block';
-    tipEl.classList.remove('hide'); tipEl.classList.add('show');
-    requestAnimationFrame(()=>positionTip(anchorEl));
-    tipTimer=setTimeout(hideTip, ms);
-  }
-  window.addEventListener('resize', hideTip);
-  window.addEventListener('scroll', hideTip, true);
+    let out = "";
+    let i = 0;
+    while (i < raw.length){
+      const s = raw.indexOf("$", i);
+      if (s === -1){ out += escapeHtml(raw.slice(i)); break; }
+      const e = raw.indexOf("$", s+1);
+      if (e === -1){ out += escapeHtml(raw.slice(i)); break; }
 
-  // ===== Delayed tooltip: show only if idle for 1s after tool-button click =====
-  let pendingToolTip = null; // { timer, html, anchorEl, startX, startY }
-  let lastClientPos = { x: null, y: null };
-
-  function cancelPendingToolTip(){
-    if (pendingToolTip?.timer) clearTimeout(pendingToolTip.timer);
-    pendingToolTip = null;
-  }
-
-  function scheduleToolTip(html, anchorEl, startX, startY, delayMs=1000){
-    cancelPendingToolTip();
-    pendingToolTip = { html, anchorEl, startX, startY, timer: null };
-    pendingToolTip.timer = setTimeout(() => {
-      if (!pendingToolTip) return;
-      const p = pendingToolTip;
-      pendingToolTip = null;
-      showTip(p.html, p.anchorEl, 1800);
-    }, delayMs);
-  }
-
-  // 이동/클릭/스크롤/키입력 등 "다른 동작"이 발생하면 예약된 툴팁은 표시하지 않음
-  window.addEventListener('pointermove', (e) => {
-    lastClientPos.x = e.clientX;
-    lastClientPos.y = e.clientY;
-
-    if (!pendingToolTip) return;
-    const sx = pendingToolTip.startX, sy = pendingToolTip.startY;
-    if (sx == null || sy == null) { cancelPendingToolTip(); return; }
-
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    if (dx*dx + dy*dy > 9) cancelPendingToolTip(); // 3px 초과 이동 시 취소
-  }, true);
-
-  window.addEventListener('pointerdown', () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
-  window.addEventListener('wheel',      () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
-  window.addEventListener('keydown',    () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
-  window.addEventListener('touchstart', () => { if (pendingToolTip) cancelPendingToolTip(); }, true);
-
-  // =================
-  // 2) State + History (Undo/Redo 통합: index 방식)
-  // =================
-  const STORAGE_KEY="mathlab_state_geo_v4";
-  const HISTORY_BUNDLE_KEY="mathlab_history_bundle_geo_v2";
-  const MAX_HISTORY = 30;
-
-  const safeNum = (x,f=0)=> (Number.isFinite(Number(x)) ? Number(x) : f);
-
-  function sanitizeState(obj){
-    const safe={ points:[], segments:[], lines:[], circles:[], parabolas:[], ellipses:[] };
-    if (!obj || typeof obj!=='object') return safe;
-
-    const pts = Array.isArray(obj.points)?obj.points:[];
-    const segs= Array.isArray(obj.segments)?obj.segments:[];
-    const lns = Array.isArray(obj.lines)?obj.lines:[];
-    const cirs= Array.isArray(obj.circles)?obj.circles:[];
-    const pars= Array.isArray(obj.parabolas)?obj.parabolas:[];
-    const ells= Array.isArray(obj.ellipses)?obj.ellipses:[];
-
-    for (const p of pts){
-      if (!p || typeof p!=='object') continue;
-      if (typeof p.id!=='string' || !p.id) continue;
-
-      let kind = 'free';
-      if (p.kind==='intersection') kind='intersection';
-      else if (p.kind==='constrained') kind='constrained';
-
-      const base={ id:p.id, x:safeNum(p.x,0), y:safeNum(p.y,0), kind };
-
-      if (kind==='intersection'){
-        const pa=p.parents?.a, pb=p.parents?.b;
-        if (!pa||!pb) continue;
-        if (typeof pa.kind!=='string'||typeof pa.id!=='string') continue;
-        if (typeof pb.kind!=='string'||typeof pb.id!=='string') continue;
-        base.parents={ a:{kind:pa.kind,id:pa.id}, b:{kind:pb.kind,id:pb.id} };
-      }
-
-      if (kind==='constrained'){
-        const c=p.constraint;
-        if (!c || typeof c!=='object') continue;
-        if (typeof c.kind!=='string' || typeof c.id!=='string') continue;
-        const k=c.kind;
-        const out={ kind:k, id:c.id, param:{} };
-        if (k==='segment' || k==='line'){
-          out.param.t = safeNum(c.param?.t, 0);
-        } else if (k==='circle' || k==='ellipse'){
-          out.param.ang = safeNum(c.param?.ang, 0);
-        } else if (k==='parabola'){
-          out.param.u = safeNum(c.param?.u, 0);
-        } else continue;
-        base.constraint=out;
-      }
-
-      safe.points.push(base);
-    }
-
-    const pointIds=new Set(safe.points.map(p=>p.id));
-
-    for (const s of segs){
-      if (!s||typeof s!=='object') continue;
-      if (typeof s.id!=='string'||!s.id) continue;
-      if (typeof s.a_id!=='string'||typeof s.b_id!=='string') continue;
-      if (!pointIds.has(s.a_id)||!pointIds.has(s.b_id)||s.a_id===s.b_id) continue;
-      safe.segments.push({ id:s.id, a_id:s.a_id, b_id:s.b_id });
-    }
-    for (const l of lns){
-      if (!l||typeof l!=='object') continue;
-      if (typeof l.id!=='string'||!l.id) continue;
-      if (typeof l.a_id!=='string'||typeof l.b_id!=='string') continue;
-      if (!pointIds.has(l.a_id)||!pointIds.has(l.b_id)||l.a_id===l.b_id) continue;
-      safe.lines.push({ id:l.id, a_id:l.a_id, b_id:l.b_id });
-    }
-    for (const c of cirs){
-      if (!c||typeof c!=='object') continue;
-      if (typeof c.id!=='string'||!c.id) continue;
-      if (typeof c.c_id!=='string'||typeof c.p_id!=='string') continue;
-      if (!pointIds.has(c.c_id)||!pointIds.has(c.p_id)||c.c_id===c.p_id) continue;
-      safe.circles.push({ id:c.id, c_id:c.c_id, p_id:c.p_id });
-    }
-    for (const p of pars){
-      if (!p||typeof p!=='object') continue;
-      if (typeof p.id!=='string'||!p.id) continue;
-      if (typeof p.f_id!=='string'||!pointIds.has(p.f_id)) continue;
-      if (typeof p.d_a_id!=='string'||typeof p.d_b_id!=='string') continue;
-      if (!pointIds.has(p.d_a_id)||!pointIds.has(p.d_b_id)||p.d_a_id===p.d_b_id) continue;
-      safe.parabolas.push({ id:p.id, f_id:p.f_id, d_a_id:p.d_a_id, d_b_id:p.d_b_id });
-    }
-    for (const e of ells){
-      if (!e||typeof e!=='object') continue;
-      if (typeof e.id!=='string'||!e.id) continue;
-      if (typeof e.f1_id!=='string'||typeof e.f2_id!=='string'||typeof e.p_id!=='string') continue;
-      if (!pointIds.has(e.f1_id)||!pointIds.has(e.f2_id)||!pointIds.has(e.p_id)) continue;
-      if (e.f1_id===e.f2_id) continue;
-      safe.ellipses.push({ id:e.id, f1_id:e.f1_id, f2_id:e.f2_id, p_id:e.p_id });
-    }
-
-    return safe;
-  }
-
-  function deepClone(x){ return JSON.parse(JSON.stringify(x)); }
-
-  function loadState(){
-    try{
-      const raw=localStorage.getItem(STORAGE_KEY);
-      if (!raw) return sanitizeState(null);
-      return sanitizeState(JSON.parse(raw));
-    }catch{ return sanitizeState(null); }
-  }
-  function saveState(){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({points,segments,lines,circles,parabolas,ellipses})); }
-    catch{ showTip('Storage error.', null, 1600); }
-  }
-
-  function snapshotState(){
-    return deepClone(sanitizeState({points,segments,lines,circles,parabolas,ellipses}));
-  }
-
-  function loadHistoryBundle(initialState){
-    try{
-      const raw = localStorage.getItem(HISTORY_BUNDLE_KEY);
-      if (!raw) {
-        const snap = deepClone(sanitizeState(initialState));
-        return { stack:[snap], idx:0 };
-      }
-      const obj = JSON.parse(raw);
-      if (!obj || typeof obj!=='object') throw new Error('bad bundle');
-      const arr = Array.isArray(obj.stack) ? obj.stack.map(sanitizeState).map(deepClone) : [];
-      let idx = Number.isFinite(obj.idx) ? obj.idx : (arr.length-1);
-      if (!arr.length) {
-        const snap = deepClone(sanitizeState(initialState));
-        return { stack:[snap], idx:0 };
-      }
-      idx = Math.max(0, Math.min(arr.length-1, idx));
-      return { stack:arr, idx };
-    }catch{
-      const snap = deepClone(sanitizeState(initialState));
-      return { stack:[snap], idx:0 };
-    }
-  }
-
-  function saveHistoryBundle(){
-    try{
-      localStorage.setItem(HISTORY_BUNDLE_KEY, JSON.stringify(historyBundle));
-    }catch{
+      out += escapeHtml(raw.slice(i, s));
+      const latex = raw.slice(s+1, e);
       try{
-        if (historyBundle.stack.length > 10){
-          const cut = historyBundle.stack.length - 10;
-          historyBundle.stack = historyBundle.stack.slice(cut);
-          historyBundle.idx = Math.max(0, historyBundle.idx - cut);
-        }
-        localStorage.setItem(HISTORY_BUNDLE_KEY, JSON.stringify(historyBundle));
-      }catch{}
-    }
-  }
-
-  function updateHistoryButtons(){
-    btnUndo.disabled = !(historyBundle.idx > 0);
-    btnRedo.disabled = !(historyBundle.idx < historyBundle.stack.length - 1);
-  }
-
-  function pushHistory(){
-    const snap = snapshotState();
-    const cur = historyBundle.stack[historyBundle.idx];
-
-    if (cur && JSON.stringify(cur) === JSON.stringify(snap)) {
-      updateHistoryButtons();
-      return;
-    }
-
-    if (historyBundle.idx < historyBundle.stack.length - 1) {
-      historyBundle.stack = historyBundle.stack.slice(0, historyBundle.idx + 1);
-    }
-
-    historyBundle.stack.push(snap);
-
-    if (historyBundle.stack.length > MAX_HISTORY) {
-      const cut = historyBundle.stack.length - MAX_HISTORY;
-      historyBundle.stack = historyBundle.stack.slice(cut);
-      historyBundle.idx = Math.max(0, historyBundle.idx - cut);
-    }
-
-    historyBundle.idx = historyBundle.stack.length - 1;
-    saveHistoryBundle();
-    updateHistoryButtons();
-  }
-
-  function restoreFromState(st){
-    const s = sanitizeState(st);
-    points = s.points; segments = s.segments; lines = s.lines; circles = s.circles; parabolas = s.parabolas; ellipses = s.ellipses;
-  }
-
-  // =================
-  // 3) Geometry helpers
-  // =================
-  const EPS=1e-9;
-  const v=(x,y)=>({x,y});
-  const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
-  const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y});
-  const mul=(a,k)=>({x:a.x*k,y:a.y*k});
-  const dot=(a,b)=>a.x*b.x+a.y*b.y;
-  const cross=(a,b)=>a.x*b.y-a.y*b.x;
-  const len=(a)=>Math.hypot(a.x,a.y);
-  const norm=(a)=>{ const L=len(a); return L<EPS?{x:1,y:0}:{x:a.x/L,y:a.y/L}; };
-  const perp=(a)=>({x:-a.y,y:a.x});
-
-  function distPointToSegment(P,A,B){
-    const AB=sub(B,A), ab2=dot(AB,AB);
-    if (ab2<EPS) return len(sub(P,A));
-    let t=dot(sub(P,A),AB)/ab2; t=Math.max(0,Math.min(1,t));
-    const Q=add(A,mul(AB,t));
-    return len(sub(P,Q));
-  }
-  function closestPointOnLine(P,A,B){
-    const AB=sub(B,A), ab2=dot(AB,AB);
-    if (ab2<EPS) return {Q:A, t:0};
-    const t=dot(sub(P,A), AB)/ab2;
-    return {Q:add(A,mul(AB,t)), t};
-  }
-  function closestPointOnSegment(P,A,B){
-    const AB=sub(B,A), ab2=dot(AB,AB);
-    if (ab2<EPS) return {Q:A, t:0};
-    let t=dot(sub(P,A), AB)/ab2; t=Math.max(0,Math.min(1,t));
-    return {Q:add(A,mul(AB,t)), t};
-  }
-  function closestPointOnCircle(P,C,r){
-    const d=sub(P,C);
-    let ang=Math.atan2(d.y,d.x);
-    if (!Number.isFinite(ang)) ang=0;
-    const Q=add(C, v(r*Math.cos(ang), r*Math.sin(ang)));
-    return {Q, ang};
-  }
-
-  function lineLineIntersection(A,B,C,D){
-    const r=sub(B,A), s=sub(D,C);
-    const den=cross(r,s);
-    if (Math.abs(den)<EPS) return null;
-    const t=cross(sub(C,A), s)/den;
-    return add(A,mul(r,t));
-  }
-  function segmentSegmentIntersection(A,B,C,D){
-    const r=sub(B,A), s=sub(D,C);
-    const den=cross(r,s);
-    const CA=sub(C,A);
-    if (Math.abs(den)<EPS) return null;
-    const t=cross(CA, s)/den;
-    const u=cross(CA, r)/den;
-    if (t<-1e-9 || t>1+1e-9 || u<-1e-9 || u>1+1e-9) return null;
-    return add(A,mul(r,t));
-  }
-
-  function circleLineIntersections(C0,r,A,B){
-    const d=sub(B,A), f=sub(A,C0);
-    const a=dot(d,d), b=2*dot(f,d), c=dot(f,f)-r*r;
-    const disc=b*b-4*a*c;
-    if (disc<-1e-10) return [];
-    if (Math.abs(disc)<=1e-10){
-      const t=-b/(2*a);
-      return [ add(A,mul(d,t)) ];
-    }
-    const s=Math.sqrt(Math.max(0,disc));
-    const t1=(-b - s)/(2*a), t2=(-b + s)/(2*a);
-    return [ add(A,mul(d,t1)), add(A,mul(d,t2)) ];
-  }
-  function circleCircleIntersections(C1,r1,C2,r2){
-    const d=len(sub(C2,C1));
-    if (d<EPS) return [];
-    if (d>r1+r2+1e-10) return [];
-    if (d<Math.abs(r1-r2)-1e-10) return [];
-    const a=(r1*r1 - r2*r2 + d*d)/(2*d);
-    const h2=r1*r1 - a*a;
-    if (h2<-1e-10) return [];
-    const h=Math.sqrt(Math.max(0,h2));
-    const u=mul(sub(C2,C1), 1/d);
-    const P=add(C1, mul(u,a));
-    const w=perp(u);
-    if (h<1e-8) return [P];
-    return [ add(P,mul(w,h)), add(P,mul(w,-h)) ];
-  }
-  function segmentCircleIntersections(A,B,C0,r){
-    const pts = circleLineIntersections(C0,r,A,B);
-    const AB=sub(B,A), ab2=dot(AB,AB);
-    const out=[];
-    for (const X of pts){
-      let t=0;
-      if (ab2>EPS) t=dot(sub(X,A),AB)/ab2;
-      if (t>-1e-8 && t<1+1e-8 && distPointToSegment(X,A,B)<1e-6) out.push(X);
-    }
-    return out;
-  }
-
-  // ===== Parabola =====
-  function parabolaParams(F,A,B){
-    const d0=sub(B,A);
-    const d=norm(d0);
-    let n=norm(perp(d));
-    let vF=dot(sub(F,A), n);
-    if (vF<0){ n=mul(n,-1); vF=-vF; }
-    const uF=dot(sub(F,A), d);
-    return { A, d, n, uF, vF };
-  }
-  function worldToUV(X,par){ return { u: dot(sub(X,par.A), par.d), v: dot(sub(X,par.A), par.n) }; }
-  function uvToWorld(u,v0,par){ return add(par.A, add(mul(par.d,u), mul(par.n,v0))); }
-  function parabolaV(u,par){
-    const vF=par.vF;
-    if (vF<1e-9) return null;
-    const t=u-par.uF;
-    return (t*t + vF*vF)/(2*vF);
-  }
-  function parabolaLineIntersections(par,P0,P1,restrict01=false){
-    const uv0=worldToUV(P0,par), uv1=worldToUV(P1,par);
-    const du=uv1.u-uv0.u, dv=uv1.v-uv0.v;
-    const a=du*du;
-    const b=2*(uv0.u-par.uF)*du - 2*par.vF*dv;
-    const c=(uv0.u-par.uF)*(uv0.u-par.uF) + par.vF*par.vF - 2*par.vF*uv0.v;
-    const disc=b*b-4*a*c;
-
-    if (Math.abs(a)<1e-12){
-      if (Math.abs(b)<1e-12) return [];
-      const t=-c/b;
-      if (restrict01 && (t<-1e-9 || t>1+1e-9)) return [];
-      return [ add(P0, mul(sub(P1,P0), t)) ];
-    }
-
-    if (disc<-1e-10) return [];
-    if (Math.abs(disc)<=1e-10){
-      const t=-b/(2*a);
-      if (restrict01 && (t<-1e-9 || t>1+1e-9)) return [];
-      return [ add(P0, mul(sub(P1,P0), t)) ];
-    }
-
-    const s=Math.sqrt(Math.max(0,disc));
-    const t1=(-b - s)/(2*a), t2=(-b + s)/(2*a);
-    const out=[];
-    for (const t of [t1,t2]){
-      if (restrict01 && (t<-1e-9 || t>1+1e-9)) continue;
-      out.push(add(P0, mul(sub(P1,P0), t)));
-    }
-    return out;
-  }
-  function parabolaPolyline(par, uMin, uMax, N){
-    const pts=[];
-    for (let i=0;i<=N;i++){
-      const u=uMin+(uMax-uMin)*i/N;
-      const vv=parabolaV(u,par);
-      if (vv===null) continue;
-      pts.push(uvToWorld(u,vv,par));
-    }
-    return pts;
-  }
-  function parabolaCircleIntersections(par,C0,r,uMin,uMax, quality='fast'){
-    const N = (quality==='accurate') ? 220 : 140;
-    const tol = 1e-5;
-    const roots=[];
-
-    function f(u){
-      const vv=parabolaV(u,par);
-      if (vv===null) return NaN;
-      const X=uvToWorld(u,vv,par);
-      const dx=X.x-C0.x, dy=X.y-C0.y;
-      return (dx*dx+dy*dy)-r*r;
-    }
-
-    const step=(uMax-uMin)/N;
-    let uPrev=uMin, fPrev=f(uPrev);
-
-    for (let i=1;i<=N;i++){
-      const uCur=uMin+step*i, fCur=f(uCur);
-
-      if (Number.isFinite(fPrev) && Math.abs(fPrev)<tol) roots.push(uPrev);
-      if (Number.isFinite(fCur) && Math.abs(fCur)<tol) roots.push(uCur);
-
-      if (Number.isFinite(fPrev) && Number.isFinite(fCur) && fPrev*fCur<0){
-        let a=uPrev,b=uCur, fa=fPrev, fb=fCur;
-        for (let k=0;k<35;k++){
-          const m=(a+b)/2, fm=f(m);
-          if (!Number.isFinite(fm)) break;
-          if (fa*fm<=0){ b=m; fb=fm; } else { a=m; fa=fm; }
-        }
-        roots.push((a+b)/2);
+        out += katex.renderToString(latex, {throwOnError:false, displayMode:false});
+      }catch(err){
+        out += "<span style='color:rgba(255,90,122,.95)'>" + escapeHtml("$"+latex+"$") + "</span>";
       }
-
-      uPrev=uCur; fPrev=fCur;
-    }
-
-    roots.sort((x,y)=>x-y);
-    const uniq=[];
-    for (const u of roots){
-      if (!uniq.length || Math.abs(u-uniq[uniq.length-1])>1e-3) uniq.push(u);
-    }
-
-    const pts=[];
-    for (const u of uniq){
-      const vv=parabolaV(u,par);
-      if (vv===null) continue;
-      pts.push(uvToWorld(u,vv,par));
-    }
-    return pts;
-  }
-
-  function closestPointOnParabola(P, par, uMin, uMax){
-    const N=90;
-    let bestU=uMin, bestD=Infinity;
-    for (let i=0;i<=N;i++){
-      const u=uMin+(uMax-uMin)*i/N;
-      const vv=parabolaV(u,par);
-      if (vv===null) continue;
-      const X=uvToWorld(u,vv,par);
-      const d2=(X.x-P.x)**2 + (X.y-P.y)**2;
-      if (d2<bestD){ bestD=d2; bestU=u; }
-    }
-    const step=(uMax-uMin)/N;
-    let a=Math.max(uMin, bestU-step), b=Math.min(uMax, bestU+step);
-    function D(u){
-      const vv=parabolaV(u,par);
-      if (vv===null) return Infinity;
-      const X=uvToWorld(u,vv,par);
-      return (X.x-P.x)**2 + (X.y-P.y)**2;
-    }
-    for (let k=0;k<28;k++){
-      const m1=a+(b-a)/3, m2=b-(b-a)/3;
-      if (D(m1) < D(m2)) b=m2; else a=m1;
-    }
-    const u=(a+b)/2;
-    const vv=parabolaV(u,par);
-    const Q=(vv===null) ? P : uvToWorld(u,vv,par);
-    return {Q, u};
-  }
-
-  // ===== Ellipse =====
-  function ellipseParams(F1,F2,P){
-    const f1=v(F1.x,F1.y), f2=v(F2.x,F2.y), p=v(P.x,P.y);
-    const C = mul(add(f1,f2), 0.5);
-    const dvec=sub(f2,f1);
-    const distFF=len(dvec);
-    if (distFF<EPS) return null;
-    const u = norm(dvec);
-    const vv = norm(perp(u));
-    const sumDist = len(sub(p,f1)) + len(sub(p,f2)); // = 2a
-    const a = sumDist/2;
-    const c = distFF/2;
-    if (!(a>c+1e-10)) return null;
-    const b2 = a*a - c*c;
-    if (!(b2>1e-12)) return null;
-    const b = Math.sqrt(b2);
-    return {C,u,v:vv,a,b,f1,f2};
-  }
-  function ellipsePointAt(ell, ang){
-    const ca=Math.cos(ang), sa=Math.sin(ang);
-    return add(ell.C, add(mul(ell.u, ell.a*ca), mul(ell.v, ell.b*sa)));
-  }
-  function closestPointOnEllipse(P, ell){
-    const N=120;
-    let bestAng=0, bestD=Infinity;
-    for (let i=0;i<=N;i++){
-      const ang = (Math.PI*2)*i/N;
-      const X=ellipsePointAt(ell, ang);
-      const d2=(X.x-P.x)**2 + (X.y-P.y)**2;
-      if (d2<bestD){ bestD=d2; bestAng=ang; }
-    }
-    let a=bestAng-(2*Math.PI)/N, b=bestAng+(2*Math.PI)/N;
-    function D(ang){
-      const X=ellipsePointAt(ell, ang);
-      return (X.x-P.x)**2 + (X.y-P.y)**2;
-    }
-    for (let k=0;k<28;k++){
-      const m1=a+(b-a)/3, m2=b-(b-a)/3;
-      if (D(m1) < D(m2)) b=m2; else a=m1;
-    }
-    const ang=(a+b)/2;
-    const Q=ellipsePointAt(ell, ang);
-    return {Q, ang};
-  }
-  function ellipsePolyline(ell, N=240){
-    const pts=[];
-    for (let i=0;i<=N;i++){
-      const ang=(Math.PI*2)*i/N;
-      pts.push(ellipsePointAt(ell, ang));
-    }
-    return pts;
-  }
-  function ellipseLineIntersections(ell, P0, P1, restrict01=false){
-    const d=sub(P1,P0);
-    const X0=sub(P0, ell.C);
-
-    const x0 = dot(X0, ell.u);
-    const y0 = dot(X0, ell.v);
-    const dx = dot(d, ell.u);
-    const dy = dot(d, ell.v);
-
-    const a2 = ell.a*ell.a;
-    const b2 = ell.b*ell.b;
-
-    const A = (dx*dx)/a2 + (dy*dy)/b2;
-    const B = 2*((x0*dx)/a2 + (y0*dy)/b2);
-    const Cc = (x0*x0)/a2 + (y0*y0)/b2 - 1;
-
-    const disc = B*B - 4*A*Cc;
-    if (disc < -1e-10) return [];
-    const out=[];
-    if (Math.abs(disc) <= 1e-10){
-      const t0 = -B/(2*A);
-      if (!restrict01 || (t0>-1e-9 && t0<1+1e-9)) out.push(add(P0, mul(d, t0)));
-      return out;
-    }
-    const s = Math.sqrt(Math.max(0,disc));
-    const t1 = (-B - s)/(2*A);
-    const t2 = (-B + s)/(2*A);
-    for (const tt of [t1,t2]){
-      if (restrict01 && (tt<-1e-9 || tt>1+1e-9)) continue;
-      out.push(add(P0, mul(d, tt)));
+      i = e+1;
     }
     return out;
   }
-  function polylineIntersections(P,Q){
-    const out=[];
-    for (let i=0;i<P.length-1;i++){
-      const A=P[i], B=P[i+1];
-      for (let j=0;j<Q.length-1;j++){
-        const C=Q[j], D=Q[j+1];
-        const X=segmentSegmentIntersection(A,B,C,D);
-        if (X) out.push(X);
-      }
-    }
-    out.sort((p,q)=>p.x-q.x || p.y-q.y);
-    const uniq=[];
-    for (const X of out){
-      if (!uniq.length) { uniq.push(X); continue; }
-      const Y=uniq[uniq.length-1];
-      if ((X.x-Y.x)**2 + (X.y-Y.y)**2 > 1e-6) uniq.push(X);
-    }
-    return uniq;
+
+  /* =========================
+     State (per session)
+  ========================= */
+  const SESSION_KEY = "mathlab_session_id_v1";
+  let sessionId = sessionStorage.getItem(SESSION_KEY);
+  if (!sessionId) {
+    sessionId = "s_" + rndId();
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+  }
+  const STORE_KEY = "mathlab_state_v1_" + sessionId;
+
+  let objects = [];
+  let tool = "select";
+  let selected = null;
+  let dragging = null;
+
+  let segmentPending = null;
+  let linePending = null;
+  let circlePending = null;
+  let parabolaPending = { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+  let ellipsePending = { f1:null, f2:null };
+
+  // camera
+  const cam = { x:0, y:0, scale:70 };
+  let isPanning = false;
+  let panStart = null;
+
+  // last mouse for Enter placement
+  let lastMouseClient = { cx: 200, cy: 120 };
+
+  // Undo/Redo
+  const undoStack = [];
+  const redoStack = [];
+
+  function saveToStorage(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        objects, cam, tool, selected,
+        segmentPending, linePending, circlePending,
+        parabolaPending, ellipsePending
+      }));
+    }catch(e){}
   }
 
-  // View
-  let scale=40;
-  let origin={x:0,y:0};
-  function worldToScreen(wx,wy){ return {x:origin.x+wx*scale, y:origin.y-wy*scale}; }
-  function screenToWorld(sx,sy){ return {x:(sx-origin.x)/scale, y:(origin.y-sy)/scale}; }
+  function loadFromStorage(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return false;
+      const st = JSON.parse(raw);
+      objects = st.objects || [];
+      cam.x = st.cam?.x ?? 0;
+      cam.y = st.cam?.y ?? 0;
+      cam.scale = st.cam?.scale ?? 70;
+      tool = st.tool || "select";
+      selected = st.selected || null;
+
+      segmentPending = st.segmentPending ?? null;
+      linePending = st.linePending ?? null;
+      circlePending = st.circlePending ?? null;
+      parabolaPending = st.parabolaPending || { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+      ellipsePending = st.ellipsePending || { f1:null, f2:null };
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function pushState(){
+    undoStack.push({
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending)
+    });
+    if (undoStack.length > 80) undoStack.shift();
+    redoStack.length = 0;
+    saveToStorage();
+  }
+
+  function applyState(st){
+    objects = deepClone(st.objects || []);
+    cam.x = st.cam?.x ?? 0;
+    cam.y = st.cam?.y ?? 0;
+    cam.scale = st.cam?.scale ?? 70;
+    tool = st.tool || "select";
+    selected = st.selected ? deepClone(st.selected) : null;
+
+    segmentPending = st.segmentPending ?? null;
+    linePending = st.linePending ?? null;
+    circlePending = st.circlePending ?? null;
+    parabolaPending = st.parabolaPending ? deepClone(st.parabolaPending) : { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+    ellipsePending = st.ellipsePending ? deepClone(st.ellipsePending) : { f1:null, f2:null };
+
+    syncToolUI();
+    syncOverlay();
+    saveToStorage();
+  }
+
+  function undo(){
+    if (!undoStack.length) return;
+    const cur = {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending)
+    };
+    redoStack.push(cur);
+    const prev = undoStack.pop();
+    applyState(prev);
+  }
+
+  function redo(){
+    if (!redoStack.length) return;
+    const cur = {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending)
+    };
+    undoStack.push(cur);
+    const next = redoStack.pop();
+    applyState(next);
+  }
+
+  /* =========================
+     Canvas & Coordinate Fix (핵심)
+     - clientX/Y -> canvas-local sx/sy
+     - world<->screen uses CSS pixels (overlay와 완전 1:1)
+  ========================= */
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+  const overlay = $("overlay");
+
+  function canvasRect(){ return cv.getBoundingClientRect(); }
+
+  function clientToCanvas(clientX, clientY){
+    const r = canvasRect();
+    return { sx: clientX - r.left, sy: clientY - r.top };
+  }
+
+  function canvasSizeCSS(){
+    const r = canvasRect();
+    return { w: r.width, h: r.height };
+  }
 
   function resize(){
-    const dpr=window.devicePixelRatio||1;
-    canvas.width=Math.floor(window.innerWidth*dpr);
-    canvas.height=Math.floor(window.innerHeight*dpr);
-    canvas.style.width=window.innerWidth+'px';
-    canvas.style.height=window.innerHeight+'px';
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    origin.x=window.innerWidth/2;
-    origin.y=window.innerHeight/2;
-    draw();
-  }
-  function viewWorldBounds(){
-    const w=window.innerWidth,h=window.innerHeight;
-    const p1=screenToWorld(0,0), p2=screenToWorld(w,h);
-    return { minx:Math.min(p1.x,p2.x), maxx:Math.max(p1.x,p2.x), miny:Math.min(p1.y,p2.y), maxy:Math.max(p1.y,p2.y) };
+    const r = canvasRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width  = Math.floor(r.width * dpr);
+    cv.height = Math.floor(r.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0); // draw in CSS pixels
   }
 
-  // State
-  const st=loadState();
-  let points=st.points, segments=st.segments, lines=st.lines, circles=st.circles, parabolas=st.parabolas, ellipses=st.ellipses;
+  window.addEventListener("resize", resize);
 
-  // History bundle init
-  let historyBundle = loadHistoryBundle({points,segments,lines,circles,parabolas,ellipses});
-  const curSnapInit = snapshotState();
-  const curHistSnap = historyBundle.stack[historyBundle.idx];
-  if (!curHistSnap || JSON.stringify(curHistSnap) !== JSON.stringify(curSnapInit)) {
-    historyBundle.stack = historyBundle.stack.slice(0, historyBundle.idx + 1);
-    historyBundle.stack.push(curSnapInit);
-    historyBundle.idx = historyBundle.stack.length - 1;
-    if (historyBundle.stack.length > MAX_HISTORY) {
-      const cut = historyBundle.stack.length - MAX_HISTORY;
-      historyBundle.stack = historyBundle.stack.slice(cut);
-      historyBundle.idx = Math.max(0, historyBundle.idx - cut);
-    }
-    saveHistoryBundle();
-  }
-  updateHistoryButtons();
-
-  const uid=(prefix='')=> prefix + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8);
-
-  const getPoint=(pid)=> points.find(p=>p.id===pid)||null;
-  const getSegment=(sid)=> segments.find(s=>s.id===sid)||null;
-  const getLine=(lid)=> lines.find(l=>l.id===lid)||null;
-  const getCircle=(cid)=> circles.find(c=>c.id===cid)||null;
-  const getParabola=(pid)=> parabolas.find(p=>p.id===pid)||null;
-  const getEllipse=(eid)=> ellipses.find(e=>e.id===eid)||null;
-
-  function cleanupAll(){
-    const pids=new Set(points.map(p=>p.id));
-    segments = segments.filter(s=> pids.has(s.a_id)&&pids.has(s.b_id)&&s.a_id!==s.b_id);
-    lines    = lines.filter(l=> pids.has(l.a_id)&&pids.has(l.b_id)&&l.a_id!==l.b_id);
-    circles  = circles.filter(c=> pids.has(c.c_id)&&pids.has(c.p_id)&&c.c_id!==c.p_id);
-    parabolas= parabolas.filter(p=> pids.has(p.f_id)&&pids.has(p.d_a_id)&&pids.has(p.d_b_id)&&p.d_a_id!==p.d_b_id);
-    ellipses = ellipses.filter(e=> pids.has(e.f1_id)&&pids.has(e.f2_id)&&pids.has(e.p_id)&&e.f1_id!==e.f2_id);
-
-    const existsRef=(ref)=>{
-      if (!ref) return false;
-      if (ref.kind==='segment') return !!getSegment(ref.id);
-      if (ref.kind==='line') return !!getLine(ref.id);
-      if (ref.kind==='circle') return !!getCircle(ref.id);
-      if (ref.kind==='parabola') return !!getParabola(ref.id);
-      if (ref.kind==='ellipse') return !!getEllipse(ref.id);
-      return false;
+  function worldToScreen(wx, wy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      sx: (wx - cam.x) * cam.scale + w/2,
+      sy: h/2 - (wy - cam.y) * cam.scale
     };
-
-    points = points.filter(p=>{
-      if (p.kind==='intersection') return existsRef(p.parents?.a) && existsRef(p.parents?.b);
-      if (p.kind==='constrained') return existsRef(p.constraint);
-      return true;
-    });
   }
 
-  function commit(anchor=null){
-    cleanupAll();
-    saveState();
-    pushHistory();
-    draw();
+  function screenToWorld(sx, sy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      wx: (sx - w/2) / cam.scale + cam.x,
+      wy: (h/2 - sy) / cam.scale + cam.y
+    };
   }
 
-  function applyAfterRestore(){
-    cleanupAll();
-    saveState();
-    saveHistoryBundle();
-    updateHistoryButtons();
-    draw();
+  /* =========================
+     Geometry + Object helpers
+  ========================= */
+  function getById(id){ return objects.find(o => o.id === id) || null; }
+  function worldTol(){ return 10 / cam.scale; }
+
+  function ensurePointAt(wx, wy){
+    const id = "p_" + rndId();
+    const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null };
+    objects.push(p);
+    return p;
   }
 
-  // Tools
-  let tool='point';
-  let selectedPointId=null;
-
-  let stepA=null;
-  let circleCenterId=null;
-  let parabolaFocusId=null;
-  let parabolaDirFirstId=null;
-
-  let ellipseF1Id=null;
-  let ellipseF2Id=null;
-
-  let mouseWorld={x:0,y:0};
-
-  let dragging=false;
-  let dragPointerId=null;
-  let dragOffset={x:0,y:0};
-
-  const HIT_R=10;
-
-  function cancelStep(showMsg=true){
-    stepA=null;
-    circleCenterId=null;
-    parabolaFocusId=null;
-    parabolaDirFirstId=null;
-    ellipseF1Id=null;
-    ellipseF2Id=null;
-    if (showMsg) showTip(t("step_cancelled"), btnCancelStep, 1100);
-    draw();
+  function getOrCreatePointNear(wx, wy, tolWorld){
+    const tol2 = tolWorld*tolWorld;
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist2(o.x,o.y, wx,wy);
+      if (d <= tol2 && (!best || d < best.d)) best = {p:o, d};
+    }
+    return best ? best.p : ensurePointAt(wx,wy);
   }
 
-  // ✅ setTool: "버튼 클릭 후 1초 정지"일 때만 설명 표시
-  function setTool(tname, anchor=null, ev=null){
-    tool=tname;
-    toolPointBtn.classList.toggle('active', tname==='point');
-    toolSegmentBtn.classList.toggle('active', tname==='segment');
-    toolLineBtn.classList.toggle('active', tname==='line');
-    toolCircleBtn.classList.toggle('active', tname==='circle');
-    toolParabolaBtn.classList.toggle('active', tname==='parabola');
-    toolEllipseBtn.classList.toggle('active', tname==='ellipse');
-    toolSelectBtn.classList.toggle('active', tname==='select');
-
-    cancelStep(false);
-
-    // 새 도구 선택 시 이전 예약(대기중) 툴팁은 취소
-    cancelPendingToolTip();
-
-    const msg = {
-      point: t("tooltip_point"),
-      segment: t("tooltip_segment"),
-      line: t("tooltip_line"),
-      circle: t("tooltip_circle"),
-      parabola: t("tooltip_parabola"),
-      ellipse: t("tooltip_ellipse"),
-      select: t("tooltip_select")
-    }[tname] || "";
-
-    // "버튼 클릭"으로 들어온 경우에만 1초 지연 표시 예약
-    if (ev && anchor) {
-      const sx = ev.clientX ?? lastClientPos.x;
-      const sy = ev.clientY ?? lastClientPos.y;
-      scheduleToolTip(msg, anchor, sx, sy, 1000);
-    }
-
-    draw();
+  function getViewportWorldBounds(){
+    const {w,h} = canvasSizeCSS();
+    const a = screenToWorld(0,0);
+    const b = screenToWorld(w,h);
+    return {
+      xmin: Math.min(a.wx, b.wx),
+      xmax: Math.max(a.wx, b.wx),
+      ymin: Math.min(a.wy, b.wy),
+      ymax: Math.max(a.wy, b.wy)
+    };
   }
 
-  // Hit tests
-  function hitPoint(sx,sy){
-    let best=null, bestD2=Infinity;
-    for (const p of points){
-      const s=worldToScreen(p.x,p.y);
-      const dx=s.x-sx, dy=s.y-sy;
-      const d2=dx*dx+dy*dy;
-      if (d2<bestD2){ bestD2=d2; best=p; }
+  function segmentIntersection(a,b,c,d){
+    const r = {x: b.x-a.x, y: b.y-a.y};
+    const s = {x: d.x-c.x, y: d.y-c.y};
+    const denom = r.x*s.y - r.y*s.x;
+    if (Math.abs(denom) < 1e-12) return null;
+    const uNumer = (c.x-a.x)*r.y - (c.y-a.y)*r.x;
+    const tNumer = (c.x-a.x)*s.y - (c.y-a.y)*s.x;
+    const t = tNumer/denom;
+    const u = uNumer/denom;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1){
+      return {x: a.x + t*r.x, y: a.y + t*r.y};
     }
-    return (best && bestD2<=HIT_R*HIT_R) ? best : null;
+    return null;
   }
 
-  // Create objects
-  function addFreePoint(wx,wy){
-    const p={ id:uid('p-'), x:wx, y:wy, kind:'free' };
-    points.push(p); commit(); return p.id;
-  }
-  function addIntersectionPoint(wx,wy, refA, refB){
-    const p={ id:uid('ip-'), x:wx, y:wy, kind:'intersection', parents:{a:refA,b:refB} };
-    points.push(p); commit(); return p.id;
-  }
-  function addConstrainedPoint(kind, objId, paramObj, wx, wy){
-    const p={ id:uid('cp-'), x:wx, y:wy, kind:'constrained', constraint:{ kind, id:objId, param:paramObj } };
-    points.push(p); commit(); return p.id;
-  }
-  const addSegment=(a_id,b_id)=>{ segments.push({id:uid('s-'),a_id,b_id}); commit(); };
-  const addLine=(a_id,b_id)=>{ lines.push({id:uid('l-'),a_id,b_id}); commit(); };
-  const addCircle=(c_id,p_id)=>{ circles.push({id:uid('c-'),c_id,p_id}); commit(); };
-  const addParabola=(f_id, d_a_id, d_b_id)=>{ parabolas.push({id:uid('pa-'),f_id,d_a_id,d_b_id}); commit(); };
-  const addEllipse=(f1_id,f2_id,p_id)=>{ ellipses.push({id:uid('el-'),f1_id,f2_id,p_id}); commit(); };
+  function polylineProject(poly, pt){
+    if (!poly || poly.length < 2) return {x:pt.x, y:pt.y, t:0};
+    let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
 
-  // Geometry getters
-  const getLinePtsFromLineObj=(ln)=>{ const A=getPoint(ln.a_id),B=getPoint(ln.b_id); return (A&&B)?{A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
-  const getLinePtsFromSegmentObj=(sg)=>{ const A=getPoint(sg.a_id),B=getPoint(sg.b_id); return (A&&B)?{A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
-  const getCircleGeom=(c)=>{ const C=getPoint(c.c_id),P=getPoint(c.p_id); if(!C||!P) return null; const CC=v(C.x,C.y), PP=v(P.x,P.y); return {C:CC, r:len(sub(PP,CC))}; };
-  const getParabolaGeom=(pb)=>{ const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); return (F&&A&&B)?{F:v(F.x,F.y),A:v(A.x,A.y),B:v(B.x,B.y)}:null; };
-  const getEllipseGeom=(el)=>{ const F1=getPoint(el.f1_id),F2=getPoint(el.f2_id),P=getPoint(el.p_id); return (F1&&F2&&P)?{F1:v(F1.x,F1.y),F2:v(F2.x,F2.y),P:v(P.x,P.y)}:null; };
-
-  function parabolaParabolaIntersections(par1, uMin1, uMax1, par2, uMin2, uMax2, quality='fast'){
-    const N = (quality==='accurate') ? 140 : 70;
-    const P1=parabolaPolyline(par1,uMin1,uMax1,N);
-    const P2=parabolaPolyline(par2,uMin2,uMax2,N);
-    return polylineIntersections(P1,P2);
-  }
-
-  function intersectionsBetween(ref1, ref2, mode='fast'){
-    const k1=ref1.kind, k2=ref2.kind;
-    const pair=[k1,k2].sort().join('|');
-
-    if (pair==='line|line'){
-      const l1=getLine((k1==='line')?ref1.id:ref2.id);
-      const l2=getLine((k1==='line')?ref2.id:ref1.id);
-      if(!l1||!l2) return [];
-      const p1=getLinePtsFromLineObj(l1), p2=getLinePtsFromLineObj(l2);
-      if(!p1||!p2) return [];
-      const X=lineLineIntersection(p1.A,p1.B,p2.A,p2.B);
-      return X?[X]:[];
+    let total = 0;
+    const lens = [];
+    for (let i=0;i<poly.length-1;i++){
+      const L = dist(poly[i].x,poly[i].y, poly[i+1].x,poly[i+1].y);
+      lens.push(L); total += L;
     }
+    if (total < 1e-12) return {x:poly[0].x, y:poly[0].y, t:0};
 
-    if (pair==='segment|segment'){
-      const s1=getSegment((k1==='segment')?ref1.id:ref2.id);
-      const s2=getSegment((k1==='segment')?ref2.id:ref1.id);
-      if(!s1||!s2) return [];
-      const p1=getLinePtsFromSegmentObj(s1), p2=getLinePtsFromSegmentObj(s2);
-      if(!p1||!p2) return [];
-      const X=segmentSegmentIntersection(p1.A,p1.B,p2.A,p2.B);
-      return X?[X]:[];
-    }
-
-    if (pair==='line|segment'){
-      const ln=getLine((k1==='line')?ref1.id:ref2.id);
-      const sg=getSegment((k1==='segment')?ref1.id:ref2.id);
-      if(!ln||!sg) return [];
-      const pL=getLinePtsFromLineObj(ln), pS=getLinePtsFromSegmentObj(sg);
-      if(!pL||!pS) return [];
-      const X=lineLineIntersection(pL.A,pL.B,pS.A,pS.B);
-      if(!X) return [];
-      return (distPointToSegment(X,pS.A,pS.B)<1e-7) ? [X] : [];
-    }
-
-    if (pair==='circle|line'){
-      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
-      const ln =getLine((k1==='line')?ref1.id:ref2.id);
-      if(!cir||!ln) return [];
-      const cg=getCircleGeom(cir), lp=getLinePtsFromLineObj(ln);
-      if(!cg||!lp) return [];
-      return circleLineIntersections(cg.C,cg.r,lp.A,lp.B);
-    }
-
-    if (pair==='circle|segment'){
-      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
-      const sg =getSegment((k1==='segment')?ref1.id:ref2.id);
-      if(!cir||!sg) return [];
-      const cg=getCircleGeom(cir), sp=getLinePtsFromSegmentObj(sg);
-      if(!cg||!sp) return [];
-      return segmentCircleIntersections(sp.A, sp.B, cg.C, cg.r);
-    }
-
-    if (pair==='circle|circle'){
-      const c1=getCircle((k1==='circle')?ref1.id:ref2.id);
-      const c2=getCircle((k1==='circle')?ref2.id:ref1.id);
-      if(!c1||!c2) return [];
-      const g1=getCircleGeom(c1), g2=getCircleGeom(c2);
-      if(!g1||!g2) return [];
-      return circleCircleIntersections(g1.C,g1.r,g2.C,g2.r);
-    }
-
-    // parabola
-    if (pair==='line|parabola'){
-      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
-      const ln=getLine((k1==='line')?ref1.id:ref2.id);
-      if(!pb||!ln) return [];
-      const pg=getParabolaGeom(pb), lp=getLinePtsFromLineObj(ln);
-      if(!pg||!lp) return [];
-      const par=parabolaParams(pg.F,pg.A,pg.B);
-      return parabolaLineIntersections(par, lp.A, lp.B, false);
-    }
-
-    if (pair==='parabola|segment'){
-      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
-      const sg=getSegment((k1==='segment')?ref1.id:ref2.id);
-      if(!pb||!sg) return [];
-      const pg=getParabolaGeom(pb), sp=getLinePtsFromSegmentObj(sg);
-      if(!pg||!sp) return [];
-      const par=parabolaParams(pg.F,pg.A,pg.B);
-      return parabolaLineIntersections(par, sp.A, sp.B, true);
-    }
-
-    if (pair==='circle|parabola'){
-      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
-      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
-      if(!pb||!cir) return [];
-      const pg=getParabolaGeom(pb), cg=getCircleGeom(cir);
-      if(!pg||!cg) return [];
-      const par=parabolaParams(pg.F,pg.A,pg.B);
-
-      const vb=viewWorldBounds();
-      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A),par.d));
-      const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
-
-      return parabolaCircleIntersections(par, cg.C, cg.r, uMin, uMax, (mode==='accurate'?'accurate':'fast'));
-    }
-
-    if (pair==='parabola|parabola'){
-      const pb1=getParabola(ref1.id);
-      const pb2=getParabola(ref2.id);
-      if(!pb1||!pb2) return [];
-      const g1=getParabolaGeom(pb1), g2=getParabolaGeom(pb2);
-      if(!g1||!g2) return [];
-      const par1=parabolaParams(g1.F,g1.A,g1.B);
-      const par2=parabolaParams(g2.F,g2.A,g2.B);
-
-      const vb=viewWorldBounds();
-      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-      const us1=corners.map(c=>dot(sub(c,par1.A),par1.d));
-      const us2=corners.map(c=>dot(sub(c,par2.A),par2.d));
-      const uMin1=Math.min(...us1)-4, uMax1=Math.max(...us1)+4;
-      const uMin2=Math.min(...us2)-4, uMax2=Math.max(...us2)+4;
-
-      return parabolaParabolaIntersections(par1,uMin1,uMax1,par2,uMin2,uMax2, (mode==='accurate'?'accurate':'fast'));
-    }
-
-    // ellipse
-    if (pair==='ellipse|line'){
-      const el=getEllipse((k1==='ellipse')?ref1.id:ref2.id);
-      const ln=getLine((k1==='line')?ref1.id:ref2.id);
-      if(!el||!ln) return [];
-      const eg=getEllipseGeom(el), lp=getLinePtsFromLineObj(ln);
-      if(!eg||!lp) return [];
-      const ell=ellipseParams(eg.F1, eg.F2, eg.P);
-      if(!ell) return [];
-      return ellipseLineIntersections(ell, lp.A, lp.B, false);
-    }
-
-    if (pair==='ellipse|segment'){
-      const el=getEllipse((k1==='ellipse')?ref1.id:ref2.id);
-      const sg=getSegment((k1==='segment')?ref1.id:ref2.id);
-      if(!el||!sg) return [];
-      const eg=getEllipseGeom(el), sp=getLinePtsFromSegmentObj(sg);
-      if(!eg||!sp) return [];
-      const ell=ellipseParams(eg.F1, eg.F2, eg.P);
-      if(!ell) return [];
-      return ellipseLineIntersections(ell, sp.A, sp.B, true);
-    }
-
-    if (pair==='circle|ellipse'){
-      const el=getEllipse((k1==='ellipse')?ref1.id:ref2.id);
-      const cir=getCircle((k1==='circle')?ref1.id:ref2.id);
-      if(!el||!cir) return [];
-      const eg=getEllipseGeom(el), cg=getCircleGeom(cir);
-      if(!eg||!cg) return [];
-      const ell=ellipseParams(eg.F1, eg.F2, eg.P);
-      if(!ell) return [];
-      const poly=ellipsePolyline(ell, (mode==='accurate'?320:220));
-      const out=[];
-      for (let i=0;i<poly.length-1;i++){
-        const A=poly[i], B=poly[i+1];
-        const pts=segmentCircleIntersections(A,B,cg.C,cg.r);
-        for (const X of pts) out.push(X);
+    let acc = 0;
+    for (let i=0;i<poly.length-1;i++){
+      const A = poly[i], B = poly[i+1];
+      const vx = B.x - A.x, vy = B.y - A.y;
+      const vv = vx*vx + vy*vy;
+      let u = 0;
+      if (vv > 1e-12){
+        u = ((pt.x - A.x)*vx + (pt.y - A.y)*vy) / vv;
+        u = clamp(u, 0, 1);
       }
-      out.sort((p,q)=>p.x-q.x || p.y-q.y);
-      const uniq=[];
-      for (const X of out){
-        if (!uniq.length) { uniq.push(X); continue; }
-        const Y=uniq[uniq.length-1];
-        if ((X.x-Y.x)**2 + (X.y-Y.y)**2 > 1e-6) uniq.push(X);
+      const px = A.x + u*vx;
+      const py = A.y + u*vy;
+      const d = dist2(px,py, pt.x,pt.y);
+      if (d < best.d){
+        const tLocal = (acc + u*lens[i]) / total;
+        best = {d, x:px, y:py, t: tLocal};
       }
-      return uniq;
+      acc += lens[i];
     }
-
-    if (pair==='ellipse|parabola'){
-      const el=getEllipse((k1==='ellipse')?ref1.id:ref2.id);
-      const pb=getParabola((k1==='parabola')?ref1.id:ref2.id);
-      if(!el||!pb) return [];
-      const eg=getEllipseGeom(el), pg=getParabolaGeom(pb);
-      if(!eg||!pg) return [];
-      const ell=ellipseParams(eg.F1, eg.F2, eg.P);
-      if(!ell) return [];
-      const vb=viewWorldBounds();
-      const par=parabolaParams(pg.F,pg.A,pg.B);
-      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A),par.d));
-      const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
-
-      const P1=ellipsePolyline(ell, (mode==='accurate'?360:240));
-      const P2=parabolaPolyline(par, uMin, uMax, (mode==='accurate'?220:160));
-      return polylineIntersections(P1,P2);
-    }
-
-    if (pair==='ellipse|ellipse'){
-      const e1=getEllipse(ref1.id);
-      const e2=getEllipse(ref2.id);
-      if(!e1||!e2) return [];
-      const g1=getEllipseGeom(e1), g2=getEllipseGeom(e2);
-      if(!g1||!g2) return [];
-      const ell1=ellipseParams(g1.F1,g1.F2,g1.P);
-      const ell2=ellipseParams(g2.F1,g2.F2,g2.P);
-      if(!ell1||!ell2) return [];
-      const P1=ellipsePolyline(ell1, (mode==='accurate'?360:240));
-      const P2=ellipsePolyline(ell2, (mode==='accurate'?360:240));
-      return polylineIntersections(P1,P2);
-    }
-
-    return [];
+    return {x:best.x, y:best.y, t:best.t};
   }
 
-  function computeAllIntersections(){
-    const refs=[];
-    for (const s of segments) refs.push({kind:'segment', id:s.id});
-    for (const l of lines) refs.push({kind:'line', id:l.id});
-    for (const c of circles) refs.push({kind:'circle', id:c.id});
-    for (const p of parabolas) refs.push({kind:'parabola', id:p.id});
-    for (const e of ellipses) refs.push({kind:'ellipse', id:e.id});
-
-    const out=[];
-    for (let i=0;i<refs.length;i++){
-      for (let j=i+1;j<refs.length;j++){
-        const a=refs[i], b=refs[j];
-        const pts=intersectionsBetween(a,b,'accurate');
-        for (const X of pts) out.push({x:X.x,y:X.y,a,b});
+  function polylineIntersections(polyA, polyB){
+    const out = [];
+    if (!polyA || !polyB || polyA.length<2 || polyB.length<2) return out;
+    for (let i=0;i<polyA.length-1;i++){
+      const a = polyA[i], b = polyA[i+1];
+      for (let j=0;j<polyB.length-1;j++){
+        const c = polyB[j], d = polyB[j+1];
+        const p = segmentIntersection(a,b,c,d);
+        if (p) out.push(p);
       }
     }
     return out;
   }
 
-  function updateIntersectionPoints(){
-    for (const p of points){
-      if (p.kind!=='intersection') continue;
-      const a=p.parents?.a, b=p.parents?.b;
-      const pts=intersectionsBetween(a,b,'fast');
-      if (!pts.length) continue;
-      let best=pts[0], bestD=Infinity;
-      for (const X of pts){
-        const d=(X.x-p.x)**2 + (X.y-p.y)**2;
-        if (d<bestD){ bestD=d; best=X; }
-      }
-      p.x=best.x; p.y=best.y;
-    }
+  function getLineEqFromTwoPoints(p1, p2){
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    let nx = dy, ny = -dx;
+    const len = Math.hypot(nx, ny);
+    if (len < 1e-12) return null;
+    nx /= len; ny /= len;
+    const d = nx*p1.x + ny*p1.y;
+    return {nx, ny, d};
   }
 
-  function updateConstrainedPoints(){
-    for (const p of points){
-      if (p.kind!=='constrained') continue;
-      const c=p.constraint;
-      if (!c) continue;
+  /* =========================
+     Sampling (approx)
+  ========================= */
+  function sampleObject(obj){
+    const b = getViewportWorldBounds();
+    const margin = 1.2;
+    const xmin = b.xmin*margin, xmax = b.xmax*margin;
+    const ymin = b.ymin*margin, ymax = b.ymax*margin;
 
-      if (c.kind==='segment'){
-        const sg=getSegment(c.id); if (!sg) continue;
-        const A=getPoint(sg.a_id),B=getPoint(sg.b_id); if(!A||!B) continue;
-        const sp={A:v(A.x,A.y),B:v(B.x,B.y)};
-        const t0 = c.param?.t ?? 0;
-        const t1 = Math.max(0,Math.min(1,t0));
-        const Q = add(sp.A, mul(sub(sp.B,sp.A), t1));
-        p.x=Q.x; p.y=Q.y;
-      }
-
-      if (c.kind==='line'){
-        const ln=getLine(c.id); if (!ln) continue;
-        const A=getPoint(ln.a_id),B=getPoint(ln.b_id); if(!A||!B) continue;
-        const lp={A:v(A.x,A.y),B:v(B.x,B.y)};
-        const t0 = c.param?.t ?? 0;
-        const Q = add(lp.A, mul(sub(lp.B,lp.A), t0));
-        p.x=Q.x; p.y=Q.y;
-      }
-
-      if (c.kind==='circle'){
-        const cir=getCircle(c.id); if (!cir) continue;
-        const C=getPoint(cir.c_id),P=getPoint(cir.p_id); if(!C||!P) continue;
-        const cg={C:v(C.x,C.y), r:len(sub(v(P.x,P.y), v(C.x,C.y)))};
-        const ang = c.param?.ang ?? 0;
-        const Q = add(cg.C, v(cg.r*Math.cos(ang), cg.r*Math.sin(ang)));
-        p.x=Q.x; p.y=Q.y;
-      }
-
-      if (c.kind==='parabola'){
-        const pb=getParabola(c.id); if (!pb) continue;
-        const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); if(!F||!A||!B) continue;
-        const par=parabolaParams(v(F.x,F.y), v(A.x,A.y), v(B.x,B.y));
-        const u0 = c.param?.u ?? 0;
-        const vv=parabolaV(u0,par);
-        if (vv===null) continue;
-        const Q=uvToWorld(u0,vv,par);
-        p.x=Q.x; p.y=Q.y;
-      }
-
-      if (c.kind==='ellipse'){
-        const el=getEllipse(c.id); if (!el) continue;
-        const F1=getPoint(el.f1_id),F2=getPoint(el.f2_id),P=getPoint(el.p_id); if(!F1||!F2||!P) continue;
-        const ell=ellipseParams(v(F1.x,F1.y), v(F2.x,F2.y), v(P.x,P.y));
-        if (!ell) continue;
-        const ang = c.param?.ang ?? 0;
-        const Q=ellipsePointAt(ell, ang);
-        p.x=Q.x; p.y=Q.y;
-      }
-    }
-  }
-
-  function tryCreateIntersectionAtClick(sx,sy){
-    const candidates=computeAllIntersections();
-    let best=null, bestD2=Infinity;
-    for (const it of candidates){
-      const s=worldToScreen(it.x,it.y);
-      const dx=s.x-sx, dy=s.y-sy;
-      const d2=dx*dx+dy*dy;
-      if (d2<bestD2){ bestD2=d2; best=it; }
-    }
-    if (best && bestD2 <= 12*12){
-      addIntersectionPoint(best.x,best.y,best.a,best.b);
-      showTip(t("intersection_created"), toolPointBtn, 1200);
-      return true;
-    }
-    return false;
-  }
-
-  function bestConstraintCandidate(sx,sy){
-    const P=screenToWorld(sx,sy);
-    let best={kind:null, id:null, distPx:Infinity, Q:null, param:null};
-
-    for (const sg of segments){
-      const A=getPoint(sg.a_id),B=getPoint(sg.b_id); if(!A||!B) continue;
-      const sp={A:v(A.x,A.y),B:v(B.x,B.y)};
-      const {Q,t}=closestPointOnSegment(P, sp.A, sp.B);
-      const dp = len(sub(Q,P)) * scale;
-      if (dp<best.distPx){ best={kind:'segment', id:sg.id, distPx:dp, Q, param:{t}}; }
-    }
-    for (const ln of lines){
-      const A=getPoint(ln.a_id),B=getPoint(ln.b_id); if(!A||!B) continue;
-      const lp={A:v(A.x,A.y),B:v(B.x,B.y)};
-      const {Q,t}=closestPointOnLine(P, lp.A, lp.B);
-      const dp = len(sub(Q,P)) * scale;
-      if (dp<best.distPx){ best={kind:'line', id:ln.id, distPx:dp, Q, param:{t}}; }
-    }
-    for (const cir of circles){
-      const C=getPoint(cir.c_id),Pp=getPoint(cir.p_id); if(!C||!Pp) continue;
-      const cg={C:v(C.x,C.y), r:len(sub(v(Pp.x,Pp.y), v(C.x,C.y)))};
-      const {Q, ang}=closestPointOnCircle(P, cg.C, cg.r);
-      const dp = len(sub(Q,P)) * scale;
-      if (dp<best.distPx){ best={kind:'circle', id:cir.id, distPx:dp, Q, param:{ang}}; }
+    if (obj.kind === "segment"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      return [{x:A.x,y:A.y},{x:B.x,y:B.y}];
     }
 
-    const vb=viewWorldBounds();
-    for (const pb of parabolas){
-      const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); if(!F||!A||!B) continue;
-      const par=parabolaParams(v(F.x,F.y), v(A.x,A.y), v(B.x,B.y));
-      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A),par.d));
-      const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
-      const {Q,u}=closestPointOnParabola(P, par, uMin, uMax);
-      const dp = len(sub(Q,P)) * scale;
-      if (dp<best.distPx){ best={kind:'parabola', id:pb.id, distPx:dp, Q, param:{u}}; }
+    if (obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      const dx = B.x-A.x, dy = B.y-A.y;
+      const L = Math.hypot(dx,dy);
+      if (L < 1e-12) return null;
+      const ux = dx/L, uy = dy/L;
+      const diag = Math.hypot(xmax-xmin, ymax-ymin);
+      const tlen = diag*1.2;
+      return [
+        {x: A.x - ux*tlen, y: A.y - uy*tlen},
+        {x: A.x + ux*tlen, y: A.y + uy*tlen},
+      ];
     }
 
-    for (const el of ellipses){
-      const F1=getPoint(el.f1_id),F2=getPoint(el.f2_id),Pp=getPoint(el.p_id); if(!F1||!F2||!Pp) continue;
-      const ell=ellipseParams(v(F1.x,F1.y), v(F2.x,F2.y), v(Pp.x,Pp.y));
-      if (!ell) continue;
-      const {Q,ang}=closestPointOnEllipse(P, ell);
-      const dp = len(sub(Q,P)) * scale;
-      if (dp<best.distPx){ best={kind:'ellipse', id:el.id, distPx:dp, Q, param:{ang}}; }
-    }
-
-    return (best.kind && best.distPx<=10) ? best : null;
-  }
-
-  function pickOrCreatePoint(sx,sy){
-    const hit=hitPoint(sx,sy);
-    if (hit) return hit.id;
-    const w=screenToWorld(sx,sy);
-    return addFreePoint(w.x,w.y);
-  }
-
-  // Draw
-  function drawGrid(){
-    const w=window.innerWidth,h=window.innerHeight;
-    ctx.fillStyle='#0b0f14'; ctx.fillRect(0,0,w,h);
-    const minor=scale, major=scale*5;
-
-    function drawLines(step, alpha){
-      ctx.strokeStyle=`rgba(230,237,243,${alpha})`;
-      ctx.lineWidth=1;
-      let x0=origin.x%step;
-      for (let x=x0;x<=w;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
-      let y0=origin.y%step;
-      for (let y=y0;y<=h;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
-    }
-    drawLines(minor,0.06);
-    drawLines(major,0.12);
-
-    ctx.strokeStyle='rgba(230,237,243,0.55)'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(0,origin.y); ctx.lineTo(w,origin.y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(origin.x,0); ctx.lineTo(origin.x,h); ctx.stroke();
-
-    function drawArrowhead(x,y,dir){
-      const size=10;
-      ctx.fillStyle='rgba(230,237,243,0.75)';
-      ctx.beginPath();
-      if (dir==='right'){ ctx.moveTo(x,y); ctx.lineTo(x-size,y-size*0.55); ctx.lineTo(x-size,y+size*0.55); }
-      if (dir==='left'){ ctx.moveTo(x,y); ctx.lineTo(x+size,y-size*0.55); ctx.lineTo(x+size,y+size*0.55); }
-      if (dir==='up'){ ctx.moveTo(x,y); ctx.lineTo(x-size*0.55,y+size); ctx.lineTo(x+size*0.55,y+size); }
-      if (dir==='down'){ ctx.moveTo(x,y); ctx.lineTo(x-size*0.55,y-size); ctx.lineTo(x+size*0.55,y-size); }
-      ctx.closePath(); ctx.fill();
-    }
-    drawArrowhead(w,origin.y,'right');
-    drawArrowhead(0,origin.y,'left');
-    drawArrowhead(origin.x,0,'up');
-    drawArrowhead(origin.x,h,'down');
-
-    ctx.fillStyle='rgba(230,237,243,0.75)';
-    ctx.font='12px system-ui';
-    ctx.fillText('x', w-18, origin.y-10);
-    ctx.fillText('y', origin.x+10, 16);
-    ctx.fillStyle='rgba(230,237,243,0.85)';
-    ctx.fillText('0', origin.x+6, origin.y+14);
-  }
-
-  function drawSegments(){
-    ctx.lineWidth=3;
-    ctx.strokeStyle='rgba(180,220,255,0.75)';
-    for (const sg of segments){
-      const a=getPoint(sg.a_id), b=getPoint(sg.b_id);
-      if(!a||!b) continue;
-      const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
-      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
-    }
-  }
-
-  function drawLines(){
-    ctx.lineWidth=2;
-    ctx.strokeStyle='rgba(255,255,255,0.35)';
-    const w=window.innerWidth,h=window.innerHeight;
-
-    for (const ln of lines){
-      const a=getPoint(ln.a_id), b=getPoint(ln.b_id);
-      if(!a||!b) continue;
-      const A=worldToScreen(a.x,a.y), B=worldToScreen(b.x,b.y);
-      const dx=B.x-A.x, dy=B.y-A.y;
-      if (Math.hypot(dx,dy)<1e-6) continue;
-
-      const candidates=[];
-      const addIfValid=(t)=>{ const x=A.x+dx*t,y=A.y+dy*t; if(x>=-1&&x<=w+1&&y>=-1&&y<=h+1) candidates.push({x,y}); };
-      if (Math.abs(dx)>1e-9){ addIfValid((0-A.x)/dx); addIfValid((w-A.x)/dx); }
-      if (Math.abs(dy)>1e-9){ addIfValid((0-A.y)/dy); addIfValid((h-A.y)/dy); }
-      if (candidates.length<2) continue;
-
-      let p0=candidates[0], p1=candidates[1], best=0;
-      for (let i=0;i<candidates.length;i++){
-        for (let j=i+1;j<candidates.length;j++){
-          const dd=(candidates[i].x-candidates[j].x)**2+(candidates[i].y-candidates[j].y)**2;
-          if (dd>best){ best=dd; p0=candidates[i]; p1=candidates[j]; }
-        }
-      }
-      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
-    }
-  }
-
-  function drawCircles(){
-    ctx.lineWidth=2;
-    ctx.strokeStyle='rgba(200,255,200,0.45)';
-    for (const c of circles){
-      const C=getPoint(c.c_id),P=getPoint(c.p_id); if(!C||!P) continue;
-      const cg={C:v(C.x,C.y), r:len(sub(v(P.x,P.y), v(C.x,C.y)))};
-      const sC=worldToScreen(cg.C.x,cg.C.y);
-      ctx.beginPath(); ctx.arc(sC.x,sC.y, cg.r*scale, 0, Math.PI*2); ctx.stroke();
-    }
-  }
-
-  function drawParabolas(){
-    ctx.lineWidth=2.5;
-    ctx.strokeStyle='rgba(255,200,120,0.65)';
-    const vb=viewWorldBounds();
-    for (const pb of parabolas){
-      const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); if(!F||!A||!B) continue;
-      const par=parabolaParams(v(F.x,F.y), v(A.x,A.y), v(B.x,B.y));
-      const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-      const us=corners.map(c=>dot(sub(c,par.A),par.d));
-      let uMin=Math.min(...us)-2, uMax=Math.max(...us)+2;
-
-      const N=180;
-      let started=false;
-      ctx.beginPath();
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId), P = getById(obj.pId);
+      if (!C || !P) return null;
+      const r = dist(C.x,C.y, P.x,P.y);
+      if (r < 1e-12) return null;
+      const N = 200;
+      const pts = [];
       for (let i=0;i<=N;i++){
-        const u=uMin+(uMax-uMin)*i/N;
-        const vv=parabolaV(u,par);
-        if (vv===null) continue;
-        const X=uvToWorld(u,vv,par);
-        const s=worldToScreen(X.x,X.y);
-        if(!started){ ctx.moveTo(s.x,s.y); started=true; }
-        else ctx.lineTo(s.x,s.y);
+        const ang = (i/N)*Math.PI*2;
+        pts.push({x:C.x + r*Math.cos(ang), y:C.y + r*Math.sin(ang)});
       }
-      if (started) ctx.stroke();
+      return pts;
     }
-  }
 
-  function drawEllipses(){
-    ctx.lineWidth=2.5;
-    ctx.strokeStyle='rgba(200,160,255,0.65)';
-    for (const el of ellipses){
-      const F1=getPoint(el.f1_id),F2=getPoint(el.f2_id),P=getPoint(el.p_id); if(!F1||!F2||!P) continue;
-      const ell=ellipseParams(v(F1.x,F1.y), v(F2.x,F2.y), v(P.x,P.y));
-      if(!ell) continue;
-      const poly=ellipsePolyline(ell, 260);
-      ctx.beginPath();
-      for (let i=0;i<poly.length;i++){
-        const s=worldToScreen(poly[i].x, poly[i].y);
-        if (i===0) ctx.moveTo(s.x,s.y);
-        else ctx.lineTo(s.x,s.y);
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+      const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+      const a = sum/2;
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (a < 1e-10 || a < c + 1e-10) return null;
+      const b0 = Math.sqrt(Math.max(0, a*a - c*c));
+
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+
+      const N = 240;
+      const pts = [];
+      for (let i=0;i<=N;i++){
+        const th = (i/N)*Math.PI*2;
+        const ex = a*Math.cos(th);
+        const ey = b0*Math.sin(th);
+        const wx = cx + ex*ca - ey*sa;
+        const wy = cy + ex*sa + ey*ca;
+        pts.push({x:wx,y:wy});
       }
-      ctx.stroke();
+      return pts;
+    }
+
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      if (!F) return null;
+
+      let L = null;
+      if (obj.directrixKind === "ref"){
+        const ref = getById(obj.directrixId);
+        if (ref && (ref.kind === "line" || ref.kind === "segment")){
+          const p1 = getById(ref.aId), p2 = getById(ref.bId);
+          if (p1 && p2) L = getLineEqFromTwoPoints(p1,p2);
+        }
+      } else if (obj.directrixKind === "2p"){
+        const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
+        if (p1 && p2) L = getLineEqFromTwoPoints(p1,p2);
+      }
+      if (!L) return null;
+
+      const nx = L.nx, ny = L.ny, d = L.d;
+      const ux = -ny, uy = nx;
+      const Ox = nx*d, Oy = ny*d;
+
+      const fx = ux*(F.x - Ox) + uy*(F.y - Oy);
+      const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
+      if (Math.abs(fy) < 1e-6) return null;
+
+      const span = Math.max(xmax-xmin, ymax-ymin) * 1.2;
+      const xMin = fx - span;
+      const xMax = fx + span;
+
+      const N = 240;
+      const pts = [];
+      for (let i=0;i<=N;i++){
+        const x = xMin + (i/N)*(xMax-xMin);
+        const y = (((x - fx)*(x - fx)) + fy*fy) / (2*fy);
+        pts.push({x: Ox + ux*x + nx*y, y: Oy + uy*x + ny*y});
+      }
+      return pts.length >= 2 ? pts : null;
+    }
+
+    return null;
+  }
+
+  /* =========================
+     Dependent points update
+  ========================= */
+  function updateDependentPoints(){
+    for (const o of objects){
+      if (o.kind !== "point" || !o.constraint) continue;
+      const c = o.constraint;
+
+      if (c.type === "on"){
+        const parent = getById(c.parentId);
+        if (!parent) continue;
+        const poly = sampleObject(parent);
+        if (!poly) continue;
+        const proj = polylineProject(poly, {x:o.x,y:o.y});
+        o.x = proj.x; o.y = proj.y; c.t = proj.t;
+      }
+
+      if (c.type === "intersection"){
+        const A = getById(c.aId), B = getById(c.bId);
+        if (!A || !B) continue;
+        const pA = sampleObject(A);
+        const pB = sampleObject(B);
+        if (!pA || !pB) continue;
+
+        const ints = polylineIntersections(pA, pB);
+        if (!ints.length) continue;
+
+        const ref = {x:o.x ?? c.seed?.x ?? 0, y:o.y ?? c.seed?.y ?? 0};
+        let best = ints[0], bestD = dist2(ints[0].x,ints[0].y, ref.x,ref.y);
+        for (let i=1;i<ints.length;i++){
+          const dd = dist2(ints[i].x,ints[i].y, ref.x,ref.y);
+          if (dd < bestD){ bestD = dd; best = ints[i]; }
+        }
+        o.x = best.x; o.y = best.y;
+      }
     }
   }
 
-  function drawPoints(){
-    for (const p of points){
-      const s=worldToScreen(p.x,p.y);
-      const isSel=(p.id===selectedPointId);
-      const r=isSel?7:5;
+  /* =========================
+     Hit testing
+  ========================= */
+  function hitTest(wx, wy){
+    const tol = worldTol();
 
-      ctx.beginPath(); ctx.arc(s.x,s.y,r,0,Math.PI*2);
-
-      if (p.kind==='intersection') ctx.fillStyle='rgba(120,255,160,0.95)';
-      else if (p.kind==='constrained') ctx.fillStyle='rgba(160,190,255,0.95)';
-      else ctx.fillStyle='rgba(120,200,255,0.95)';
-      if (isSel) ctx.fillStyle='rgba(255,220,120,0.95)';
-
-      ctx.fill();
-      ctx.lineWidth=2;
-      ctx.strokeStyle='rgba(255,255,255,0.35)';
-      ctx.stroke();
+    // points first
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist(o.x,o.y, wx,wy);
+      if (d <= tol && (!best || d < best.d)) best = {id:o.id, d};
     }
+    if (best) return best.id;
+
+    // other objects by projection
+    let best2 = null;
+    for (const o of objects){
+      if (o.kind==="point" || o.kind==="text") continue;
+      const poly = sampleObject(o);
+      if (!poly) continue;
+      const proj = polylineProject(poly, {x:wx,y:wy});
+      const d = dist(proj.x,proj.y, wx,wy);
+      if (d <= tol*1.2 && (!best2 || d < best2.d)) best2 = {id:o.id, d};
+    }
+    return best2 ? best2.id : null;
   }
 
-  function drawStepPreview(){
-    const P=mouseWorld;
+  function findNearestIntersectionCandidate(wx, wy){
+    const tol = worldTol()*1.2;
+    let best = null;
 
-    if (tool==='segment' && stepA){
-      const a=getPoint(stepA); if(!a) return;
-      const A=worldToScreen(a.x,a.y), B=worldToScreen(P.x,P.y);
-      ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    if (tool==='line' && stepA){
-      const a=getPoint(stepA); if(!a) return;
-      const A=worldToScreen(a.x,a.y), B=worldToScreen(P.x,P.y);
-      const dx=B.x-A.x, dy=B.y-A.y;
-      if (Math.hypot(dx,dy)<1e-6) return;
-      const w=window.innerWidth,h=window.innerHeight;
-      const candidates=[];
-      const addIfValid=(t)=>{ const x=A.x+dx*t,y=A.y+dy*t; if(x>=-1&&x<=w+1&&y>=-1&&y<=h+1) candidates.push({x,y}); };
-      if (Math.abs(dx)>1e-9){ addIfValid((0-A.x)/dx); addIfValid((w-A.x)/dx); }
-      if (Math.abs(dy)>1e-9){ addIfValid((0-A.y)/dy); addIfValid((h-A.y)/dy); }
-      if (candidates.length<2) return;
-      let p0=candidates[0], p1=candidates[1], best=0;
-      for (let i=0;i<candidates.length;i++){
-        for (let j=i+1;j<candidates.length;j++){
-          const dd=(candidates[i].x-candidates[j].x)**2+(candidates[i].y-candidates[j].y)**2;
-          if (dd>best){ best=dd; p0=candidates[i]; p1=candidates[j]; }
+    const candidates = objects.filter(o => ["segment","line","circle","parabola","ellipse"].includes(o.kind));
+    for (let i=0;i<candidates.length;i++){
+      for (let j=i+1;j<candidates.length;j++){
+        const A = candidates[i], B = candidates[j];
+        const pA = sampleObject(A), pB = sampleObject(B);
+        if (!pA || !pB) continue;
+        const ints = polylineIntersections(pA, pB);
+        for (const p of ints){
+          const d = dist(p.x,p.y, wx,wy);
+          if (d <= tol && (!best || d < best.d)){
+            best = {aId:A.id, bId:B.id, x:p.x, y:p.y, d};
+          }
         }
       }
-      ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.stroke();
-      ctx.setLineDash([]);
     }
-
-    if (tool==='circle' && circleCenterId){
-      const c=getPoint(circleCenterId); if(!c) return;
-      const r=len(sub(v(P.x,P.y), v(c.x,c.y)));
-      const sC=worldToScreen(c.x,c.y);
-      ctx.setLineDash([6,6]);
-      ctx.strokeStyle='rgba(200,255,200,0.35)'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.arc(sC.x,sC.y, r*scale, 0, Math.PI*2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
+    return best;
   }
 
-  function draw(){
-    updateConstrainedPoints();
-    updateIntersectionPoints();
-    cleanupAll();
-    updateHistoryButtons();
-
-    drawGrid();
-    drawLines();
-    drawSegments();
-    drawCircles();
-    drawParabolas();
-    drawEllipses();
-    drawStepPreview();
-    drawPoints();
+  function createIntersectionPoint(hit){
+    const id = "p_" + rndId();
+    const p = {
+      id, kind:"point",
+      x: hit.x, y: hit.y,
+      name:"", caption:"",
+      constraint: {type:"intersection", aId: hit.aId, bId: hit.bId, seed:{x:hit.x,y:hit.y}}
+    };
+    objects.push(p);
+    return p;
   }
 
-  // Events
-  canvas.addEventListener('pointermove',(e)=>{
-    const rect=canvas.getBoundingClientRect();
-    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
-    const w=screenToWorld(sx,sy);
-    mouseWorld=w;
-    readout.textContent=`${t("mouse")}: (${w.x.toFixed(2)}, ${w.y.toFixed(2)})`;
-    if ((tool==='segment'&&stepA) || (tool==='line'&&stepA) || (tool==='circle'&&circleCenterId)) draw();
+  function createPointOnObject(parentId, wx, wy){
+    const parent = getById(parentId);
+    if (!parent) return null;
+    const poly = sampleObject(parent);
+    if (!poly) return null;
+    const proj = polylineProject(poly, {x:wx,y:wy});
+
+    const p = ensurePointAt(proj.x, proj.y);
+    p.constraint = {type:"on", parentId, t: proj.t};
+    return p;
+  }
+
+  /* =========================
+     Create objects
+  ========================= */
+  function createSegment(aId, bId){
+    const id = "s_" + rndId();
+    objects.push({id, kind:"segment", aId, bId, name:"", caption:""});
+    return id;
+  }
+  function createLine(aId, bId){
+    const id = "l_" + rndId();
+    objects.push({id, kind:"line", aId, bId, name:"", caption:""});
+    return id;
+  }
+  function createCircle(cId, pId){
+    const id = "c_" + rndId();
+    objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
+    return id;
+  }
+  function createParabola(fId, directrix){
+    const id = "pa_" + rndId();
+    objects.push({
+      id, kind:"parabola", fId,
+      directrixKind: directrix.kind,
+      directrixId: directrix.directrixId || null,
+      p1Id: directrix.p1Id || null,
+      p2Id: directrix.p2Id || null,
+      name:"", caption:""
+    });
+    return id;
+  }
+  function createEllipse(f1Id, f2Id, pId){
+    const id = "e_" + rndId();
+    objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
+    return id;
+  }
+  function createText(wx, wy, content){
+    const id = "t_" + rndId();
+    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? "텍스트", name:"", caption:""});
+    return id;
+  }
+
+  /* =========================
+     Floating tooltip (1초 가만히)
+  ========================= */
+  const floatingTip = $("floatingTip");
+  const tipTitle = $("tipTitle");
+  const tipDesc  = $("tipDesc");
+  let tipTimer = null;
+  let tipArmed = false;
+
+  function cancelFloatingTip(){
+    tipArmed = false;
+    if (tipTimer){ clearTimeout(tipTimer); tipTimer = null; }
+    floatingTip.style.display = "none";
+  }
+
+  function armTipForButton(btnEl, toolKey){
+    cancelFloatingTip();
+    tipArmed = true;
+    const rect = btnEl.getBoundingClientRect();
+    const x = rect.right + 8;
+    const y = rect.top;
+
+    tipTimer = setTimeout(() => {
+      if (!tipArmed) return;
+      const info = t().tools[toolKey];
+      tipTitle.textContent = info.name;
+      tipDesc.textContent  = info.desc;
+      floatingTip.style.left = x + "px";
+      floatingTip.style.top  = y + "px";
+      floatingTip.style.display = "block";
+    }, 1000);
+  }
+
+  ["pointerdown","pointermove","wheel","keydown","touchstart"].forEach(ev => {
+    window.addEventListener(ev, () => { if (tipArmed) cancelFloatingTip(); }, {passive:true});
   });
 
-  canvas.addEventListener('click',(e)=>{
-    const rect=canvas.getBoundingClientRect();
-    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+  /* =========================
+     Editors
+  ========================= */
+  const objEditor = $("objEditor");
+  const objKind = $("objKind");
+  const objId = $("objId");
+  const objName = $("objName");
+  const objCaption = $("objCaption");
+  const rowX = $("rowX");
+  const rowY = $("rowY");
+  const objX = $("objX");
+  const objY = $("objY");
+  let editingObjId = null;
 
-    if (tool==='point'){
-      if (hitPoint(sx,sy)) return;
-      if (tryCreateIntersectionAtClick(sx,sy)) return;
+  function openObjEditor(sel, clientX, clientY){
+    const obj = getById(sel.id);
+    if (!obj) return;
 
-      const cand=bestConstraintCandidate(sx,sy);
-      if (cand){
-        addConstrainedPoint(cand.kind, cand.id, cand.param, cand.Q.x, cand.Q.y);
-        showTip(t("constrained_created"), toolPointBtn, 1200);
-        return;
+    editingObjId = obj.id;
+    $("objTitle").textContent = t().ui.objTitle;
+    $("lblKind").textContent = t().ui.kind;
+    $("lblName").textContent = t().ui.name;
+    $("lblCaption").textContent = t().ui.caption;
+
+    objKind.value = obj.kind;
+    objId.value = obj.id;
+    objName.value = obj.name || "";
+    objCaption.value = obj.caption || "";
+
+    const showXY = (obj.kind === "point" || obj.kind === "text");
+    rowX.style.display = showXY ? "flex" : "none";
+    rowY.style.display = showXY ? "flex" : "none";
+    if (showXY){
+      objX.value = (obj.x ?? 0);
+      objY.value = (obj.y ?? 0);
+    }
+
+    const pad = 10;
+    const w = objEditor.offsetWidth || 340;
+    const h = objEditor.offsetHeight || 320;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    objEditor.style.left = x + "px";
+    objEditor.style.top  = y + "px";
+    objEditor.style.display = "block";
+    setTimeout(() => objName.focus(), 0);
+  }
+
+  function closeObjEditor(){
+    objEditor.style.display = "none";
+    editingObjId = null;
+  }
+
+  $("btnObjCancel").addEventListener("click", closeObjEditor);
+  $("btnObjSave").addEventListener("click", () => {
+    if (!editingObjId) return;
+    const obj = getById(editingObjId);
+    if (!obj) { closeObjEditor(); return; }
+
+    pushState();
+    obj.name = objName.value || "";
+    obj.caption = objCaption.value || "";
+
+    if (obj.kind === "point" || obj.kind === "text"){
+      const x = parseFloat(objX.value);
+      const y = parseFloat(objY.value);
+      if (Number.isFinite(x)) obj.x = x;
+      if (Number.isFinite(y)) obj.y = y;
+    }
+
+    closeObjEditor();
+    saveToStorage();
+    syncOverlay();
+  });
+
+  const textEditor = $("textEditor");
+  const textContent = $("textContent");
+  let editingTextId = null;
+
+  function openTextEditorFor(id, clientX, clientY){
+    const obj = getById(id);
+    if (!obj || obj.kind !== "text") return;
+
+    editingTextId = id;
+    $("textTitle").textContent = t().ui.textTitle;
+    $("lblText").textContent = t().ui.content;
+    textContent.value = obj.content || "";
+
+    const pad = 10;
+    const w = textEditor.offsetWidth || 340;
+    const h = textEditor.offsetHeight || 240;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    textEditor.style.left = x + "px";
+    textEditor.style.top  = y + "px";
+    textEditor.style.display = "block";
+    setTimeout(() => textContent.focus(), 0);
+  }
+
+  function closeTextEditor(){
+    textEditor.style.display = "none";
+    editingTextId = null;
+  }
+
+  $("btnTextCancel").addEventListener("click", closeTextEditor);
+  $("btnTextSave").addEventListener("click", () => {
+    if (!editingTextId) return;
+    const obj = getById(editingTextId);
+    if (!obj) { closeTextEditor(); return; }
+
+    pushState();
+    obj.content = textContent.value || "";
+
+    closeTextEditor();
+    saveToStorage();
+    syncOverlay();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape"){
+      if (objEditor.style.display === "block") closeObjEditor();
+      if (textEditor.style.display === "block") closeTextEditor();
+    }
+  });
+
+  /* =========================
+     Overlay sync
+  ========================= */
+  function getObjectAnchor(obj){
+    if (!obj) return {x:0,y:0};
+    if (obj.kind === "point") return {x:obj.x, y:obj.y};
+    if (obj.kind === "text")  return {x:obj.x, y:obj.y};
+    if (obj.kind === "segment" || obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (A && B) return {x:(A.x+B.x)/2, y:(A.y+B.y)/2};
+    }
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId);
+      if (C) return {x:C.x, y:C.y};
+    }
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      if (F) return {x:F.x, y:F.y};
+    }
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
+    return {x:0,y:0};
+  }
+
+  function syncOverlay(){
+    const existingTextEls = new Map([...overlay.querySelectorAll(".textItem")].map(el => [el.dataset.id, el]));
+    const existingLabelEls = new Map([...overlay.querySelectorAll(".labelItem")].map(el => [el.dataset.id, el]));
+
+    // text objects
+    const texts = objects.filter(o => o.kind === "text");
+    for (const o of texts){
+      let el = existingTextEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "textItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
+
+        // drag text in select tool
+        el.addEventListener("pointerdown", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (tool !== "select") return;
+
+          selected = {id:o.id};
+          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+          dragging = {
+            id:o.id, kind:"text",
+            startWorld: screenToWorld(sx, sy),
+            startObj: {x:o.x, y:o.y},
+            moved:false
+          };
+          syncOverlay();
+        });
+
+        // dblclick text: edit content (select tool also)
+        // Shift+dblclick: open properties
+        el.addEventListener("dblclick", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
+
+          if (tool === "select" && (e.shiftKey || e.altKey)){
+            openObjEditor({id:o.id}, e.clientX, e.clientY);
+          } else {
+            openTextEditorFor(o.id, e.clientX, e.clientY);
+          }
+        });
       }
-      const w=screenToWorld(sx,sy);
-      addFreePoint(w.x,w.y);
-      return;
-    }
 
-    if (tool==='segment'){
-      const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){ stepA=pid; showTip(t("seg_first"), toolSegmentBtn, 1300); draw(); return; }
-      if (stepA===pid){ stepA=null; showTip(t("seg_first_cancel"), toolSegmentBtn, 1100); draw(); return; }
-      addSegment(stepA,pid);
-      stepA=null;
-      showTip(t("seg_done"), toolSegmentBtn, 900);
-      return;
-    }
+      const s = worldToScreen(o.x,o.y);
+      el.style.left = s.sx + "px";
+      el.style.top  = s.sy + "px";
+      el.innerHTML = renderMixedLatex(o.content || "");
+      el.classList.toggle("selected", selected?.id === o.id);
 
-    if (tool==='line'){
-      const pid=pickOrCreatePoint(sx,sy);
-      if (!stepA){ stepA=pid; showTip(t("line_first"), toolLineBtn, 1300); draw(); return; }
-      if (stepA===pid){ stepA=null; showTip(t("line_first_cancel"), toolLineBtn, 1100); draw(); return; }
-      addLine(stepA,pid);
-      stepA=null;
-      showTip(t("line_done"), toolLineBtn, 900);
-      return;
+      existingTextEls.delete(o.id);
     }
+    for (const el of existingTextEls.values()) el.remove();
 
-    if (tool==='circle'){
-      const pid=pickOrCreatePoint(sx,sy);
-      if (!circleCenterId){ circleCenterId=pid; showTip(t("circle_center"), toolCircleBtn, 1300); draw(); return; }
-      if (circleCenterId===pid){ circleCenterId=null; showTip(t("circle_center_cancel"), toolCircleBtn, 1100); draw(); return; }
-      addCircle(circleCenterId,pid);
-      circleCenterId=null;
-      showTip(t("circle_done"), toolCircleBtn, 900);
-      return;
-    }
-
-    if (tool==='parabola'){
-      if (!parabolaFocusId){
-        parabolaFocusId=pickOrCreatePoint(sx,sy);
-        showTip(t("parabola_focus"), toolParabolaBtn, 1500);
-        draw();
-        return;
+    // labels (name/caption)
+    const labelTargets = objects.filter(o => (o.name && o.name.trim()) || (o.caption && o.caption.trim()));
+    for (const o of labelTargets){
+      let el = existingLabelEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "labelItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
       }
+      const a = getObjectAnchor(o);
+      const s = worldToScreen(a.x,a.y);
+      el.style.left = s.sx + "px";
+      el.style.top  = s.sy + "px";
 
-      const cand=bestConstraintCandidate(sx,sy);
-      if (cand && (cand.kind==='line' || cand.kind==='segment')){
-        if (cand.kind==='line'){
-          const ln=lines.find(x=>x.id===cand.id);
-          if (ln){ addParabola(parabolaFocusId, ln.a_id, ln.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
-            showTip(t("parabola_done_line"), toolParabolaBtn, 1200); return; }
+      const name = (o.name && o.name.trim()) ? "<b>"+escapeHtml(o.name.trim())+"</b>" : "";
+      const cap  = (o.caption && o.caption.trim()) ? renderMixedLatex(o.caption.trim()) : "";
+      el.innerHTML = name + (name && cap ? " " : "") + cap;
+
+      existingLabelEls.delete(o.id);
+    }
+    for (const el of existingLabelEls.values()) el.remove();
+  }
+
+  /* =========================
+     Drawing
+  ========================= */
+  function niceStep(target){
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const x = target / pow;
+    if (x < 1.5) return 1*pow;
+    if (x < 3.5) return 2*pow;
+    if (x < 7.5) return 5*pow;
+    return 10*pow;
+  }
+
+  function drawGrid(){
+    const bounds = getViewportWorldBounds();
+    const step = niceStep(40 / cam.scale);
+
+    const xmin = Math.floor(bounds.xmin/step)*step;
+    const xmax = Math.ceil(bounds.xmax/step)*step;
+    const ymin = Math.floor(bounds.ymin/step)*step;
+    const ymax = Math.ceil(bounds.ymax/step)*step;
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(36,49,74,.35)";
+
+    for (let x=xmin; x<=xmax; x+=step){
+      const s1 = worldToScreen(x, ymin);
+      const s2 = worldToScreen(x, ymax);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    for (let y=ymin; y<=ymax; y+=step){
+      const s1 = worldToScreen(xmin, y);
+      const s2 = worldToScreen(xmax, y);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAxes(){
+    const {w,h} = canvasSizeCSS();
+    const origin = worldToScreen(0,0);
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(170,182,209,.45)";
+    ctx.fillStyle = "rgba(170,182,209,.75)";
+
+    ctx.beginPath(); ctx.moveTo(0, origin.sy); ctx.lineTo(w, origin.sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.sx, 0); ctx.lineTo(origin.sx, h); ctx.stroke();
+
+    const ah = 8;
+    // x right
+    ctx.beginPath(); ctx.moveTo(w-ah, origin.sy-ah/2); ctx.lineTo(w, origin.sy); ctx.lineTo(w-ah, origin.sy+ah/2); ctx.fill();
+    // x left
+    ctx.beginPath(); ctx.moveTo(ah, origin.sy-ah/2); ctx.lineTo(0, origin.sy); ctx.lineTo(ah, origin.sy+ah/2); ctx.fill();
+    // y top
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, ah); ctx.lineTo(origin.sx, 0); ctx.lineTo(origin.sx+ah/2, ah); ctx.fill();
+    // y bottom
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, h-ah); ctx.lineTo(origin.sx, h); ctx.lineTo(origin.sx+ah/2, h-ah); ctx.fill();
+
+    ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = "rgba(232,238,252,.75)";
+    ctx.fillText("0", origin.sx + 6, origin.sy - 6);
+
+    ctx.restore();
+  }
+
+  function drawObjects(){
+    ctx.save();
+    ctx.lineWidth = 2;
+
+    // curves first
+    for (const o of objects){
+      if (o.kind === "segment"){
+        const A = getById(o.aId), B = getById(o.bId);
+        if (!A || !B) continue;
+        const a = worldToScreen(A.x,A.y);
+        const b = worldToScreen(B.x,B.y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.72)";
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+      }
+      if (o.kind === "line"){
+        const poly = sampleObject(o);
+        if (!poly) continue;
+        const a = worldToScreen(poly[0].x,poly[0].y);
+        const b = worldToScreen(poly[1].x,poly[1].y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
+        ctx.setLineDash([6,6]);
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (o.kind === "circle" || o.kind === "parabola" || o.kind === "ellipse"){
+        const poly = sampleObject(o);
+        if (!poly) continue;
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        ctx.beginPath();
+        const p0 = worldToScreen(poly[0].x, poly[0].y);
+        ctx.moveTo(p0.sx, p0.sy);
+        for (let i=1;i<poly.length;i++){
+          const pi = worldToScreen(poly[i].x, poly[i].y);
+          ctx.lineTo(pi.sx, pi.sy);
         }
-        if (cand.kind==='segment'){
-          const sg=segments.find(x=>x.id===cand.id);
-          if (sg){ addParabola(parabolaFocusId, sg.a_id, sg.b_id); parabolaFocusId=null; parabolaDirFirstId=null;
-            showTip(t("parabola_done_segment"), toolParabolaBtn, 1400); return; }
-        }
+        ctx.stroke();
       }
+    }
 
-      const pid=pickOrCreatePoint(sx,sy);
-      if (!parabolaDirFirstId){
-        parabolaDirFirstId=pid;
-        showTip(t("parabola_dir_first"), toolParabolaBtn, 1500);
-        draw();
-        return;
+    // points
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const p = worldToScreen(o.x,o.y);
+      const r = (selected?.id===o.id) ? 6 : 5;
+      ctx.fillStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.9)";
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI*2); ctx.fill();
+
+      if (o.constraint){
+        ctx.strokeStyle = "rgba(55,214,138,.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, r+2, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 2;
       }
-      if (parabolaDirFirstId===pid){
-        parabolaDirFirstId=null;
-        showTip(t("parabola_dir_first_cancel"), toolParabolaBtn, 1200);
-        draw();
-        return;
-      }
-      addParabola(parabolaFocusId, parabolaDirFirstId, pid);
-      parabolaFocusId=null; parabolaDirFirstId=null;
-      showTip(t("parabola_done_2pts"), toolParabolaBtn, 1400);
+    }
+
+    ctx.restore();
+  }
+
+  /* =========================
+     UI / Tool buttons
+  ========================= */
+  const toolButtons = [...document.querySelectorAll("#toolGroup .btn")];
+
+  function setHint(){ $("hint").textContent = t().ui.hint; }
+
+  function syncToolUI(){
+    for (const b of toolButtons){
+      const key = b.dataset.tool;
+      b.classList.toggle("active", key === tool);
+      b.textContent = t().tools[key].name;
+    }
+    $("btnUndo").textContent = t().ui.undo;
+    $("btnRedo").textContent = t().ui.redo;
+    $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
+    setHint();
+  }
+
+  toolButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.tool;
+      tool = key;
+
+      // reset pending states
+      segmentPending = null;
+      linePending = null;
+      circlePending = null;
+      parabolaPending = { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+      ellipsePending = { f1:null, f2:null };
+      selected = null;
+      dragging = null;
+
+      syncToolUI();
+      syncOverlay();
+      armTipForButton(btn, key);
+      saveToStorage();
+    });
+  });
+
+  $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); undo(); });
+  $("btnRedo").addEventListener("click", () => { cancelFloatingTip(); redo(); });
+
+  $("btnLang").addEventListener("click", () => {
+    cancelFloatingTip();
+    lang = (lang === "ko") ? "en" : "ko";
+    syncToolUI();
+    syncOverlay();
+  });
+
+  function setCanvasCursor(){
+    if (tool === "select") cv.style.cursor = isPanning ? "grabbing" : "default";
+    else cv.style.cursor = "crosshair";
+  }
+
+  /* =========================
+     Canvas events (좌표 보정 적용)
+  ========================= */
+  cv.addEventListener("pointermove", (e) => {
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+
+    if (isPanning && panStart){
+      const now = screenToWorld(sx, sy);
+      cam.x = panStart.camX - (now.wx - panStart.wx);
+      cam.y = panStart.camY - (now.wy - panStart.wy);
+      saveToStorage();
       return;
     }
 
-    if (tool==='ellipse'){
-      const pid=pickOrCreatePoint(sx,sy);
-      if (!ellipseF1Id){
-        ellipseF1Id=pid;
-        showTip(t("ellipse_f1"), toolEllipseBtn, 1300);
-        draw();
+    if (dragging){
+      const w = screenToWorld(sx, sy);
+      const obj = getById(dragging.id);
+      if (!obj) return;
+
+      const dx = w.wx - dragging.startWorld.wx;
+      const dy = w.wy - dragging.startWorld.wy;
+
+      if (dragging.kind === "point"){
+        const p = obj;
+        const target = {x: dragging.startObj.x + dx, y: dragging.startObj.y + dy};
+
+        if (p.constraint?.type === "on"){
+          const parent = getById(p.constraint.parentId);
+          const poly = parent ? sampleObject(parent) : null;
+          if (poly){
+            const proj = polylineProject(poly, target);
+            p.x = proj.x; p.y = proj.y; p.constraint.t = proj.t;
+          } else {
+            p.x = target.x; p.y = target.y;
+          }
+        } else if (p.constraint?.type === "intersection"){
+          // 교점은 드래그로 옮기지 않음
+        } else {
+          p.x = target.x; p.y = target.y;
+        }
+        dragging.moved = true;
+      }
+
+      if (dragging.kind === "text"){
+        obj.x = dragging.startObj.x + dx;
+        obj.y = dragging.startObj.y + dy;
+        dragging.moved = true;
+      }
+
+      saveToStorage();
+      syncOverlay();
+      return;
+    }
+  });
+
+  cv.addEventListener("pointerdown", (e) => {
+    cancelFloatingTip();
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
+
+    // pan (우클릭/ctrl/meta/선택도구+shift)
+    if (e.button === 2 || e.ctrlKey || e.metaKey || (e.shiftKey && tool==="select")){
+      isPanning = true;
+      panStart = { wx: w.wx, wy: w.wy, camX: cam.x, camY: cam.y };
+      setCanvasCursor();
+      e.preventDefault();
+      return;
+    }
+
+    if (tool === "select"){
+      const id = hitTest(w.wx,w.wy);
+      if (id){
+        selected = {id};
+        const obj = getById(id);
+        if (obj?.kind === "point"){
+          dragging = {id, kind:"point", startWorld: w, startObj:{x:obj.x,y:obj.y}, moved:false};
+        } else {
+          dragging = null;
+        }
+      } else {
+        selected = null;
+        dragging = null;
+      }
+      syncOverlay();
+      saveToStorage();
+      return;
+    }
+
+    if (tool === "point"){
+      const hit = findNearestIntersectionCandidate(w.wx, w.wy);
+      if (hit){
+        pushState();
+        const p = createIntersectionPoint(hit);
+        selected = {id:p.id};
+        syncOverlay();
+        saveToStorage();
         return;
       }
-      if (!ellipseF2Id){
-        if (pid===ellipseF1Id){
-          ellipseF1Id=null;
-          showTip(t("ellipse_f2_cancel"), toolEllipseBtn, 1100);
-          draw();
+
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && obj.kind !== "point" && obj.kind !== "text"){
+        pushState();
+        const p = createPointOnObject(obj.id, w.wx, w.wy);
+        if (p){
+          selected = {id:p.id};
+          syncOverlay();
+          saveToStorage();
           return;
         }
-        ellipseF2Id=pid;
-        showTip(t("ellipse_f2"), toolEllipseBtn, 1400);
-        draw();
+      }
+
+      pushState();
+      const p = ensurePointAt(w.wx,w.wy);
+      selected = {id:p.id};
+      syncOverlay();
+      saveToStorage();
+      return;
+    }
+
+    if (tool === "segment"){
+      pushState();
+      const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+      if (!segmentPending){
+        segmentPending = p.id;
+        selected = {id:p.id};
+      } else {
+        createSegment(segmentPending, p.id);
+        segmentPending = null; // 요구사항: 1개 만들면 다음은 새 시작점
+        selected = {id:p.id};
+      }
+      syncOverlay();
+      saveToStorage();
+      return;
+    }
+
+    if (tool === "line"){
+      pushState();
+      const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+      if (!linePending){
+        linePending = p.id; selected = {id:p.id};
+      } else {
+        createLine(linePending, p.id);
+        linePending = null; selected = {id:p.id};
+      }
+      syncOverlay();
+      saveToStorage();
+      return;
+    }
+
+    if (tool === "circle"){
+      pushState();
+      const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+      if (!circlePending){
+        circlePending = p.id; selected = {id:p.id};
+      } else {
+        createCircle(circlePending, p.id);
+        circlePending = null; selected = {id:p.id};
+      }
+      syncOverlay();
+      saveToStorage();
+      return;
+    }
+
+    if (tool === "parabola"){
+      pushState();
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+
+      if (!parabolaPending.focusId){
+        const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+        parabolaPending.focusId = p.id;
+        selected = {id:p.id};
+        syncOverlay(); saveToStorage();
         return;
       }
-      addEllipse(ellipseF1Id, ellipseF2Id, pid);
-      ellipseF1Id=null; ellipseF2Id=null;
-      showTip(t("ellipse_done"), toolEllipseBtn, 1100);
+
+      if (obj && (obj.kind === "line" || obj.kind === "segment")){
+        createParabola(parabolaPending.focusId, {kind:"ref", directrixId: obj.id});
+        parabolaPending = { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+        selected = {id: obj.id};
+        syncOverlay(); saveToStorage();
+        return;
+      }
+
+      const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+      if (!parabolaPending.directrixP1){
+        parabolaPending.directrixP1 = p.id;
+        selected = {id:p.id};
+      } else if (!parabolaPending.directrixP2){
+        parabolaPending.directrixP2 = p.id;
+        createParabola(parabolaPending.focusId, {kind:"2p", p1Id: parabolaPending.directrixP1, p2Id: parabolaPending.directrixP2});
+        parabolaPending = { focusId:null, directrixId:null, directrixP1:null, directrixP2:null };
+        selected = {id:p.id};
+      }
+      syncOverlay(); saveToStorage();
+      return;
+    }
+
+    if (tool === "ellipse"){
+      pushState();
+      const p = getOrCreatePointNear(w.wx,w.wy, worldTol());
+      if (!ellipsePending.f1){
+        ellipsePending.f1 = p.id; selected = {id:p.id};
+      } else if (!ellipsePending.f2){
+        ellipsePending.f2 = p.id; selected = {id:p.id};
+      } else {
+        createEllipse(ellipsePending.f1, ellipsePending.f2, p.id);
+        ellipsePending = { f1:null, f2:null };
+        selected = {id:p.id};
+      }
+      syncOverlay(); saveToStorage();
+      return;
+    }
+
+    if (tool === "text"){
+      pushState();
+      const id = createText(w.wx, w.wy, (lang==="ko" ? "텍스트" : "Text") + " $x^2$");
+      selected = {id};
+      syncOverlay();
+      saveToStorage();
+      openTextEditorFor(id, e.clientX, e.clientY);
       return;
     }
   });
 
-  // Select/Move
-  canvas.addEventListener('pointerdown',(e)=>{
-    if (tool!=='select') return;
-    const rect=canvas.getBoundingClientRect();
-    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
-    const hit=hitPoint(sx,sy);
-    if (!hit){ selectedPointId=null; draw(); return; }
-    selectedPointId=hit.id;
-
-    if (hit.kind==='intersection'){
-      showTip(t("intersection_immovable"), toolSelectBtn, 1200);
-      draw();
+  cv.addEventListener("pointerup", () => {
+    if (isPanning){
+      isPanning = false;
+      panStart = null;
+      setCanvasCursor();
       return;
     }
-
-    dragging=true;
-    dragPointerId=e.pointerId;
-
-    const w=screenToWorld(sx,sy);
-    dragOffset.x = w.x - hit.x;
-    dragOffset.y = w.y - hit.y;
-
-    try{ canvas.setPointerCapture(e.pointerId); }catch{}
-    showTip(hit.kind==='constrained' ? t("constrained_selected") : t("free_selected"), toolSelectBtn, 1200);
-    draw();
-  });
-
-  canvas.addEventListener('pointermove',(e)=>{
-    if (tool!=='select') return;
-    if (!dragging) return;
-    if (e.pointerId!==dragPointerId) return;
-    if (!selectedPointId) return;
-
-    const p=getPoint(selectedPointId);
-    if (!p) return;
-
-    const rect=canvas.getBoundingClientRect();
-    const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
-    const w=screenToWorld(sx,sy);
-    const target=v(w.x - dragOffset.x, w.y - dragOffset.y);
-
-    if (p.kind==='free'){
-      p.x=target.x; p.y=target.y;
-      draw();
-      return;
-    }
-
-    if (p.kind==='constrained'){
-      const c=p.constraint;
-      if (!c) return;
-
-      if (c.kind==='segment'){
-        const sg=getSegment(c.id); if(!sg) return;
-        const A=getPoint(sg.a_id),B=getPoint(sg.b_id); if(!A||!B) return;
-        const sp={A:v(A.x,A.y),B:v(B.x,B.y)};
-        const {Q,t0}=closestPointOnSegment(target, sp.A, sp.B);
-        c.param.t=t0; p.x=Q.x; p.y=Q.y; draw(); return;
-      }
-      if (c.kind==='line'){
-        const ln=getLine(c.id); if(!ln) return;
-        const A=getPoint(ln.a_id),B=getPoint(ln.b_id); if(!A||!B) return;
-        const lp={A:v(A.x,A.y),B:v(B.x,B.y)};
-        const {Q,t0}=closestPointOnLine(target, lp.A, lp.B);
-        c.param.t=t0; p.x=Q.x; p.y=Q.y; draw(); return;
-      }
-      if (c.kind==='circle'){
-        const cir=getCircle(c.id); if(!cir) return;
-        const C=getPoint(cir.c_id),P=getPoint(cir.p_id); if(!C||!P) return;
-        const cg={C:v(C.x,C.y), r:len(sub(v(P.x,P.y), v(C.x,C.y)))};
-        const {Q,ang}=closestPointOnCircle(target, cg.C, cg.r);
-        c.param.ang=ang; p.x=Q.x; p.y=Q.y; draw(); return;
-      }
-      if (c.kind==='parabola'){
-        const pb=getParabola(c.id); if(!pb) return;
-        const F=getPoint(pb.f_id),A=getPoint(pb.d_a_id),B=getPoint(pb.d_b_id); if(!F||!A||!B) return;
-        const par=parabolaParams(v(F.x,F.y), v(A.x,A.y), v(B.x,B.y));
-        const vb=viewWorldBounds();
-        const corners=[v(vb.minx,vb.miny),v(vb.minx,vb.maxy),v(vb.maxx,vb.miny),v(vb.maxx,vb.maxy)];
-        const us=corners.map(cc=>dot(sub(cc,par.A),par.d));
-        const uMin=Math.min(...us)-4, uMax=Math.max(...us)+4;
-        const {Q,u}=closestPointOnParabola(target, par, uMin, uMax);
-        c.param.u=u; p.x=Q.x; p.y=Q.y; draw(); return;
-      }
-      if (c.kind==='ellipse'){
-        const el=getEllipse(c.id); if(!el) return;
-        const F1=getPoint(el.f1_id),F2=getPoint(el.f2_id),P=getPoint(el.p_id); if(!F1||!F2||!P) return;
-        const ell=ellipseParams(v(F1.x,F1.y), v(F2.x,F2.y), v(P.x,P.y));
-        if(!ell) return;
-        const {Q,ang}=closestPointOnEllipse(target, ell);
-        c.param.ang=ang; p.x=Q.x; p.y=Q.y; draw(); return;
-      }
+    if (dragging){
+      if (dragging.moved) pushState();
+      dragging = null;
+      saveToStorage();
     }
   });
 
-  function endDrag(e){
-    if (tool!=='select') return;
-    if (!dragging) return;
-    if (e.pointerId!==dragPointerId) return;
-    dragging=false;
-    try{ canvas.releasePointerCapture(e.pointerId); }catch{}
-    dragPointerId=null;
+  cv.addEventListener("wheel", (e) => {
+    cancelFloatingTip();
+    const delta = Math.sign(e.deltaY);
+    const factor = (delta > 0) ? 0.92 : 1.08;
 
-    commit(toolSelectBtn);
-    showTip(t("moved_saved"), toolSelectBtn, 900);
-  }
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const before = screenToWorld(sx, sy);
 
-  // ===== Undo / Redo / Clear =====
-  function undoOneStep(){
-    if (!(historyBundle.idx > 0)){
-      showTip(t("nothing_undo"), btnUndo, 900);
-      return;
-    }
-    historyBundle.idx -= 1;
-    restoreFromState(historyBundle.stack[historyBundle.idx]);
-    cancelStep(false);
-    selectedPointId=null;
-    applyAfterRestore();
-    showTip(t("undo_done"), btnUndo, 900);
-  }
+    cam.scale = clamp(cam.scale * factor, 20, 260);
 
-  function redoOneStep(){
-    if (!(historyBundle.idx < historyBundle.stack.length - 1)){
-      showTip(t("nothing_redo"), btnRedo, 900);
-      return;
-    }
-    historyBundle.idx += 1;
-    restoreFromState(historyBundle.stack[historyBundle.idx]);
-    cancelStep(false);
-    selectedPointId=null;
-    applyAfterRestore();
-    showTip(t("redo_done"), btnRedo, 900);
-  }
+    const after = screenToWorld(sx, sy);
+    cam.x += (before.wx - after.wx);
+    cam.y += (before.wy - after.wy);
 
-  function clearAll(){
-    points=[]; segments=[]; lines=[]; circles=[]; parabolas=[]; ellipses=[];
-    selectedPointId=null; cancelStep(false);
-    commit(btnClearAll);
-    showTip(t("cleared"), btnClearAll, 900);
-  }
+    saveToStorage();
+    e.preventDefault();
+  }, {passive:false});
 
-  // Buttons (✅ click 이벤트 e를 setTool에 전달)
-  toolPointBtn.addEventListener('click',(e)=>setTool('point', toolPointBtn, e));
-  toolSegmentBtn.addEventListener('click',(e)=>setTool('segment', toolSegmentBtn, e));
-  toolLineBtn.addEventListener('click',(e)=>setTool('line', toolLineBtn, e));
-  toolCircleBtn.addEventListener('click',(e)=>setTool('circle', toolCircleBtn, e));
-  toolParabolaBtn.addEventListener('click',(e)=>setTool('parabola', toolParabolaBtn, e));
-  toolEllipseBtn.addEventListener('click',(e)=>setTool('ellipse', toolEllipseBtn, e));
-  toolSelectBtn.addEventListener('click',(e)=>setTool('select', toolSelectBtn, e));
+  cv.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  langKoBtn.addEventListener('click', ()=> setLang("ko"));
-  langEnBtn.addEventListener('click', ()=> setLang("en"));
+  cv.addEventListener("dblclick", (e) => {
+    cancelFloatingTip();
+    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
 
-  btnUndo.addEventListener('click', undoOneStep);
-  btnRedo.addEventListener('click', redoOneStep);
-  btnClearAll.addEventListener('click', clearAll);
-  btnCancelStep.addEventListener('click', ()=>cancelStep(true));
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
+    const id = hitTest(w.wx,w.wy);
+    if (!id) return;
 
-  // Shortcuts
-  window.addEventListener('keydown',(e)=>{
-    const k=e.key.toLowerCase();
-    // 키보드로 도구 변경 시에는 버튼설명(1초 대기 툴팁)을 띄우지 않습니다.
-    if (k==='p') setTool('point', null, null);
-    if (k==='g') setTool('segment', null, null);
-    if (k==='l') setTool('line', null, null);
-    if (k==='c') setTool('circle', null, null);
-    if (k==='a') setTool('parabola', null, null);
-    if (k==='e') setTool('ellipse', null, null);
-    if (k==='v') setTool('select', null, null);
-    if (k==='escape') cancelStep(true);
-
-    if ((e.ctrlKey || e.metaKey) && k==='z' && !e.shiftKey){
-      e.preventDefault();
-      undoOneStep();
-    }
-    if ((e.ctrlKey || e.metaKey) && k==='y'){
-      e.preventDefault();
-      redoOneStep();
-    }
-    if ((e.ctrlKey || e.metaKey) && k==='z' && e.shiftKey){
-      e.preventDefault();
-      redoOneStep();
-    }
+    selected = {id};
+    syncOverlay();
+    openObjEditor({id}, e.clientX, e.clientY);
+    e.preventDefault();
   });
 
-  // init
-  applyLanguageToUI();
-  cleanupAll();
-  saveState();
-  saveHistoryBundle();
-  updateHistoryButtons();
-  window.addEventListener('resize', resize);
+  /* =========================
+     Enter key: open properties (Select tool)
+  ========================= */
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
+    if (tool !== "select") return;
+    if (!selected?.id) return;
+
+    const obj = getById(selected.id);
+    if (!obj) return;
+
+    openObjEditor({id: obj.id}, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
+    e.preventDefault();
+  });
+
+  /* =========================
+     Loop
+  ========================= */
+  function loop(){
+    updateDependentPoints();
+
+    const {w,h} = canvasSizeCSS();
+    ctx.clearRect(0,0,w,h);
+
+    drawGrid();
+    drawAxes();
+    drawObjects();
+    syncOverlay();
+
+    requestAnimationFrame(loop);
+  }
+
+  /* =========================
+     Init
+  ========================= */
   resize();
-  draw();
+  loadFromStorage();
+  syncToolUI();
+  setCanvasCursor();
+  syncOverlay();
+  pushState();
+  loop();
 
-  if (didPurge) showTip(t("init_purged"), null, 1900);
-  else showTip(t("init_ok"), null, 1900);
 })();
 </script>
 </body>
