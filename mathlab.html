@@ -1018,8 +1018,9 @@
     editingObjId = null;
   }
 
-  $("btnObjCancel").addEventListener("click", closeObjEditor);
-  $("btnObjSave").addEventListener("click", () => {
+  $("btnObjCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeObjEditor(); });
+  $("btnObjSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
     if (!editingObjId) return;
     const obj = getById(editingObjId);
     if (!obj) { closeObjEditor(); return; }
@@ -1069,8 +1070,9 @@
     editingTextId = null;
   }
 
-  $("btnTextCancel").addEventListener("click", closeTextEditor);
-  $("btnTextSave").addEventListener("click", () => {
+  $("btnTextCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeTextEditor(); });
+  $("btnTextSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
     if (!editingTextId) return;
     const obj = getById(editingTextId);
     if (!obj) { closeTextEditor(); return; }
@@ -1082,6 +1084,19 @@
     saveToStorage();
     syncOverlay();
   });
+
+  // ✅ 요청사항: "이름/캡션 설정 화면"이 열려 있을 때, 화면(바깥)을 클릭하면 자동으로 닫기
+  // - objEditor / textEditor 둘 다 적용
+  document.addEventListener("pointerdown", (e) => {
+    const target = e.target;
+
+    if (objEditor.style.display === "block" && !objEditor.contains(target)) {
+      closeObjEditor();
+    }
+    if (textEditor.style.display === "block" && !textEditor.contains(target)) {
+      closeTextEditor();
+    }
+  }, true);
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape"){
@@ -1266,7 +1281,7 @@
     ctx.restore();
   }
 
-  // ✅ 여기에서 직선 점선 제거: 모든 도형을 실선으로 그림
+  // 모든 도형은 기본 실선
   function drawObjects(){
     ctx.save();
     ctx.lineWidth = 2;
@@ -1287,7 +1302,7 @@
         const a = worldToScreen(poly[0].x,poly[0].y);
         const b = worldToScreen(poly[1].x,poly[1].y);
         ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
-        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke(); // 실선
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
       }
       if (o.kind === "circle" || o.kind === "parabola" || o.kind === "ellipse"){
         const poly = sampleObject(o);
@@ -1300,7 +1315,7 @@
           const pi = worldToScreen(poly[i].x, poly[i].y);
           ctx.lineTo(pi.sx, pi.sy);
         }
-        ctx.stroke(); // 실선
+        ctx.stroke();
       }
     }
 
