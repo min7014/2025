@@ -151,9 +151,10 @@
 
     #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
 
-    @media (max-width: 820px){
+    @media (max-width: 920px){
       #hint{ display:none; }
       .panel{ width: 90vw; }
+      #topbar{ flex-wrap:wrap; }
     }
   </style>
 </head>
@@ -169,6 +170,7 @@
       <button class="btn" data-tool="circle"   id="btnCircle">원</button>
       <button class="btn" data-tool="parabola" id="btnParabola">포물선</button>
       <button class="btn" data-tool="ellipse"  id="btnEllipse">타원</button>
+      <button class="btn" data-tool="hyperbola" id="btnHyperbola">쌍곡선</button>
       <button class="btn" data-tool="text"     id="btnText">텍스트</button>
     </div>
 
@@ -200,7 +202,7 @@
   <div class="row"><label id="lblKind">종류</label><input id="objKind" readonly /></div>
   <div class="row"><label>ID</label><input id="objId" readonly /></div>
   <div class="row"><label id="lblName">이름</label><input id="objName" placeholder="예: A, l1, c1 ..." /></div>
-  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
+  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
   <div class="row" id="rowX"><label>X</label><input id="objX" /></div>
   <div class="row" id="rowY"><label>Y</label><input id="objY" /></div>
   <div class="actions">
@@ -225,7 +227,7 @@
   // =========================
   // 0) "찌꺼기" 자동 정리(버전 변경 시)
   // =========================
-  const BUILD_ID = "2026-01-19-build-01";
+  const BUILD_ID = "2026-01-19-build-02";
   const BUILD_KEY = "mathlab_build_id";
   try{
     const prev = localStorage.getItem(BUILD_KEY);
@@ -246,14 +248,15 @@
   const I18N = {
     ko: {
       tools: {
-        select:  { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
-        point:   { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
-        segment: { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
-        line:    { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
-        circle:  { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
-        parabola:{ name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
-        ellipse: { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
-        text:    { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
+        select:    { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
+        point:     { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
+        segment:   { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
+        line:      { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
+        circle:    { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:  { name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
+        ellipse:   { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
+        hyperbola: { name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점으로 쌍곡선 생성. (|PF1-PF2|>0 이어야 함)" },
+        text:      { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
       },
       ui: {
         hint:"선택: 빈 공간 드래그=평행이동, 점/텍스트 드래그 이동, Enter=속성, 더블클릭=속성, 텍스트 더블클릭=편집(Shift+더블클릭=속성)",
@@ -261,18 +264,20 @@
         kind:"종류", name:"이름", caption:"캡션",
         textTitle:"텍스트 편집", content:"내용",
         undo:"이전(Undo)", redo:"다음(Redo)",
+        warnHyperbola:"쌍곡선 생성 실패: 두 초점과 점 선택을 확인해 주세요.",
       }
     },
     en: {
       tools: {
-        select:  { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
-        point:   { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
-        segment: { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
-        line:    { name:"Line", desc:"Pick/create two points to create a line." },
-        circle:  { name:"Circle", desc:"Center point → point on circle." },
-        parabola:{ name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
-        ellipse: { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
-        text:    { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
+        select:    { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
+        point:     { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
+        segment:   { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
+        line:      { name:"Line", desc:"Pick/create two points to create a line." },
+        circle:    { name:"Circle", desc:"Center point → point on circle." },
+        parabola:  { name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
+        ellipse:   { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        hyperbola: { name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola. (Requires |PF1-PF2|>0)" },
+        text:      { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
       },
       ui: {
         hint:"Select: drag empty space to pan, drag points/text to move, Enter=properties, double-click=properties, text double-click=edit (Shift+double-click=properties)",
@@ -280,6 +285,7 @@
         kind:"Kind", name:"Name", caption:"Caption",
         textTitle:"Edit Text", content:"Content",
         undo:"Undo", redo:"Redo",
+        warnHyperbola:"Failed to create hyperbola: check the two foci and the chosen point.",
       }
     }
   };
@@ -350,6 +356,8 @@
   let parabolaD1 = null;
   let ellipseF1 = null;
   let ellipseF2 = null;
+  let hyperbolaF1 = null;
+  let hyperbolaF2 = null;
 
   const cam = { x:0, y:0, scale:70 };
   let lastMouseClient = { cx: 200, cy: 120 };
@@ -361,7 +369,7 @@
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify({
         objects, cam, tool, selected,
-        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2
+        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
       }));
     }catch(e){}
   }
@@ -385,6 +393,8 @@
       parabolaD1 = st.parabolaD1 ?? null;
       ellipseF1 = st.ellipseF1 ?? null;
       ellipseF2 = st.ellipseF2 ?? null;
+      hyperbolaF1 = st.hyperbolaF1 ?? null;
+      hyperbolaF2 = st.hyperbolaF2 ?? null;
       return true;
     }catch(e){
       return false;
@@ -397,7 +407,7 @@
       cam: deepClone(cam),
       tool,
       selected: selected ? deepClone(selected) : null,
-      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2
+      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
     };
   }
 
@@ -423,6 +433,8 @@
     parabolaD1 = st.parabolaD1 ?? null;
     ellipseF1 = st.ellipseF1 ?? null;
     ellipseF2 = st.ellipseF2 ?? null;
+    hyperbolaF1 = st.hyperbolaF1 ?? null;
+    hyperbolaF2 = st.hyperbolaF2 ?? null;
 
     syncToolUI();
     markOverlayDirty();
@@ -479,7 +491,7 @@
   }
 
   // ✅ 이름 중복 시: "기존 객체"의 이름만 A_{n}으로 변경(캡션은 그대로)
-  // ✅ 저장 대상은 desired 이름을 그대로 유지(steal)
+  // ✅ 대상 객체는 원하는 이름을 유지(steal)
   function assignNameSteal(targetId, desiredRaw){
     const desired = String(desiredRaw || "").trim();
     const target = getById(targetId);
@@ -501,7 +513,7 @@
         c.name = newName;
         c.nameAuto = false;
         used.add(newName);
-        // 캡션은 그대로 유지(요구사항)
+        // 캡션은 그대로 유지
       }
     }
     target.name = desired;
@@ -637,6 +649,8 @@
   // =========================
   // Geometry sampling & intersections (polyline approximation)
   // =========================
+  const isFinitePt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+
   function segmentIntersection(a,b,c,d){
     const r = {x: b.x-a.x, y: b.y-a.y};
     const s = {x: d.x-c.x, y: d.y-c.y};
@@ -654,19 +668,27 @@
 
   function polylineProject(poly, pt){
     if (!poly || poly.length < 2) return {x:pt.x, y:pt.y, t:0};
-    let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
 
+    // build segments skipping NaN breaks
+    const segs = [];
     let total = 0;
-    const lens = [];
-    for (let i=0;i<poly.length-1;i++){
-      const L = dist(poly[i].x,poly[i].y, poly[i+1].x,poly[i+1].y);
-      lens.push(L); total += L;
-    }
-    if (total < 1e-12) return {x:poly[0].x, y:poly[0].y, t:0};
-
-    let acc = 0;
     for (let i=0;i<poly.length-1;i++){
       const A = poly[i], B = poly[i+1];
+      if (!isFinitePt(A) || !isFinitePt(B)) { segs.push(null); continue; }
+      const L = dist(A.x,A.y, B.x,B.y);
+      const seg = {A, B, L, acc: total};
+      segs.push(seg);
+      total += L;
+    }
+
+    if (total < 1e-12) return {x:pt.x, y:pt.y, t:0};
+
+    let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
+
+    for (let i=0;i<segs.length;i++){
+      const seg = segs[i];
+      if (!seg) continue;
+      const A = seg.A, B = seg.B;
       const vx = B.x - A.x, vy = B.y - A.y;
       const vv = vx*vx + vy*vy;
       let u = 0;
@@ -678,10 +700,8 @@
       const py = A.y + u*vy;
       const d = dist2(px,py, pt.x,pt.y);
       if (d < best.d){
-        const tLocal = (acc + u*lens[i]) / total;
-        best = {d, x:px, y:py, t: tLocal};
+        best = {d, x:px, y:py, t: (seg.acc + u*seg.L)/total};
       }
-      acc += lens[i];
     }
     return {x:best.x, y:best.y, t:best.t};
   }
@@ -691,8 +711,10 @@
     if (!polyA || !polyB || polyA.length<2 || polyB.length<2) return out;
     for (let i=0;i<polyA.length-1;i++){
       const a = polyA[i], b = polyA[i+1];
+      if (!isFinitePt(a) || !isFinitePt(b)) continue;
       for (let j=0;j<polyB.length-1;j++){
         const c = polyB[j], d = polyB[j+1];
+        if (!isFinitePt(c) || !isFinitePt(d)) continue;
         const p = segmentIntersection(a,b,c,d);
         if (p) out.push(p);
       }
@@ -721,6 +743,11 @@
     nx /= len; ny /= len;
     const d = nx*p1.x + ny*p1.y;
     return {nx, ny, d};
+  }
+
+  function acosh(x){
+    // x >= 1
+    return Math.log(x + Math.sqrt(x*x - 1));
   }
 
   function sampleObject(obj){
@@ -785,6 +812,64 @@
         const ey = b0*Math.sin(th);
         const wx = cx + ex*ca - ey*sa;
         const wy = cy + ex*sa + ey*ca;
+        pts.push({x:wx,y:wy});
+      }
+      return pts;
+    }
+
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (c < 1e-9) return null;
+      const diff = Math.abs(dist(P.x,P.y, F1.x,F1.y) - dist(P.x,P.y, F2.x,F2.y));
+      const a = diff/2;
+      // a must be >0 and < c
+      if (a < 1e-6 || a >= c - 1e-6) return null;
+      const b0 = Math.sqrt(Math.max(0, c*c - a*a));
+
+      // estimate visible range in local coords
+      function toLocal(x,y){
+        const dx = x - cx, dy = y - cy;
+        return {
+          x: dx*ca + dy*sa,
+          y: -dx*sa + dy*ca
+        };
+      }
+      const corners = [
+        toLocal(xmin,ymin), toLocal(xmin,ymax),
+        toLocal(xmax,ymin), toLocal(xmax,ymax)
+      ];
+      let maxAbsX = 0;
+      for (const p of corners) maxAbsX = Math.max(maxAbsX, Math.abs(p.x));
+      let xMax = Math.max(a*1.05, maxAbsX*1.6 + a);
+
+      const T = acosh(xMax / a);
+      const N = 320;
+      const pts = [];
+      // right branch
+      for (let i=0;i<=N;i++){
+        const tt = -T + (2*T)*i/N;
+        const x = a*Math.cosh(tt);
+        const y = b0*Math.sinh(tt);
+        const wx = cx + x*ca - y*sa;
+        const wy = cy + x*sa + y*ca;
+        pts.push({x:wx,y:wy});
+      }
+      // break
+      pts.push({x:NaN, y:NaN});
+      // left branch
+      for (let i=0;i<=N;i++){
+        const tt = -T + (2*T)*i/N;
+        const x = -a*Math.cosh(tt);
+        const y = b0*Math.sinh(tt);
+        const wx = cx + x*ca - y*sa;
+        const wy = cy + x*sa + y*ca;
         pts.push({x:wx,y:wy});
       }
       return pts;
@@ -889,7 +974,8 @@
     const tol = worldTol()*1.25;
     let best = null;
 
-    const candidates = objects.filter(o => ["segment","line","circle","parabola","ellipse"].includes(o.kind));
+    // ✅ 미래 객체까지 고려: point/text 제외 전부 대상으로
+    const candidates = objects.filter(o => o.kind !== "point" && o.kind !== "text");
     for (let i=0;i<candidates.length;i++){
       for (let j=i+1;j<candidates.length;j++){
         const A = candidates[i], B = candidates[j];
@@ -920,7 +1006,6 @@
   }
 
   function getOrCreatePointForClick(wx, wy){
-    // if click near existing point, use it; else create new free point
     const tol = worldTol();
     let best = null;
     for (const o of objects){
@@ -989,6 +1074,12 @@
   function createEllipse(f1Id, f2Id, pId){
     const id = "e_" + rndId();
     objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createHyperbola(f1Id, f2Id, pId){
+    const id = "h_" + rndId();
+    objects.push({id, kind:"hyperbola", f1Id, f2Id, pId, name:"", caption:""});
     markOverlayDirty();
     return id;
   }
@@ -1199,19 +1290,24 @@
       const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
       if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
     }
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
     return {x:0,y:0};
   }
 
-  // ✅ 라벨 오프셋(픽셀): "현재의 절반" (이전 14/-14 → 7/-7)
+  // ✅ 라벨 오프셋(픽셀): 기존 대비 절반(추가 반영) → 4px 수준
   function labelOffsetPx(kind){
-    if (kind === "point")   return {dx: 7, dy: -7};
-    if (kind === "text")    return {dx: 5, dy: -7};
-    if (kind === "segment") return {dx: 0, dy: -7};
-    if (kind === "line")    return {dx: 0, dy: -7};
-    if (kind === "circle")  return {dx: 6, dy: -7};
-    if (kind === "parabola")return {dx: 6, dy: -7};
-    if (kind === "ellipse") return {dx: 6, dy: -7};
-    return {dx: 5, dy: -7};
+    if (kind === "point")   return {dx: 4, dy: -4};
+    if (kind === "text")    return {dx: 3, dy: -4};
+    if (kind === "segment") return {dx: 0, dy: -4};
+    if (kind === "line")    return {dx: 0, dy: -4};
+    if (kind === "circle")  return {dx: 3, dy: -4};
+    if (kind === "parabola")return {dx: 3, dy: -4};
+    if (kind === "ellipse") return {dx: 3, dy: -4};
+    if (kind === "hyperbola") return {dx: 3, dy: -4};
+    return {dx: 3, dy: -4};
   }
 
   function renderNamePretty(name){
@@ -1278,6 +1374,7 @@
           setCanvasCursor();
         });
 
+        // Select tool에서도 텍스트 더블클릭 편집
         el.addEventListener("dblclick", (e) => {
           cancelFloatingTip();
           e.stopPropagation();
@@ -1392,12 +1489,30 @@
     ctx.restore();
   }
 
+  function drawPolyline(poly){
+    if (!poly || poly.length < 2) return;
+    ctx.beginPath();
+    let started = false;
+    for (let i=0;i<poly.length;i++){
+      const p = poly[i];
+      if (!isFinitePt(p)) { started = false; continue; }
+      const s = worldToScreen(p.x, p.y);
+      if (!started){
+        ctx.moveTo(s.sx, s.sy);
+        started = true;
+      } else {
+        ctx.lineTo(s.sx, s.sy);
+      }
+    }
+    ctx.stroke();
+  }
+
   function drawObjects(){
     ctx.save();
     ctx.lineWidth = 2;
     ctx.setLineDash([]); // ✅ 모든 도형 기본 실선
 
-    // curves/lines/segments
+    // segments/lines/curves
     for (const o of objects){
       if (o.kind === "segment"){
         const A = getById(o.aId), B = getById(o.bId);
@@ -1406,6 +1521,7 @@
         const b = worldToScreen(B.x,B.y);
         ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.72)";
         ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
       }
       if (o.kind === "line"){
         const poly = sampleObject(o);
@@ -1414,19 +1530,14 @@
         const b = worldToScreen(poly[1].x,poly[1].y);
         ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
         ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
       }
-      if (o.kind === "circle" || o.kind === "parabola" || o.kind === "ellipse"){
+      if (o.kind === "circle" || o.kind === "parabola" || o.kind === "ellipse" || o.kind === "hyperbola"){
         const poly = sampleObject(o);
         if (!poly) continue;
         ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
-        ctx.beginPath();
-        const p0 = worldToScreen(poly[0].x, poly[0].y);
-        ctx.moveTo(p0.sx, p0.sy);
-        for (let i=1;i<poly.length;i++){
-          const pi = worldToScreen(poly[i].x, poly[i].y);
-          ctx.lineTo(pi.sx, pi.sy);
-        }
-        ctx.stroke();
+        drawPolyline(poly);
+        continue;
       }
     }
 
@@ -1454,7 +1565,18 @@
   // =========================
   const toolButtons = [...document.querySelectorAll("#toolGroup .btn")];
 
-  function setHint(){ $("hint").textContent = t().ui.hint; }
+  let hintTimer = null;
+  function setHint(text){
+    $("hint").textContent = text;
+  }
+  function flashHint(msg, ms=2200){
+    if (hintTimer) clearTimeout(hintTimer);
+    setHint(msg);
+    hintTimer = setTimeout(() => {
+      hintTimer = null;
+      setHint(t().ui.hint);
+    }, ms);
+  }
 
   function setCanvasCursor(){
     if (tool === "select"){
@@ -1469,6 +1591,7 @@
     segP1 = null; lineP1 = null; circleC = null;
     parabolaFocus = null; parabolaD1 = null;
     ellipseF1 = null; ellipseF2 = null;
+    hyperbolaF1 = null; hyperbolaF2 = null;
   }
 
   function syncToolUI(){
@@ -1480,7 +1603,7 @@
     $("btnUndo").textContent = t().ui.undo;
     $("btnRedo").textContent = t().ui.redo;
     $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
-    setHint();
+    if (!hintTimer) setHint(t().ui.hint);
     setCanvasCursor();
   }
 
@@ -1602,7 +1725,6 @@
             try { cv.setPointerCapture(e.pointerId); } catch {}
           }
         } else {
-          // other objects selected, not draggable (points drive geometry)
           dragging = null;
         }
 
@@ -1668,7 +1790,7 @@
         segP1 = p.id;
       } else {
         if (segP1 !== p.id) createSegment(segP1, p.id);
-        segP1 = null; // pair mode reset
+        segP1 = null;
       }
       selected = null;
       saveToStorage();
@@ -1712,7 +1834,6 @@
     if (tool === "parabola"){
       pushState();
 
-      // step 1: focus point
       if (!parabolaFocus){
         const p = getOrCreatePointForClick(w.wx,w.wy);
         parabolaFocus = p.id;
@@ -1721,7 +1842,7 @@
         return;
       }
 
-      // step 2: directrix selection: prefer clicking existing line/segment
+      // prefer clicking existing line/segment as directrix
       const id = hitTest(w.wx,w.wy);
       const obj = id ? getById(id) : null;
       if (obj && (obj.kind === "line" || obj.kind === "segment")){
@@ -1766,12 +1887,43 @@
         ellipseF2 = p.id;
         if (ellipseF2 === ellipseF1) ellipseF2 = null;
       } else {
-        // third point on ellipse
         if (ellipseF1 && ellipseF2 && p.id !== ellipseF1 && p.id !== ellipseF2){
           createEllipse(ellipseF1, ellipseF2, p.id);
         }
         ellipseF1 = null;
         ellipseF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== HYPERBOLA TOOL =====
+    if (tool === "hyperbola"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!hyperbolaF1){
+        hyperbolaF1 = p.id;
+      } else if (!hyperbolaF2){
+        hyperbolaF2 = p.id;
+        if (hyperbolaF2 === hyperbolaF1) hyperbolaF2 = null;
+      } else {
+        // validate before create
+        const F1 = getById(hyperbolaF1);
+        const F2 = getById(hyperbolaF2);
+        const P  = getById(p.id);
+        if (F1 && F2 && P){
+          const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+          const a = Math.abs(dist(P.x,P.y,F1.x,F1.y) - dist(P.x,P.y,F2.x,F2.y))/2;
+          if (a > 1e-6 && a < c - 1e-6){
+            createHyperbola(hyperbolaF1, hyperbolaF2, p.id);
+          } else {
+            flashHint(t().ui.warnHyperbola);
+          }
+        }
+        hyperbolaF1 = null;
+        hyperbolaF2 = null;
       }
       selected = null;
       saveToStorage();
@@ -1786,7 +1938,7 @@
       selected = {id};
       saveToStorage();
       markOverlayDirty();
-      openTextEditorFor(id, e.clientX, e.clientY); // 생성 직후 편집
+      openTextEditorFor(id, e.clientX, e.clientY);
       return;
     }
   });
@@ -1852,15 +2004,7 @@
     e.preventDefault();
   });
 
-  // =========================
-  // Text drag end when captured on text element
-  // =========================
-  overlay.addEventListener("pointermove", (e) => {
-    // handled by canvas pointermove; keep empty (prevents accidental scroll)
-  }, {passive:true});
-
   overlay.addEventListener("pointerup", (e) => {
-    // if dragging started on text element, we might not get canvas pointerup
     if (dragging && dragging.pointerId === e.pointerId){
       dragging = null;
       isPanning = false;
@@ -1874,7 +2018,6 @@
   // =========================
   // init
   // =========================
-  function setHint(){ $("hint").textContent = t().ui.hint; } // redefine safe
   function loop(){
     updateDependentPoints();
 
@@ -1888,11 +2031,6 @@
     requestAnimationFrame(loop);
   }
 
-  // Buttons
-  $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); undo(); });
-  $("btnRedo").addEventListener("click", () => { cancelFloatingTip(); redo(); });
-
-  // Ensure defaults
   resize();
   loadFromStorage();
   normalizeAllPointLabels();
