@@ -3,34 +3,26 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MathLab (GeoGebra-like) - Single HTML</title>
+  <title>mathlab</title>
 
-  <!-- KaTeX (LaTeX 렌더링) -->
+  <!-- KaTeX (LaTeX 렌더링). 오프라인이면 로드 실패할 수 있으나, 그 경우 일반 텍스트로 표시됩니다. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 
   <style>
     :root{
       --bg:#0b0f14;
+      --panel:#121826cc;
       --border:#24314a;
       --text:#e8eefc;
       --muted:#aab6d1;
       --accent:#5aa2ff;
       --danger:#ff5a7a;
       --shadow:0 12px 40px rgba(0,0,0,.45);
-      --btnRadius:12px;
-      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --r:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
     }
-
-    html,body{
-      margin:0; height:100%;
-      background:var(--bg);
-      color:var(--text);
-      font-family:var(--font);
-      overflow:hidden;
-      user-select:none;
-    }
-
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--font); overflow:hidden; user-select:none; }
     #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
 
     #topbar{
@@ -41,7 +33,6 @@
       backdrop-filter: blur(10px);
       z-index:10;
     }
-
     .group{
       display:flex; gap:8px; align-items:center;
       padding:6px;
@@ -49,21 +40,20 @@
       border:1px solid rgba(36,49,74,.65);
       border-radius:16px;
     }
-
     .btn{
       appearance:none;
       border:1px solid rgba(36,49,74,.9);
       background:rgba(18,24,38,.65);
       color:var(--text);
       padding:9px 10px;
-      border-radius:var(--btnRadius);
+      border-radius:var(--r);
       cursor:pointer;
       font-size:13px;
       line-height:1;
       display:inline-flex;
       align-items:center;
-      gap:8px;
       transition: transform .05s ease, background .15s ease, border-color .15s ease;
+      white-space:nowrap;
     }
     .btn:hover{ background:rgba(24,32,52,.75); border-color:rgba(90,162,255,.6); }
     .btn:active{ transform: translateY(1px); }
@@ -74,29 +64,13 @@
     }
     .btn.danger{ border-color: rgba(255,90,122,.55); }
     .btn.danger:hover{ border-color: rgba(255,90,122,.9); background: rgba(255,90,122,.12); }
-
     .sep{ width:1px; height:26px; background:rgba(36,49,74,.75); margin:0 4px; }
-
-    #hint{
-      margin-left:auto;
-      color:var(--muted);
-      font-size:12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 44vw;
-    }
+    #hint{ margin-left:auto; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 44vw; }
 
     #canvasWrap{ position:relative; flex:1; overflow:hidden; }
-    canvas{
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      display:block;
-      touch-action:none;
-    }
+    canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 
     #overlay{ position:absolute; inset:0; pointer-events:none; z-index:6; }
-
     .textItem{
       position:absolute;
       pointer-events:auto;
@@ -106,16 +80,16 @@
       line-height:1.25;
       padding:4px 6px;
       border-radius:10px;
-      background: rgba(18,24,38,.0);
+      background: rgba(18,24,38,0);
       border:1px solid rgba(0,0,0,0);
       transform: translate(-50%, -50%);
+      max-width: 60vw;
     }
     .textItem.selected{
       background: rgba(90,162,255,.10);
       border-color: rgba(90,162,255,.50);
       box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
     }
-
     .labelItem{
       position:absolute;
       pointer-events:none;
@@ -133,7 +107,7 @@
     #floatingTip{
       position:fixed;
       z-index:50;
-      max-width: 360px;
+      max-width: 380px;
       background: rgba(18,24,38,.92);
       border:1px solid rgba(36,49,74,.9);
       border-radius: 14px;
@@ -159,7 +133,6 @@
       user-select:text;
     }
     .panel h3{ margin:0 0 8px 0; font-size:14px; color: var(--text); }
-
     .row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
     .row label{ width:88px; color: var(--muted); font-size:12px; }
     .row input, .row textarea{
@@ -172,21 +145,11 @@
       font-size:12px;
       outline:none;
     }
-    .row textarea{
-      min-height: 80px;
-      resize: vertical;
-      font-family: var(--font);
-    }
+    .row textarea{ min-height: 80px; resize: vertical; font-family: var(--font); }
     .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
     .mini{ font-size:12px; padding:8px 10px; border-radius: 12px; }
 
-    #siteLink{
-      position:fixed;
-      left:12px;
-      bottom:12px;
-      z-index:20;
-      text-decoration:none;
-    }
+    #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
 
     @media (max-width: 820px){
       #hint{ display:none; }
@@ -199,14 +162,14 @@
 <div id="app">
   <div id="topbar">
     <div class="group" id="toolGroup">
-      <button class="btn" data-tool="select"  id="btnSelect">선택/이동</button>
-      <button class="btn" data-tool="point"   id="btnPoint">점</button>
-      <button class="btn" data-tool="segment" id="btnSeg">선분</button>
-      <button class="btn" data-tool="line"    id="btnLine">직선</button>
-      <button class="btn" data-tool="circle"  id="btnCircle">원</button>
+      <button class="btn" data-tool="select"   id="btnSelect">선택/이동</button>
+      <button class="btn" data-tool="point"    id="btnPoint">점</button>
+      <button class="btn" data-tool="segment"  id="btnSeg">선분</button>
+      <button class="btn" data-tool="line"     id="btnLine">직선</button>
+      <button class="btn" data-tool="circle"   id="btnCircle">원</button>
       <button class="btn" data-tool="parabola" id="btnParabola">포물선</button>
       <button class="btn" data-tool="ellipse"  id="btnEllipse">타원</button>
-      <button class="btn" data-tool="text"    id="btnText">텍스트</button>
+      <button class="btn" data-tool="text"     id="btnText">텍스트</button>
     </div>
 
     <div class="group">
@@ -262,7 +225,7 @@
   // =========================
   // 0) "찌꺼기" 자동 정리(버전 변경 시)
   // =========================
-  const BUILD_ID = "2026-01-18-build-04";
+  const BUILD_ID = "2026-01-19-build-01";
   const BUILD_KEY = "mathlab_build_id";
   try{
     const prev = localStorage.getItem(BUILD_KEY);
@@ -283,48 +246,40 @@
   const I18N = {
     ko: {
       tools: {
-        select: { name:"선택/이동", desc:"객체 선택 후 드래그로 이동합니다. 빈 좌표평면(빈 공간)을 드래그하면 좌표평면이 이동합니다. 선택된 객체에서 Enter 키를 누르면 속성창이 열립니다." },
-        point:  { name:"점", desc:"화면 클릭으로 점 생성. 선/선분/원/곡선 위 클릭이면 그 위에서만 움직이는 종속점 생성. 교점도 생성 가능." },
-        segment:{ name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성하면 선분 생성. 선분 1개 생성 후 다음 클릭은 새 선분의 첫 점입니다." },
-        line:   { name:"직선", desc:"두 점 선택/생성하면 그 두 점을 지나는 직선 생성." },
-        circle: { name:"원", desc:"중심점 선택/생성 → 원 위 점 선택/생성으로 원 생성." },
-        parabola:{ name:"포물선", desc:"초점 점 선택/생성 → 준선(직선/선분) 선택 또는 두 점으로 준선 지정 시 포물선 생성." },
-        ellipse:{ name:"타원", desc:"초점1 → 초점2 → 타원 위 점(3번째 점)으로 타원 생성." },
-        text:   { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다." },
+        select:  { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
+        point:   { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
+        segment: { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
+        line:    { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
+        circle:  { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:{ name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
+        ellipse: { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
+        text:    { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
       },
       ui: {
-        hint:"팁: 선택도구에서 빈 공간 드래그 → 좌표평면 이동 / 객체 선택 후 Enter → 속성창 / 텍스트 더블클릭 → 내용 편집 / Shift+더블클릭 → 속성창",
+        hint:"선택: 빈 공간 드래그=평행이동, 점/텍스트 드래그 이동, Enter=속성, 더블클릭=속성, 텍스트 더블클릭=편집(Shift+더블클릭=속성)",
         objTitle:"객체 속성",
-        kind:"종류",
-        name:"이름",
-        caption:"캡션",
-        textTitle:"텍스트 편집",
-        content:"내용",
-        undo:"이전(Undo)",
-        redo:"다음(Redo)",
+        kind:"종류", name:"이름", caption:"캡션",
+        textTitle:"텍스트 편집", content:"내용",
+        undo:"이전(Undo)", redo:"다음(Redo)",
       }
     },
     en: {
       tools: {
-        select: { name:"Select/Move", desc:"Select and drag to move objects. Drag empty space to pan the coordinate plane. Press Enter on a selected object to open properties." },
-        point:  { name:"Point", desc:"Click to create a point. Click on objects to create dependent constrained points (also intersections)." },
-        segment:{ name:"Segment", desc:"Pick/create first point → pick/create second point to create a segment. Then it resets for a new segment." },
-        line:   { name:"Line", desc:"Pick/create two points to create a line." },
-        circle: { name:"Circle", desc:"Pick/create center → pick/create a point on circle." },
-        parabola:{ name:"Parabola", desc:"Pick/create focus → choose directrix (line/segment) or define by two points." },
-        ellipse:{ name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
-        text:   { name:"Text", desc:"Click to create text. Anything inside $...$ is rendered as LaTeX." },
+        select:  { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
+        point:   { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
+        segment: { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
+        line:    { name:"Line", desc:"Pick/create two points to create a line." },
+        circle:  { name:"Circle", desc:"Center point → point on circle." },
+        parabola:{ name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
+        ellipse: { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        text:    { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
       },
       ui: {
-        hint:"Tip: In Select tool, drag empty space to pan / Enter opens properties / Double-click text edits content / Shift+Double-click opens properties",
+        hint:"Select: drag empty space to pan, drag points/text to move, Enter=properties, double-click=properties, text double-click=edit (Shift+double-click=properties)",
         objTitle:"Object Properties",
-        kind:"Kind",
-        name:"Name",
-        caption:"Caption",
-        textTitle:"Edit Text",
-        content:"Content",
-        undo:"Undo",
-        redo:"Redo",
+        kind:"Kind", name:"Name", caption:"Caption",
+        textTitle:"Edit Text", content:"Content",
+        undo:"Undo", redo:"Redo",
       }
     }
   };
@@ -339,13 +294,13 @@
   const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
   function escapeHtml(s){
-    return s.replace(/[&<>"']/g, (c) => ({
+    return String(s).replace(/[&<>"']/g, (c) => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
     }[c]));
   }
 
   function renderMixedLatex(raw){
-    if (!raw) return "";
+    raw = String(raw ?? "");
     const hasKaTeX = typeof katex !== "undefined" && katex.renderToString;
     if (!hasKaTeX) return escapeHtml(raw);
 
@@ -356,7 +311,6 @@
       if (s === -1){ out += escapeHtml(raw.slice(i)); break; }
       const e = raw.indexOf("$", s+1);
       if (e === -1){ out += escapeHtml(raw.slice(i)); break; }
-
       out += escapeHtml(raw.slice(i, s));
       const latex = raw.slice(s+1, e);
       try{
@@ -369,7 +323,7 @@
     return out;
   }
 
-  // per-session separation (탭별 분리)
+  // ===== per-session separation (탭별 분리) =====
   const SESSION_KEY = "mathlab_session_id_v1";
   let sessionId = sessionStorage.getItem(SESSION_KEY);
   if (!sessionId) {
@@ -378,19 +332,24 @@
   }
   const STORE_KEY = "mathlab_state_v1_" + sessionId;
 
-  // state
+  // ===== state =====
   let objects = [];
   let tool = "select";
   let selected = null;
 
-  let dragging = null; // {id, kind}
+  // interaction
+  let dragging = null; // {id, kind, offX, offY, pointerId}
   let isPanning = false;
   let panStart = null; // {sx, sy, camX, camY, scale}
-  let segmentPending = null;
-  let linePending = null;
-  let circlePending = null;
-  let parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
-  let ellipsePending = { f1:null, f2:null };
+
+  // tool partial selections
+  let segP1 = null;
+  let lineP1 = null;
+  let circleC = null;
+  let parabolaFocus = null;
+  let parabolaD1 = null;
+  let ellipseF1 = null;
+  let ellipseF2 = null;
 
   const cam = { x:0, y:0, scale:70 };
   let lastMouseClient = { cx: 200, cy: 120 };
@@ -402,8 +361,7 @@
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify({
         objects, cam, tool, selected,
-        segmentPending, linePending, circlePending,
-        parabolaPending, ellipsePending
+        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2
       }));
     }catch(e){}
   }
@@ -420,27 +378,31 @@
       tool = st.tool || "select";
       selected = st.selected || null;
 
-      segmentPending = st.segmentPending ?? null;
-      linePending = st.linePending ?? null;
-      circlePending = st.circlePending ?? null;
-      parabolaPending = st.parabolaPending || { focusId:null, directrixP1:null, directrixP2:null };
-      ellipsePending = st.ellipsePending || { f1:null, f2:null };
+      segP1 = st.segP1 ?? null;
+      lineP1 = st.lineP1 ?? null;
+      circleC = st.circleC ?? null;
+      parabolaFocus = st.parabolaFocus ?? null;
+      parabolaD1 = st.parabolaD1 ?? null;
+      ellipseF1 = st.ellipseF1 ?? null;
+      ellipseF2 = st.ellipseF2 ?? null;
       return true;
     }catch(e){
       return false;
     }
   }
 
-  function pushState(){
-    undoStack.push({
+  function snapshot(){
+    return {
       objects: deepClone(objects),
       cam: deepClone(cam),
       tool,
       selected: selected ? deepClone(selected) : null,
-      segmentPending, linePending, circlePending,
-      parabolaPending: deepClone(parabolaPending),
-      ellipsePending: deepClone(ellipsePending)
-    });
+      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2
+    };
+  }
+
+  function pushState(){
+    undoStack.push(snapshot());
     if (undoStack.length > 80) undoStack.shift();
     redoStack.length = 0;
     saveToStorage();
@@ -454,44 +416,29 @@
     tool = st.tool || "select";
     selected = st.selected ? deepClone(st.selected) : null;
 
-    segmentPending = st.segmentPending ?? null;
-    linePending = st.linePending ?? null;
-    circlePending = st.circlePending ?? null;
-    parabolaPending = st.parabolaPending ? deepClone(st.parabolaPending) : { focusId:null, directrixP1:null, directrixP2:null };
-    ellipsePending = st.ellipsePending ? deepClone(st.ellipsePending) : { f1:null, f2:null };
+    segP1 = st.segP1 ?? null;
+    lineP1 = st.lineP1 ?? null;
+    circleC = st.circleC ?? null;
+    parabolaFocus = st.parabolaFocus ?? null;
+    parabolaD1 = st.parabolaD1 ?? null;
+    ellipseF1 = st.ellipseF1 ?? null;
+    ellipseF2 = st.ellipseF2 ?? null;
 
     syncToolUI();
-    syncOverlay();
+    markOverlayDirty();
     saveToStorage();
   }
 
   function undo(){
     if (!undoStack.length) return;
-    const cur = {
-      objects: deepClone(objects),
-      cam: deepClone(cam),
-      tool,
-      selected: selected ? deepClone(selected) : null,
-      segmentPending, linePending, circlePending,
-      parabolaPending: deepClone(parabolaPending),
-      ellipsePending: deepClone(ellipsePending)
-    };
+    const cur = snapshot();
     redoStack.push(cur);
     const prev = undoStack.pop();
     applyState(prev);
   }
-
   function redo(){
     if (!redoStack.length) return;
-    const cur = {
-      objects: deepClone(objects),
-      cam: deepClone(cam),
-      tool,
-      selected: selected ? deepClone(selected) : null,
-      segmentPending, linePending, circlePending,
-      parabolaPending: deepClone(parabolaPending),
-      ellipsePending: deepClone(ellipsePending)
-    };
+    const cur = snapshot();
     undoStack.push(cur);
     const next = redoStack.pop();
     applyState(next);
@@ -500,6 +447,8 @@
   // =========================
   // Name uniqueness (STEAL MODE) + 캡션은 절대 변경하지 않음
   // =========================
+  function getById(id){ return objects.find(o => o.id === id) || null; }
+
   function getUsedNames(exceptId=null){
     const s = new Set();
     for (const o of objects){
@@ -529,11 +478,11 @@
     }
   }
 
-  // ✅ 핵심: 이름 중복이면 "기존 객체"의 이름만 A_{n}으로 바꾸고, 캡션은 그대로 둠
-  // ✅ 새로 저장하는 대상은 desired 이름을 그대로 유지(steal)
+  // ✅ 이름 중복 시: "기존 객체"의 이름만 A_{n}으로 변경(캡션은 그대로)
+  // ✅ 저장 대상은 desired 이름을 그대로 유지(steal)
   function assignNameSteal(targetId, desiredRaw){
     const desired = String(desiredRaw || "").trim();
-    const target = objects.find(o => o.id === targetId);
+    const target = getById(targetId);
     if (!target) return;
 
     if (!desired){
@@ -547,23 +496,20 @@
 
     if (conflicts.length){
       const {base} = splitBaseAndIndex(desired);
-
       for (const c of conflicts){
         const newName = nextIndexedName(base, used);
         c.name = newName;
         c.nameAuto = false;
         used.add(newName);
-        // ❌ 캡션은 그대로 유지(요구사항)
+        // 캡션은 그대로 유지(요구사항)
       }
     }
-
     target.name = desired;
     target.nameAuto = false;
-    // ❌ 대상 캡션도 절대 변경하지 않음(요구사항)
   }
 
   // =========================
-  // Auto point labels (creation only)
+  // Auto point labels (A,B,C... / caption = $\mathrm{A}$ ...)
   // =========================
   const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -599,6 +545,7 @@
     const usedNames = getUsedNames(null);
     const usedIdx = new Set();
     for (const o of objects){
+      if (o.kind !== "point") continue;
       const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
       const idx = labelToIndex(nm);
       if (idx !== null) usedIdx.add(idx);
@@ -619,7 +566,6 @@
 
   function applyAutoPointLabel(p){
     if (!p || p.kind !== "point") return;
-
     const hasName = !!(p.name && String(p.name).trim());
     const hasCap  = !!(p.caption && String(p.caption).trim());
 
@@ -627,14 +573,12 @@
       const label = nextPointLabel();
       p.name = label;
       p.nameAuto = true;
-
       if (!hasCap){
         p.caption = buildCaptionForLabel(label);
         p.captionAuto = true;
       }
       return;
     }
-
     if (!hasCap){
       p.caption = buildCaptionForLabel(String(p.name).trim());
       p.captionAuto = true;
@@ -648,7 +592,7 @@
   }
 
   // =========================
-  // Canvas & coords
+  // Canvas & coords (정확도 개선)
   // =========================
   const cv = $("cv");
   const ctx = cv.getContext("2d");
@@ -663,12 +607,14 @@
     const r = canvasRect();
     return { w: r.width, h: r.height };
   }
+
   function resize(){
     const r = canvasRect();
     const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     cv.width  = Math.floor(r.width * dpr);
     cv.height = Math.floor(r.height * dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
+    markOverlayDirty();
   }
   window.addEventListener("resize", resize);
 
@@ -686,45 +632,11 @@
       wy: (h/2 - sy) / cam.scale + cam.y
     };
   }
-
-  function getById(id){ return objects.find(o => o.id === id) || null; }
   function worldTol(){ return 10 / cam.scale; }
 
-  function ensurePointAt(wx, wy){
-    const id = "p_" + rndId();
-    const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null, nameAuto:true, captionAuto:true };
-    applyAutoPointLabel(p);
-    objects.push(p);
-    return p;
-  }
-
-  function getOrCreatePointNear(wx, wy, tolWorld){
-    const tol2 = tolWorld*tolWorld;
-    let best = null;
-    for (const o of objects){
-      if (o.kind !== "point") continue;
-      const d = dist2(o.x,o.y, wx,wy);
-      if (d <= tol2 && (!best || d < best.d)) best = {p:o, d};
-    }
-    if (best){
-      applyAutoPointLabel(best.p);
-      return best.p;
-    }
-    return ensurePointAt(wx,wy);
-  }
-
-  function getViewportWorldBounds(){
-    const {w,h} = canvasSizeCSS();
-    const a = screenToWorld(0,0);
-    const b = screenToWorld(w,h);
-    return {
-      xmin: Math.min(a.wx, b.wx),
-      xmax: Math.max(a.wx, b.wx),
-      ymin: Math.min(a.wy, b.wy),
-      ymax: Math.max(a.wy, b.wy)
-    };
-  }
-
+  // =========================
+  // Geometry sampling & intersections (polyline approximation)
+  // =========================
   function segmentIntersection(a,b,c,d){
     const r = {x: b.x-a.x, y: b.y-a.y};
     const s = {x: d.x-c.x, y: d.y-c.y};
@@ -788,6 +700,18 @@
     return out;
   }
 
+  function getViewportWorldBounds(){
+    const {w,h} = canvasSizeCSS();
+    const a = screenToWorld(0,0);
+    const b = screenToWorld(w,h);
+    return {
+      xmin: Math.min(a.wx, b.wx),
+      xmax: Math.max(a.wx, b.wx),
+      ymin: Math.min(a.wy, b.wy),
+      ymax: Math.max(a.wy, b.wy)
+    };
+  }
+
   function getLineEqFromTwoPoints(p1, p2){
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
@@ -801,7 +725,7 @@
 
   function sampleObject(obj){
     const b = getViewportWorldBounds();
-    const margin = 1.2;
+    const margin = 1.35;
     const xmin = b.xmin*margin, xmax = b.xmax*margin;
     const ymin = b.ymin*margin, ymax = b.ymax*margin;
 
@@ -819,7 +743,7 @@
       if (L < 1e-12) return null;
       const ux = dx/L, uy = dy/L;
       const diag = Math.hypot(xmax-xmin, ymax-ymin);
-      const tlen = diag*1.2;
+      const tlen = diag*2.0;
       return [
         {x: A.x - ux*tlen, y: A.y - uy*tlen},
         {x: A.x + ux*tlen, y: A.y + uy*tlen},
@@ -831,7 +755,7 @@
       if (!C || !P) return null;
       const r = dist(C.x,C.y, P.x,P.y);
       if (r < 1e-12) return null;
-      const N = 200;
+      const N = 240;
       const pts = [];
       for (let i=0;i<=N;i++){
         const ang = (i/N)*Math.PI*2;
@@ -853,7 +777,7 @@
       const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
       const ca = Math.cos(ang), sa = Math.sin(ang);
 
-      const N = 240;
+      const N = 260;
       const pts = [];
       for (let i=0;i<=N;i++){
         const th = (i/N)*Math.PI*2;
@@ -868,10 +792,8 @@
 
     if (obj.kind === "parabola"){
       const F = getById(obj.fId);
-      if (!F) return null;
-
       const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
-      if (!p1 || !p2) return null;
+      if (!F || !p1 || !p2) return null;
       const L = getLineEqFromTwoPoints(p1,p2);
       if (!L) return null;
 
@@ -883,11 +805,11 @@
       const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
       if (Math.abs(fy) < 1e-6) return null;
 
-      const span = Math.max(xmax-xmin, ymax-ymin) * 1.2;
+      const span = Math.max(xmax-xmin, ymax-ymin) * 1.5;
       const xMin = fx - span;
       const xMax = fx + span;
 
-      const N = 240;
+      const N = 260;
       const pts = [];
       for (let i=0;i<=N;i++){
         const x = xMin + (i/N)*(xMax-xMin);
@@ -935,31 +857,36 @@
     }
   }
 
+  // =========================
+  // Hit testing
+  // =========================
   function hitTest(wx, wy){
     const tol = worldTol();
 
-    let best = null;
+    // points first
+    let bestP = null;
     for (const o of objects){
       if (o.kind !== "point") continue;
       const d = dist(o.x,o.y, wx,wy);
-      if (d <= tol && (!best || d < best.d)) best = {id:o.id, d};
+      if (d <= tol && (!bestP || d < bestP.d)) bestP = {id:o.id, d};
     }
-    if (best) return best.id;
+    if (bestP) return bestP.id;
 
-    let best2 = null;
+    // other drawable objects
+    let bestO = null;
     for (const o of objects){
       if (o.kind==="point" || o.kind==="text") continue;
       const poly = sampleObject(o);
       if (!poly) continue;
       const proj = polylineProject(poly, {x:wx,y:wy});
       const d = dist(proj.x,proj.y, wx,wy);
-      if (d <= tol*1.2 && (!best2 || d < best2.d)) best2 = {id:o.id, d};
+      if (d <= tol*1.2 && (!bestO || d < bestO.d)) bestO = {id:o.id, d};
     }
-    return best2 ? best2.id : null;
+    return bestO ? bestO.id : null;
   }
 
   function findNearestIntersectionCandidate(wx, wy){
-    const tol = worldTol()*1.2;
+    const tol = worldTol()*1.25;
     let best = null;
 
     const candidates = objects.filter(o => ["segment","line","circle","parabola","ellipse"].includes(o.kind));
@@ -980,6 +907,34 @@
     return best;
   }
 
+  // =========================
+  // Object creation helpers
+  // =========================
+  function ensurePointAt(wx, wy){
+    const id = "p_" + rndId();
+    const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null, nameAuto:true, captionAuto:true };
+    applyAutoPointLabel(p);
+    objects.push(p);
+    markOverlayDirty();
+    return p;
+  }
+
+  function getOrCreatePointForClick(wx, wy){
+    // if click near existing point, use it; else create new free point
+    const tol = worldTol();
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist2(o.x,o.y, wx,wy);
+      if (d <= tol*tol && (!best || d < best.d)) best = {p:o, d};
+    }
+    if (best){
+      applyAutoPointLabel(best.p);
+      return best.p;
+    }
+    return ensurePointAt(wx,wy);
+  }
+
   function createIntersectionPoint(hit){
     const id = "p_" + rndId();
     const p = {
@@ -991,6 +946,7 @@
     };
     applyAutoPointLabel(p);
     objects.push(p);
+    markOverlayDirty();
     return p;
   }
 
@@ -1000,45 +956,51 @@
     const poly = sampleObject(parent);
     if (!poly) return null;
     const proj = polylineProject(poly, {x:wx,y:wy});
-
     const p = ensurePointAt(proj.x, proj.y);
     p.constraint = {type:"on", parentId, t: proj.t};
+    markOverlayDirty();
     return p;
   }
 
   function createSegment(aId, bId){
     const id = "s_" + rndId();
     objects.push({id, kind:"segment", aId, bId, name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
   function createLine(aId, bId){
     const id = "l_" + rndId();
     objects.push({id, kind:"line", aId, bId, name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
   function createCircle(cId, pId){
     const id = "c_" + rndId();
     objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
   function createParabola(fId, p1Id, p2Id){
     const id = "pa_" + rndId();
     objects.push({id, kind:"parabola", fId, p1Id, p2Id, name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
   function createEllipse(f1Id, f2Id, pId){
     const id = "e_" + rndId();
     objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
   function createText(wx, wy, content){
     const id = "t_" + rndId();
-    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? "텍스트", name:"", caption:""});
+    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? (lang==="ko" ? "텍스트" : "Text"), name:"", caption:""});
+    markOverlayDirty();
     return id;
   }
 
   // =========================
-  // Tooltip (1s idle after tool click)
+  // Tooltip (버튼 클릭 후 1초 정지 시만 표시)
   // =========================
   const floatingTip = $("floatingTip");
   const tipTitle = $("tipTitle");
@@ -1075,7 +1037,7 @@
   });
 
   // =========================
-  // Editors
+  // Editors (속성/텍스트)
   // =========================
   const objEditor = $("objEditor");
   const objKind = $("objKind");
@@ -1088,8 +1050,8 @@
   const objY = $("objY");
   let editingObjId = null;
 
-  function openObjEditor(sel, clientX, clientY){
-    const obj = getById(sel.id);
+  function openObjEditor(id, clientX, clientY){
+    const obj = getById(id);
     if (!obj) return;
 
     editingObjId = obj.id;
@@ -1136,13 +1098,11 @@
 
     pushState();
 
-    // ✅ 이름 저장: STEAL MODE (캡션은 건드리지 않음)
-    const proposed = (objName.value || "").trim();
-    assignNameSteal(obj.id, proposed);
+    // 이름 저장: STEAL MODE (캡션은 건드리지 않음)
+    assignNameSteal(obj.id, (objName.value || "").trim());
 
-    // ✅ 캡션은 사용자 입력 그대로(이름 바뀌어도 자동 수정 없음)
+    // 캡션은 사용자 입력 그대로
     obj.caption = objCaption.value || "";
-    obj.captionAuto = false;
 
     if (obj.kind === "point" || obj.kind === "text"){
       const x = parseFloat(objX.value);
@@ -1153,7 +1113,7 @@
 
     closeObjEditor();
     saveToStorage();
-    syncOverlay();
+    markOverlayDirty();
   });
 
   const textEditor = $("textEditor");
@@ -1196,7 +1156,7 @@
     obj.content = textContent.value || "";
     closeTextEditor();
     saveToStorage();
-    syncOverlay();
+    markOverlayDirty();
   });
 
   // ✅ 편집창 바깥 클릭 시 자동 닫힘
@@ -1214,8 +1174,11 @@
   });
 
   // =========================
-  // Overlay labels + text
+  // Overlay (text + labels)
   // =========================
+  let overlayDirty = true;
+  function markOverlayDirty(){ overlayDirty = true; }
+
   function getObjectAnchor(obj){
     if (!obj) return {x:0,y:0};
     if (obj.kind === "point") return {x:obj.x, y:obj.y};
@@ -1239,16 +1202,16 @@
     return {x:0,y:0};
   }
 
-  // ✅ 라벨 오프셋(픽셀) "기존의 절반"
+  // ✅ 라벨 오프셋(픽셀): "현재의 절반" (이전 14/-14 → 7/-7)
   function labelOffsetPx(kind){
-    if (kind === "point")   return {dx: 14, dy: -14};
-    if (kind === "text")    return {dx: 9,  dy: -14};
-    if (kind === "segment") return {dx: 0,  dy: -14};
-    if (kind === "line")    return {dx: 0,  dy: -14};
-    if (kind === "circle")  return {dx: 11, dy: -14};
-    if (kind === "parabola")return {dx: 11, dy: -14};
-    if (kind === "ellipse") return {dx: 11, dy: -14};
-    return {dx: 9,  dy: -14};
+    if (kind === "point")   return {dx: 7, dy: -7};
+    if (kind === "text")    return {dx: 5, dy: -7};
+    if (kind === "segment") return {dx: 0, dy: -7};
+    if (kind === "line")    return {dx: 0, dy: -7};
+    if (kind === "circle")  return {dx: 6, dy: -7};
+    if (kind === "parabola")return {dx: 6, dy: -7};
+    if (kind === "ellipse") return {dx: 6, dy: -7};
+    return {dx: 5, dy: -7};
   }
 
   function renderNamePretty(name){
@@ -1257,6 +1220,7 @@
     return renderMixedLatex(`$\\mathrm{${s}}$`);
   }
 
+  // ✅ 캡션이 있으면 기본은 캡션, 선택 시 이름 표시
   function buildLabelHtml(obj){
     const name = (obj.name && obj.name.trim()) ? obj.name.trim() : "";
     const cap  = (obj.caption && obj.caption.trim()) ? obj.caption.trim() : "";
@@ -1272,9 +1236,13 @@
   }
 
   function syncOverlay(){
+    if (!overlayDirty) return;
+    overlayDirty = false;
+
     const existingTextEls = new Map([...overlay.querySelectorAll(".textItem")].map(el => [el.dataset.id, el]));
     const existingLabelEls = new Map([...overlay.querySelectorAll(".labelItem")].map(el => [el.dataset.id, el]));
 
+    // text items
     const texts = objects.filter(o => o.kind === "text");
     for (const o of texts){
       let el = existingTextEls.get(o.id);
@@ -1296,16 +1264,18 @@
           selected = {id:o.id};
           pushState();
 
-          dragging = { id:o.id, kind:"text" };
           const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
           const w = screenToWorld(sx, sy);
-          obj.x = w.wx;
-          obj.y = w.wy;
-
+          dragging = {
+            id:o.id, kind:"text",
+            offX: obj.x - w.wx,
+            offY: obj.y - w.wy,
+            pointerId: e.pointerId
+          };
+          try { el.setPointerCapture(e.pointerId); } catch {}
+          markOverlayDirty();
           saveToStorage();
-          syncOverlay();
           setCanvasCursor();
-          try { cv.setPointerCapture(e.pointerId); } catch {}
         });
 
         el.addEventListener("dblclick", (e) => {
@@ -1315,7 +1285,7 @@
           if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
 
           if (tool === "select" && (e.shiftKey || e.altKey)){
-            openObjEditor({id:o.id}, e.clientX, e.clientY);
+            openObjEditor(o.id, e.clientX, e.clientY);
           } else {
             openTextEditorFor(o.id, e.clientX, e.clientY);
           }
@@ -1332,6 +1302,7 @@
     }
     for (const el of existingTextEls.values()) el.remove();
 
+    // labels
     const labelTargets = objects.filter(o =>
       (o.name && o.name.trim()) || (o.caption && o.caption.trim())
     );
@@ -1424,8 +1395,9 @@
   function drawObjects(){
     ctx.save();
     ctx.lineWidth = 2;
-    ctx.setLineDash([]); // 모든 도형 기본 실선
+    ctx.setLineDash([]); // ✅ 모든 도형 기본 실선
 
+    // curves/lines/segments
     for (const o of objects){
       if (o.kind === "segment"){
         const A = getById(o.aId), B = getById(o.bId);
@@ -1458,6 +1430,7 @@
       }
     }
 
+    // points
     for (const o of objects){
       if (o.kind !== "point") continue;
       const p = worldToScreen(o.x,o.y);
@@ -1492,6 +1465,12 @@
     }
   }
 
+  function resetToolProgress(){
+    segP1 = null; lineP1 = null; circleC = null;
+    parabolaFocus = null; parabolaD1 = null;
+    ellipseF1 = null; ellipseF2 = null;
+  }
+
   function syncToolUI(){
     for (const b of toolButtons){
       const key = b.dataset.tool;
@@ -1509,19 +1488,13 @@
     btn.addEventListener("click", () => {
       const key = btn.dataset.tool;
       tool = key;
-
-      segmentPending = null;
-      linePending = null;
-      circlePending = null;
-      parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
-      ellipsePending = { f1:null, f2:null };
       selected = null;
       dragging = null;
       isPanning = false;
       panStart = null;
-
+      resetToolProgress();
       syncToolUI();
-      syncOverlay();
+      markOverlayDirty();
       armTipForButton(btn, key);
       saveToStorage();
     });
@@ -1534,32 +1507,42 @@
     cancelFloatingTip();
     lang = (lang === "ko") ? "en" : "ko";
     syncToolUI();
-    syncOverlay();
+    markOverlayDirty();
   });
 
   // =========================
   // Canvas events
   // =========================
+  function isEditorOpen(){
+    return objEditor.style.display === "block" || textEditor.style.display === "block";
+  }
+
   cv.addEventListener("pointermove", (e) => {
     lastMouseClient.cx = e.clientX;
     lastMouseClient.cy = e.clientY;
 
     const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
 
+    // pan
     if (isPanning && panStart){
       const dx = sx - panStart.sx;
       const dy = sy - panStart.sy;
       cam.x = panStart.camX - dx / panStart.scale;
       cam.y = panStart.camY + dy / panStart.scale;
       saveToStorage();
+      markOverlayDirty();
       setCanvasCursor();
       return;
     }
 
-    if (dragging){
+    // drag (point/text)
+    if (dragging && dragging.pointerId === e.pointerId){
       const w = screenToWorld(sx, sy);
       const obj = getById(dragging.id);
       if (!obj) return;
+
+      const nx = w.wx + (dragging.offX || 0);
+      const ny = w.wy + (dragging.offY || 0);
 
       if (dragging.kind === "point"){
         if (obj.constraint?.type === "intersection"){
@@ -1569,22 +1552,22 @@
           const parent = getById(obj.constraint.parentId);
           const poly = parent ? sampleObject(parent) : null;
           if (poly){
-            const proj = polylineProject(poly, {x:w.wx, y:w.wy});
+            const proj = polylineProject(poly, {x:nx, y:ny});
             obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
           } else {
-            obj.x = w.wx; obj.y = w.wy;
+            obj.x = nx; obj.y = ny;
           }
         } else {
-          obj.x = w.wx; obj.y = w.wy;
+          obj.x = nx; obj.y = ny;
         }
       }
 
       if (dragging.kind === "text"){
-        obj.x = w.wx; obj.y = w.wy;
+        obj.x = nx; obj.y = ny;
       }
 
       saveToStorage();
-      syncOverlay();
+      markOverlayDirty();
       setCanvasCursor();
       return;
     }
@@ -1592,12 +1575,15 @@
 
   cv.addEventListener("pointerdown", (e) => {
     cancelFloatingTip();
+    if (isEditorOpen()) return;
+
     lastMouseClient.cx = e.clientX;
     lastMouseClient.cy = e.clientY;
 
     const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
     const w = screenToWorld(sx, sy);
 
+    // ===== SELECT TOOL =====
     if (tool === "select"){
       const id = hitTest(w.wx,w.wy);
       if (id){
@@ -1605,57 +1591,53 @@
         const obj = getById(id);
 
         if (obj?.kind === "point"){
-          if (obj.constraint?.type === "intersection"){
-            dragging = null;
-          } else {
+          if (!obj.constraint || obj.constraint.type !== "intersection"){
             pushState();
-            dragging = {id, kind:"point"};
-            if (obj.constraint?.type === "on"){
-              const parent = getById(obj.constraint.parentId);
-              const poly = parent ? sampleObject(parent) : null;
-              if (poly){
-                const proj = polylineProject(poly, {x:w.wx, y:w.wy});
-                obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
-              } else {
-                obj.x = w.wx; obj.y = w.wy;
-              }
-            } else {
-              obj.x = w.wx; obj.y = w.wy;
-            }
-            saveToStorage();
+            dragging = {
+              id, kind:"point",
+              offX: obj.x - w.wx,
+              offY: obj.y - w.wy,
+              pointerId: e.pointerId
+            };
+            try { cv.setPointerCapture(e.pointerId); } catch {}
           }
         } else {
+          // other objects selected, not draggable (points drive geometry)
           dragging = null;
         }
 
         isPanning = false;
         panStart = null;
       } else {
+        // pan on empty space
         selected = null;
         dragging = null;
         pushState();
         isPanning = true;
         panStart = { sx, sy, camX: cam.x, camY: cam.y, scale: cam.scale };
+        try { cv.setPointerCapture(e.pointerId); } catch {}
       }
 
-      setCanvasCursor();
-      syncOverlay();
       saveToStorage();
-      try { cv.setPointerCapture(e.pointerId); } catch {}
+      markOverlayDirty();
+      setCanvasCursor();
       return;
     }
 
+    // ===== POINT TOOL =====
     if (tool === "point"){
+      // 1) intersection first
       const hit = findNearestIntersectionCandidate(w.wx, w.wy);
       if (hit){
         pushState();
         const p = createIntersectionPoint(hit);
         selected = {id:p.id};
-        syncOverlay();
         saveToStorage();
+        markOverlayDirty();
         return;
       }
 
+      // 2) on-object point
       const id = hitTest(w.wx,w.wy);
       const obj = id ? getById(id) : null;
       if (obj && obj.kind !== "point" && obj.kind !== "text"){
@@ -1663,36 +1645,168 @@
         const p = createPointOnObject(obj.id, w.wx, w.wy);
         if (p){
           selected = {id:p.id};
-          syncOverlay();
           saveToStorage();
+          markOverlayDirty();
           return;
         }
       }
 
+      // 3) free point
       pushState();
       const p = ensurePointAt(w.wx,w.wy);
       selected = {id:p.id};
-      syncOverlay();
       saveToStorage();
+      markOverlayDirty();
       return;
     }
 
-    // other tools (segment/line/circle/parabola/ellipse/text) are omitted here for brevity
-    // NOTE: 이 파일은 "이름/캡션 중복 처리 규칙" 수정이 핵심이므로,
-    // 기존 기능 흐름은 유지되어야 합니다.
+    // ===== SEGMENT TOOL =====
+    if (tool === "segment"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!segP1){
+        segP1 = p.id;
+      } else {
+        if (segP1 !== p.id) createSegment(segP1, p.id);
+        segP1 = null; // pair mode reset
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== LINE TOOL =====
+    if (tool === "line"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!lineP1){
+        lineP1 = p.id;
+      } else {
+        if (lineP1 !== p.id) createLine(lineP1, p.id);
+        lineP1 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== CIRCLE TOOL =====
+    if (tool === "circle"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!circleC){
+        circleC = p.id;
+      } else {
+        if (circleC !== p.id) createCircle(circleC, p.id);
+        circleC = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== PARABOLA TOOL =====
+    if (tool === "parabola"){
+      pushState();
+
+      // step 1: focus point
+      if (!parabolaFocus){
+        const p = getOrCreatePointForClick(w.wx,w.wy);
+        parabolaFocus = p.id;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // step 2: directrix selection: prefer clicking existing line/segment
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && (obj.kind === "line" || obj.kind === "segment")){
+        const p1 = getById(obj.aId);
+        const p2 = getById(obj.bId);
+        if (p1 && p2 && parabolaFocus){
+          createParabola(parabolaFocus, p1.id, p2.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+        selected = null;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // else define directrix by two points
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!parabolaD1){
+        parabolaD1 = p.id;
+      } else {
+        if (parabolaD1 !== p.id && parabolaFocus){
+          createParabola(parabolaFocus, parabolaD1, p.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+      }
+
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== ELLIPSE TOOL =====
+    if (tool === "ellipse"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!ellipseF1){
+        ellipseF1 = p.id;
+      } else if (!ellipseF2){
+        ellipseF2 = p.id;
+        if (ellipseF2 === ellipseF1) ellipseF2 = null;
+      } else {
+        // third point on ellipse
+        if (ellipseF1 && ellipseF2 && p.id !== ellipseF1 && p.id !== ellipseF2){
+          createEllipse(ellipseF1, ellipseF2, p.id);
+        }
+        ellipseF1 = null;
+        ellipseF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== TEXT TOOL =====
+    if (tool === "text"){
+      pushState();
+      const id = createText(w.wx, w.wy, (lang==="ko" ? "텍스트" : "Text") + "\n$y=x^2$");
+      selected = {id};
+      saveToStorage();
+      markOverlayDirty();
+      openTextEditorFor(id, e.clientX, e.clientY); // 생성 직후 편집
+      return;
+    }
   });
 
   cv.addEventListener("pointerup", (e) => {
     isPanning = false;
     panStart = null;
-    dragging = null;
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+    }
     setCanvasCursor();
     try { cv.releasePointerCapture(e.pointerId); } catch {}
     saveToStorage();
+    markOverlayDirty();
   });
 
   cv.addEventListener("wheel", (e) => {
     cancelFloatingTip();
+    if (isEditorOpen()) return;
+
     const delta = Math.sign(e.deltaY);
     const factor = (delta > 0) ? 0.92 : 1.08;
 
@@ -1707,12 +1821,14 @@
     cam.y += (before.wy - after.wy);
 
     saveToStorage();
+    markOverlayDirty();
     e.preventDefault();
   }, {passive:false});
 
+  // 모든 객체 더블클릭: 속성창
   cv.addEventListener("dblclick", (e) => {
     cancelFloatingTip();
-    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
+    if (isEditorOpen()) return;
 
     const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
     const w = screenToWorld(sx, sy);
@@ -1720,38 +1836,69 @@
     if (!id) return;
 
     selected = {id};
-    syncOverlay();
-    openObjEditor({id}, e.clientX, e.clientY);
+    markOverlayDirty();
+    openObjEditor(id, e.clientX, e.clientY);
     e.preventDefault();
   });
 
+  // 선택 상태에서 Enter: 속성창
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
-    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
+    if (isEditorOpen()) return;
     if (tool !== "select") return;
     if (!selected?.id) return;
 
-    openObjEditor({id: selected.id}, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
+    openObjEditor(selected.id, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
     e.preventDefault();
   });
 
+  // =========================
+  // Text drag end when captured on text element
+  // =========================
+  overlay.addEventListener("pointermove", (e) => {
+    // handled by canvas pointermove; keep empty (prevents accidental scroll)
+  }, {passive:true});
+
+  overlay.addEventListener("pointerup", (e) => {
+    // if dragging started on text element, we might not get canvas pointerup
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+      isPanning = false;
+      panStart = null;
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+    }
+  }, {passive:true});
+
+  // =========================
+  // init
+  // =========================
+  function setHint(){ $("hint").textContent = t().ui.hint; } // redefine safe
   function loop(){
     updateDependentPoints();
+
     const {w,h} = canvasSizeCSS();
     ctx.clearRect(0,0,w,h);
     drawGrid();
     drawAxes();
     drawObjects();
     syncOverlay();
+
     requestAnimationFrame(loop);
   }
 
+  // Buttons
+  $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); undo(); });
+  $("btnRedo").addEventListener("click", () => { cancelFloatingTip(); redo(); });
+
+  // Ensure defaults
   resize();
   loadFromStorage();
   normalizeAllPointLabels();
   syncToolUI();
-  syncOverlay();
   pushState();
+  markOverlayDirty();
   loop();
 
 })();
