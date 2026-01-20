@@ -40,28 +40,6 @@
       border:1px solid rgba(36,49,74,.65);
       border-radius:16px;
     }
-
-    /* dropdown (mobile friendly) */
-    .dropdown{ position:relative; }
-    .dropdownMenu{
-      position:absolute;
-      top: calc(100% + 8px);
-      left:0;
-      display:none;
-      flex-direction:column;
-      gap:6px;
-      padding:8px;
-      background: rgba(18,24,38,.96);
-      border:1px solid rgba(36,49,74,.95);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      z-index: 40;
-      min-width: 160px;
-      max-height: 60vh;
-      overflow:auto;
-    }
-    .dropdown.open .dropdownMenu{ display:flex; }
-    .dropdownMenu .btn{ width:100%; justify-content:flex-start; }
     .btn{
       appearance:none;
       border:1px solid rgba(36,49,74,.9);
@@ -90,11 +68,10 @@
     #hint{ margin-left:auto; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 44vw; }
 
     #canvasWrap{ position:relative; flex:1; overflow:hidden; }
-    canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+    #sv{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 
-    #overlay{ position:absolute; inset:0; pointer-events:none; z-index:6; }
     .textItem{
-      position:absolute;
+      position:relative;
       pointer-events:auto;
       white-space:pre-wrap;
       color:var(--text);
@@ -104,7 +81,6 @@
       border-radius:10px;
       background: rgba(18,24,38,0);
       border:1px solid rgba(0,0,0,0);
-      transform: translate(-50%, -50%);
       max-width: 60vw;
     }
     .textItem.selected{
@@ -113,9 +89,8 @@
       box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
     }
     .labelItem{
-      position:absolute;
+      position:relative;
       pointer-events:none;
-      transform: translate(-50%, -50%);
       font-size:13px;
       color: rgba(232,238,252,.92);
       background: rgba(18,24,38,.55);
@@ -124,6 +99,8 @@
       padding:3px 6px;
       box-shadow: 0 10px 26px rgba(0,0,0,.30);
       white-space:nowrap;
+      transform: translate(-50%, -50%);
+      transform-origin: 0 0;
     }
 
     #floatingTip{
@@ -173,6 +150,29 @@
 
     #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
 
+    /* Tool dropdown (mobile-friendly) */
+    .dropdown{ position:relative; display:inline-flex; }
+    .menu{
+      position:absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      display:none;
+      flex-direction:column;
+      gap:6px;
+      padding:8px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      z-index: 40;
+      min-width: 170px;
+      max-height: 60vh;
+      overflow:auto;
+    }
+    .menu.open{ display:flex; }
+    .menu .btn{ width:100%; justify-content:flex-start; }
+
+
     @media (max-width: 920px){
       #hint{ display:none; }
       .panel{ width: 90vw; }
@@ -185,22 +185,22 @@
 <div id="app">
   <div id="topbar">
     <div class="group" id="toolGroup">
-      <button class="btn" data-tool="select"   id="btnSelect">선택/이동</button>
+      <button class="btn" data-tool="select" id="btnSelect">선택/이동</button>
 
-      <div class="dropdown" id="shapeDropdown">
-        <button class="btn" id="btnShapeTools" type="button">도구 ▾</button>
-        <div class="dropdownMenu" id="shapeMenu">
-          <button class="btn" data-tool="point"     id="btnPoint">점</button>
-          <button class="btn" data-tool="segment"   id="btnSeg">선분</button>
-          <button class="btn" data-tool="line"      id="btnLine">직선</button>
-          <button class="btn" data-tool="circle"    id="btnCircle">원</button>
-          <button class="btn" data-tool="parabola"  id="btnParabola">포물선</button>
-          <button class="btn" data-tool="ellipse"   id="btnEllipse">타원</button>
-          <button class="btn" data-tool="hyperbola" id="btnHyperbola">쌍곡선</button>
+      <div class="dropdown" id="toolsDropdown">
+        <button class="btn" id="btnTools">도구 ▾</button>
+        <div class="menu" id="toolsMenu" role="menu" aria-hidden="true">
+          <button class="btn menuItem" data-tool="point" id="mPoint">점</button>
+          <button class="btn menuItem" data-tool="segment" id="mSeg">선분</button>
+          <button class="btn menuItem" data-tool="line" id="mLine">직선</button>
+          <button class="btn menuItem" data-tool="circle" id="mCircle">원</button>
+          <button class="btn menuItem" data-tool="parabola" id="mParabola">포물선</button>
+          <button class="btn menuItem" data-tool="ellipse" id="mEllipse">타원</button>
+          <button class="btn menuItem" data-tool="hyperbola" id="mHyperbola">쌍곡선</button>
         </div>
       </div>
 
-      <button class="btn" data-tool="text"     id="btnText">텍스트</button>
+      <button class="btn" data-tool="text" id="btnText">텍스트</button>
     </div>
 
     <div class="group">
@@ -214,8 +214,14 @@
   </div>
 
   <div id="canvasWrap">
-    <canvas id="cv"></canvas>
-    <div id="overlay"></div>
+    <svg id="sv" xmlns="http://www.w3.org/2000/svg">
+      <g id="gridLayer"></g>
+      <g id="axesLayer"></g>
+      <g id="objLayer"></g>
+      <g id="pointLayer"></g>
+      <g id="labelLayer"></g>
+      <g id="textLayer"></g>
+    </svg>
   </div>
 </div>
 
@@ -633,13 +639,18 @@
   }
 
   // =========================
-  // Canvas & coords (정확도 개선)
+  // SVG & coords (정확도 개선)
   // =========================
-  const cv = $("cv");
-  const ctx = cv.getContext("2d");
-  const overlay = $("overlay");
+  const sv = $("sv");
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const gridLayer = $("gridLayer");
+  const axesLayer = $("axesLayer");
+  const objLayer = $("objLayer");
+  const pointLayer = $("pointLayer");
+  const labelLayer = $("labelLayer");
+  const textLayer = $("textLayer");
 
-  function canvasRect(){ return cv.getBoundingClientRect(); }
+  function canvasRect(){ return sv.getBoundingClientRect(); }
   function clientToCanvas(clientX, clientY){
     const r = canvasRect();
     return { sx: clientX - r.left, sy: clientY - r.top };
@@ -651,10 +662,9 @@
 
   function resize(){
     const r = canvasRect();
-    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-    cv.width  = Math.floor(r.width * dpr);
-    cv.height = Math.floor(r.height * dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const w = Math.max(1, Math.floor(r.width));
+    const h = Math.max(1, Math.floor(r.height));
+    sv.setAttribute('viewBox', `0 0 ${w} ${h}`);
     markOverlayDirty();
   }
   window.addEventListener("resize", resize);
@@ -1326,17 +1336,17 @@
     return {x:0,y:0};
   }
 
-  // ✅ 라벨 오프셋(픽셀): 기존 대비 절반(추가 반영) → 4px 수준
+  // ✅ 라벨 오프셋(픽셀): SVG 전(캔버스 버전)과 동일한 체감 위치로 조정
   function labelOffsetPx(kind){
-    if (kind === "point")   return {dx: 4, dy: -4};
-    if (kind === "text")    return {dx: 3, dy: -4};
-    if (kind === "segment") return {dx: 0, dy: -4};
-    if (kind === "line")    return {dx: 0, dy: -4};
-    if (kind === "circle")  return {dx: 3, dy: -4};
-    if (kind === "parabola")return {dx: 3, dy: -4};
-    if (kind === "ellipse") return {dx: 3, dy: -4};
-    if (kind === "hyperbola") return {dx: 3, dy: -4};
-    return {dx: 3, dy: -4};
+    if (kind === "point")     return {dx: 7, dy: -7};
+    if (kind === "text")      return {dx: 5, dy: -7};
+    if (kind === "segment")   return {dx: 0, dy: -7};
+    if (kind === "line")      return {dx: 0, dy: -7};
+    if (kind === "circle")    return {dx: 6, dy: -7};
+    if (kind === "parabola")  return {dx: 6, dy: -7};
+    if (kind === "ellipse")   return {dx: 6, dy: -7};
+    if (kind === "hyperbola") return {dx: 6, dy: -7};
+    return {dx: 5, dy: -7};
   }
 
   function renderNamePretty(name){
@@ -1360,103 +1370,101 @@
     return "";
   }
 
+  function svgEl(name, attrs={}){
+    const el = document.createElementNS(SVGNS, name);
+    for (const k in attrs) el.setAttribute(k, String(attrs[k]));
+    return el;
+  }
+  function clearLayer(layer){ while(layer.firstChild) layer.removeChild(layer.firstChild); }
+
+  function makeForeignObject(x, y, w, h, cls, htmlStr, pointer='auto'){
+    const fo = svgEl('foreignObject', {x, y, width:w, height:h});
+    fo.setAttribute('style', `overflow:visible; pointer-events:${pointer};`);
+    const div = document.createElementNS('http://www.w3.org/1999/xhtml','div');
+    div.className = cls;
+    div.innerHTML = htmlStr || '';
+    // textItem: full area (for editing/drag), labelItem: shrink-to-fit
+    if (String(cls).includes('textItem')){
+      div.style.width = '100%';
+      div.style.height = '100%';
+    } else {
+      div.style.display = 'inline-block';
+      div.style.width = 'fit-content';
+      div.style.height = 'fit-content';
+    }
+    fo.appendChild(div);
+    return {fo, div};
+  }
+
   function syncOverlay(){
-    if (!overlayDirty) return;
-    overlayDirty = false;
+    // In SVG mode, labels/text are rendered as foreignObject elements.
+    clearLayer(labelLayer);
+    clearLayer(textLayer);
 
-    const existingTextEls = new Map([...overlay.querySelectorAll(".textItem")].map(el => [el.dataset.id, el]));
-    const existingLabelEls = new Map([...overlay.querySelectorAll(".labelItem")].map(el => [el.dataset.id, el]));
+    // texts
+    for (const o of objects){
+      if (o.kind !== 'text') continue;
+      const s = worldToScreen(o.x, o.y);
+      const W = 640, H = 320;
+      const x = s.sx - W/2;
+      const y = s.sy - H/2;
+      const {fo, div} = makeForeignObject(x, y, W, H, 'textItem' + ((selected?.id===o.id)?' selected':''), renderMixedLatex(o.content||''), 'auto');
+      fo.dataset.id = o.id;
 
-    // text items
-    const texts = objects.filter(o => o.kind === "text");
-    for (const o of texts){
-      let el = existingTextEls.get(o.id);
-      if (!el){
-        el = document.createElement("div");
-        el.className = "textItem";
-        el.dataset.id = o.id;
-        overlay.appendChild(el);
+      // drag/select
+      fo.addEventListener('pointerdown', (e) => {
+        cancelFloatingTip();
+        if (isEditorOpen()) return;
+        if (tool !== 'select') return;
+        const id = fo.dataset.id;
+        selected = {id};
+        pushState();
+        const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+        const w = screenToWorld(sx, sy);
+        const obj = getById(id);
+        if (!obj) return;
+        dragging = { id, kind:'text', pointerId: e.pointerId, offX: obj.x - w.wx, offY: obj.y - w.wy };
+        try { sv.setPointerCapture(e.pointerId); } catch {}
+        markOverlayDirty();
+        setCanvasCursor();
+        e.preventDefault();
+        e.stopPropagation();
+      });
 
-        el.addEventListener("pointerdown", (e) => {
-          cancelFloatingTip();
-          e.stopPropagation();
-          e.preventDefault();
-          if (tool !== "select") return;
-
-          const obj = getById(o.id);
-          if (!obj) return;
-
-          selected = {id:o.id};
-          pushState();
-
-          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
-          const w = screenToWorld(sx, sy);
-          dragging = {
-            id:o.id, kind:"text",
-            offX: obj.x - w.wx,
-            offY: obj.y - w.wy,
-            pointerId: e.pointerId
-          };
-          try { el.setPointerCapture(e.pointerId); } catch {}
+      // dblclick: edit text; Shift/Alt dblclick: properties
+      fo.addEventListener('dblclick', (e) => {
+        if (isEditorOpen()) return;
+        const id = fo.dataset.id;
+        if (tool === 'select' && (e.shiftKey || e.altKey)) {
+          selected = {id};
           markOverlayDirty();
-          saveToStorage();
-          setCanvasCursor();
-        });
+          openObjEditor(id, e.clientX, e.clientY);
+        } else {
+          openTextEditorFor(id, e.clientX, e.clientY);
+        }
+        e.preventDefault();
+        e.stopPropagation();
+      });
 
-        // Select tool에서도 텍스트 더블클릭 편집
-        el.addEventListener("dblclick", (e) => {
-          cancelFloatingTip();
-          e.stopPropagation();
-          e.preventDefault();
-          if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
-
-          if (tool === "select" && (e.shiftKey || e.altKey)){
-            openObjEditor(o.id, e.clientX, e.clientY);
-          } else {
-            openTextEditorFor(o.id, e.clientX, e.clientY);
-          }
-        });
-      }
-
-      const s = worldToScreen(o.x,o.y);
-      el.style.left = s.sx + "px";
-      el.style.top  = s.sy + "px";
-      el.innerHTML = renderMixedLatex(o.content || "");
-      el.classList.toggle("selected", selected?.id === o.id);
-
-      existingTextEls.delete(o.id);
+      textLayer.appendChild(fo);
     }
-    for (const el of existingTextEls.values()) el.remove();
 
-    // labels
-    const labelTargets = objects.filter(o =>
-      (o.name && o.name.trim()) || (o.caption && o.caption.trim())
-    );
-
+    // labels (anchor at screen point + fixed px offset, like the previous canvas version)
+    const labelTargets = objects.filter(o => (o.name && o.name.trim()) || (o.caption && o.caption.trim()));
     for (const o of labelTargets){
-      let el = existingLabelEls.get(o.id);
-      if (!el){
-        el = document.createElement("div");
-        el.className = "labelItem";
-        el.dataset.id = o.id;
-        overlay.appendChild(el);
-      }
-
       const a = getObjectAnchor(o);
-      const s = worldToScreen(a.x,a.y);
+      const s = worldToScreen(a.x, a.y);
       const off = labelOffsetPx(o.kind);
-
-      el.style.left = (s.sx + off.dx) + "px";
-      el.style.top  = (s.sy + off.dy) + "px";
-      el.innerHTML = buildLabelHtml(o);
-
-      existingLabelEls.delete(o.id);
+      const x = (s.sx + off.dx);
+      const y = (s.sy + off.dy);
+      const {fo} = makeForeignObject(x, y, 10, 10, 'labelItem', buildLabelHtml(o), 'none');
+      fo.dataset.id = o.id;
+      labelLayer.appendChild(fo);
     }
-    for (const el of existingLabelEls.values()) el.remove();
   }
 
   // =========================
-  // Drawing
+  // SVG Rendering (vector)
   // =========================
   function niceStep(target){
     const pow = Math.pow(10, Math.floor(Math.log10(target)));
@@ -1467,7 +1475,25 @@
     return 10*pow;
   }
 
+  function polyToPath(poly){
+    if (!poly || poly.length < 2) return '';
+    let d = '';
+    let started = false;
+    for (const p of poly){
+      if (!isFinitePt(p)) { started = false; continue; }
+      const s = worldToScreen(p.x, p.y);
+      if (!started){
+        d += `M ${s.sx.toFixed(2)} ${s.sy.toFixed(2)} `;
+        started = true;
+      } else {
+        d += `L ${s.sx.toFixed(2)} ${s.sy.toFixed(2)} `;
+      }
+    }
+    return d.trim();
+  }
+
   function drawGrid(){
+    clearLayer(gridLayer);
     const bounds = getViewportWorldBounds();
     const step = niceStep(40 / cam.scale);
 
@@ -1476,147 +1502,143 @@
     const ymin = Math.floor(bounds.ymin/step)*step;
     const ymax = Math.ceil(bounds.ymax/step)*step;
 
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(36,49,74,.35)";
-
+    const stroke = 'rgba(36,49,74,.35)';
     for (let x=xmin; x<=xmax; x+=step){
       const s1 = worldToScreen(x, ymin);
       const s2 = worldToScreen(x, ymax);
-      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+      gridLayer.appendChild(svgEl('line', {x1:s1.sx, y1:s1.sy, x2:s2.sx, y2:s2.sy, stroke, 'stroke-width':1}));
     }
     for (let y=ymin; y<=ymax; y+=step){
       const s1 = worldToScreen(xmin, y);
       const s2 = worldToScreen(xmax, y);
-      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+      gridLayer.appendChild(svgEl('line', {x1:s1.sx, y1:s1.sy, x2:s2.sx, y2:s2.sy, stroke, 'stroke-width':1}));
     }
-    ctx.restore();
   }
 
   function drawAxes(){
+    clearLayer(axesLayer);
     const {w,h} = canvasSizeCSS();
     const origin = worldToScreen(0,0);
 
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(170,182,209,.45)";
-    ctx.fillStyle = "rgba(170,182,209,.75)";
-
-    ctx.beginPath(); ctx.moveTo(0, origin.sy); ctx.lineTo(w, origin.sy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(origin.sx, 0); ctx.lineTo(origin.sx, h); ctx.stroke();
+    const axisStroke = 'rgba(170,182,209,.45)';
+    axesLayer.appendChild(svgEl('line', {x1:0, y1:origin.sy, x2:w, y2:origin.sy, stroke:axisStroke, 'stroke-width':1}));
+    axesLayer.appendChild(svgEl('line', {x1:origin.sx, y1:0, x2:origin.sx, y2:h, stroke:axisStroke, 'stroke-width':1}));
 
     const ah = 8;
-    ctx.beginPath(); ctx.moveTo(w-ah, origin.sy-ah/2); ctx.lineTo(w, origin.sy); ctx.lineTo(w-ah, origin.sy+ah/2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(ah, origin.sy-ah/2); ctx.lineTo(0, origin.sy); ctx.lineTo(ah, origin.sy+ah/2); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, ah); ctx.lineTo(origin.sx, 0); ctx.lineTo(origin.sx+ah/2, ah); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, h-ah); ctx.lineTo(origin.sx, h); ctx.lineTo(origin.sx+ah/2, h-ah); ctx.fill();
+    const fill = 'rgba(170,182,209,.75)';
+    // x-axis arrowheads
+    axesLayer.appendChild(svgEl('polygon', {points:`${w-ah},${origin.sy-ah/2} ${w},${origin.sy} ${w-ah},${origin.sy+ah/2}`, fill}));
+    axesLayer.appendChild(svgEl('polygon', {points:`${ah},${origin.sy-ah/2} 0,${origin.sy} ${ah},${origin.sy+ah/2}`, fill}));
+    // y-axis arrowheads
+    axesLayer.appendChild(svgEl('polygon', {points:`${origin.sx-ah/2},${ah} ${origin.sx},0 ${origin.sx+ah/2},${ah}`, fill}));
+    axesLayer.appendChild(svgEl('polygon', {points:`${origin.sx-ah/2},${h-ah} ${origin.sx},${h} ${origin.sx+ah/2},${h-ah}`, fill}));
 
-    ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
-    ctx.fillStyle = "rgba(232,238,252,.75)";
-    ctx.fillText("0", origin.sx + 6, origin.sy - 6);
-
-    ctx.restore();
-  }
-
-  function drawPolyline(poly){
-    if (!poly || poly.length < 2) return;
-    ctx.beginPath();
-    let started = false;
-    for (let i=0;i<poly.length;i++){
-      const p = poly[i];
-      if (!isFinitePt(p)) { started = false; continue; }
-      const s = worldToScreen(p.x, p.y);
-      if (!started){
-        ctx.moveTo(s.sx, s.sy);
-        started = true;
-      } else {
-        ctx.lineTo(s.sx, s.sy);
-      }
-    }
-    ctx.stroke();
+    const txt = svgEl('text', {x: origin.sx + 6, y: origin.sy - 6, fill:'rgba(232,238,252,.75)', 'font-size':12, 'font-family': getComputedStyle(document.body).fontFamily});
+    txt.textContent = '0';
+    axesLayer.appendChild(txt);
   }
 
   function drawObjects(){
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.setLineDash([]); // ✅ 모든 도형 기본 실선
+    clearLayer(objLayer);
+    clearLayer(pointLayer);
 
-    // segments/lines/curves
+    // curves/segments/lines
     for (const o of objects){
-      if (o.kind === "segment"){
+      if (o.kind === 'point' || o.kind === 'text') continue;
+
+      if (o.kind === 'segment'){
         const A = getById(o.aId), B = getById(o.bId);
         if (!A || !B) continue;
-        const a = worldToScreen(A.x,A.y);
-        const b = worldToScreen(B.x,B.y);
-        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.72)";
-        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        const a = worldToScreen(A.x, A.y);
+        const b = worldToScreen(B.x, B.y);
+        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.72)';
+        const ln = svgEl('line', {x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy, stroke, 'stroke-width':2, 'stroke-linecap':'round'});
+        objLayer.appendChild(ln);
         continue;
       }
-      if (o.kind === "line"){
+
+      if (o.kind === 'line'){
         const poly = sampleObject(o);
-        if (!poly) continue;
-        const a = worldToScreen(poly[0].x,poly[0].y);
-        const b = worldToScreen(poly[1].x,poly[1].y);
-        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
-        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        if (!poly || poly.length < 2) continue;
+        const a = worldToScreen(poly[0].x, poly[0].y);
+        const b = worldToScreen(poly[1].x, poly[1].y);
+        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.55)';
+        const ln = svgEl('line', {x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy, stroke, 'stroke-width':2, 'stroke-linecap':'round'});
+        objLayer.appendChild(ln);
         continue;
       }
-      if (o.kind === "circle" || o.kind === "parabola" || o.kind === "ellipse" || o.kind === "hyperbola"){
+
+      if (o.kind === 'circle'){
+        const C = getById(o.cId), P = getById(o.pId);
+        if (!C || !P) continue;
+        const r = dist(C.x,C.y,P.x,P.y);
+        const c = worldToScreen(C.x,C.y);
+        const rr = r * cam.scale;
+        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.62)';
+        const cir = svgEl('circle', {cx:c.sx, cy:c.sy, r: rr, fill:'none', stroke, 'stroke-width':2});
+        objLayer.appendChild(cir);
+        continue;
+      }
+
+      if (o.kind === 'parabola' || o.kind === 'ellipse' || o.kind === 'hyperbola'){
         const poly = sampleObject(o);
         if (!poly) continue;
-        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
-        drawPolyline(poly);
+        const d = polyToPath(poly);
+        if (!d) continue;
+        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.62)';
+        const pth = svgEl('path', {d, fill:'none', stroke, 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round'});
+        objLayer.appendChild(pth);
         continue;
       }
     }
 
     // points
     for (const o of objects){
-      if (o.kind !== "point") continue;
-      const p = worldToScreen(o.x,o.y);
-      const r = (selected?.id===o.id) ? 6 : 5;
-      ctx.fillStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.9)";
-      ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI*2); ctx.fill();
+      if (o.kind !== 'point') continue;
+      const p = worldToScreen(o.x, o.y);
+      const sel = (selected?.id===o.id);
+      const r = sel ? 6 : 5;
+      const fill = sel ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.9)';
+      const c = svgEl('circle', {cx:p.sx, cy:p.sy, r, fill});
+      pointLayer.appendChild(c);
 
       if (o.constraint){
-        ctx.strokeStyle = "rgba(55,214,138,.8)";
-        ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(p.sx, p.sy, r+2, 0, Math.PI*2); ctx.stroke();
-        ctx.lineWidth = 2;
+        const ring = svgEl('circle', {cx:p.sx, cy:p.sy, r:r+2, fill:'none', stroke:'rgba(55,214,138,.8)', 'stroke-width':2});
+        pointLayer.appendChild(ring);
       }
     }
+  }
 
-    ctx.restore();
+  function renderSVG(){
+    drawGrid();
+    drawAxes();
+    drawObjects();
+    syncOverlay();
   }
 
   // =========================
   // UI
   // =========================
-  const toolButtons = [...document.querySelectorAll("#toolGroup .btn[data-tool]")];
+  const integratedTools = new Set(["point","segment","line","circle","parabola","ellipse","hyperbola"]);
+  const toolButtons = [...document.querySelectorAll("#toolGroup [data-tool]")];
+  const btnTools = $("btnTools");
+  const toolsMenu = $("toolsMenu");
 
-  // mobile-friendly tool dropdown (shape tools)
-  const SHAPE_TOOL_KEYS = ["point","segment","line","circle","parabola","ellipse","hyperbola"];
-  const shapeDropdown = $("shapeDropdown");
-  const btnShapeTools = $("btnShapeTools");
-  const shapeMenu = $("shapeMenu");
-  const closeShapeMenu = () => { if (shapeDropdown) shapeDropdown.classList.remove("open"); };
-
-  if (btnShapeTools && shapeDropdown){
-    btnShapeTools.addEventListener("click", (e) => {
-      cancelFloatingTip();
-      e.preventDefault();
-      e.stopPropagation();
-      shapeDropdown.classList.toggle("open");
-    });
-    document.addEventListener("pointerdown", (e) => {
-      if (!shapeDropdown.classList.contains("open")) return;
-      if (shapeDropdown.contains(e.target)) return;
-      closeShapeMenu();
-    }, true);
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeShapeMenu();
-    }, true);
+  function closeToolsMenu(){
+    if (!toolsMenu) return;
+    toolsMenu.classList.remove("open");
+    toolsMenu.setAttribute("aria-hidden","true");
   }
+  function toggleToolsMenu(){
+    if (!toolsMenu) return;
+    const open = toolsMenu.classList.contains("open");
+    if (open) closeToolsMenu();
+    else {
+      toolsMenu.classList.add("open");
+      toolsMenu.setAttribute("aria-hidden","false");
+    }
+  }
+
 
   let hintTimer = null;
   function setHint(text){
@@ -1633,14 +1655,38 @@
 
   function setCanvasCursor(){
     if (tool === "select"){
-      if (isPanning || dragging) cv.style.cursor = "grabbing";
-      else cv.style.cursor = "grab";
+      if (isPanning || dragging) sv.style.cursor = "grabbing";
+      else sv.style.cursor = "grab";
     } else {
-      cv.style.cursor = "crosshair";
+      sv.style.cursor = "crosshair";
     }
   }
 
-  function resetToolProgress(){
+  
+
+  // Tools dropdown interactions
+  if (btnTools){
+    btnTools.addEventListener("click", (e) => {
+      cancelFloatingTip();
+      e.preventDefault();
+      e.stopPropagation();
+      toggleToolsMenu();
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener("pointerdown", (e) => {
+    if (!toolsMenu || !toolsMenu.classList.contains("open")) return;
+    const target = e.target;
+    if (target === btnTools) return;
+    if (toolsMenu.contains(target)) return;
+    closeToolsMenu();
+  }, true);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeToolsMenu();
+  });
+function resetToolProgress(){
     segP1 = null; lineP1 = null; circleC = null;
     parabolaFocus = null; parabolaD1 = null;
     ellipseF1 = null; ellipseF2 = null;
@@ -1653,22 +1699,16 @@
       b.classList.toggle("active", key === tool);
       b.textContent = t().tools[key].name;
     }
-
-    // dropdown main button label / active state
-    if (btnShapeTools){
-      const base = (lang === "ko") ? "도구 ▾" : "Tools ▾";
-      if (SHAPE_TOOL_KEYS.includes(tool)){
-        btnShapeTools.textContent = t().tools[tool].name + " ▾";
-        btnShapeTools.classList.add("active");
-      } else {
-        btnShapeTools.textContent = base;
-        btnShapeTools.classList.remove("active");
-      }
-    }
-
     $("btnUndo").textContent = t().ui.undo;
     $("btnRedo").textContent = t().ui.redo;
     $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
+
+    // dropdown button label (shows current tool inside the menu)
+    if (btnTools){
+      const baseLabel = (lang === "ko") ? "도구" : "Tools";
+      btnTools.textContent = (integratedTools.has(tool) ? t().tools[tool].name : baseLabel) + " ▾";
+      btnTools.classList.toggle("active", integratedTools.has(tool));
+    }
     if (!hintTimer) setHint(t().ui.hint);
     setCanvasCursor();
   }
@@ -1676,24 +1716,19 @@
   toolButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.tool;
-      if (!key) return;
-
-      // close dropdown if a tool is chosen
-      closeShapeMenu();
-
       tool = key;
       selected = null;
       dragging = null;
       isPanning = false;
       panStart = null;
       resetToolProgress();
+      closeToolsMenu();
       syncToolUI();
       markOverlayDirty();
-
-      // if tool was chosen inside dropdown, anchor tooltip near the dropdown button
-      const anchor = (shapeMenu && btnShapeTools && btn.closest && btn.closest("#shapeMenu")) ? btnShapeTools : btn;
-      armTipForButton(anchor, key);
+      if (integratedTools.has(key)) armTipForButton(btnTools || btn, key);
+      else armTipForButton(btn, key);
       saveToStorage();
+
     });
   });
 
@@ -1714,7 +1749,7 @@
     return objEditor.style.display === "block" || textEditor.style.display === "block";
   }
 
-  cv.addEventListener("pointermove", (e) => {
+  sv.addEventListener("pointermove", (e) => {
     lastMouseClient.cx = e.clientX;
     lastMouseClient.cy = e.clientY;
 
@@ -1770,7 +1805,7 @@
     }
   });
 
-  cv.addEventListener("pointerdown", (e) => {
+  sv.addEventListener("pointerdown", (e) => {
     cancelFloatingTip();
     if (isEditorOpen()) return;
 
@@ -1796,7 +1831,7 @@
               offY: obj.y - w.wy,
               pointerId: e.pointerId
             };
-            try { cv.setPointerCapture(e.pointerId); } catch {}
+            try { sv.setPointerCapture(e.pointerId); } catch {}
           }
         } else {
           dragging = null;
@@ -1811,7 +1846,7 @@
         pushState();
         isPanning = true;
         panStart = { sx, sy, camX: cam.x, camY: cam.y, scale: cam.scale };
-        try { cv.setPointerCapture(e.pointerId); } catch {}
+        try { sv.setPointerCapture(e.pointerId); } catch {}
       }
 
       saveToStorage();
@@ -2017,19 +2052,19 @@
     }
   });
 
-  cv.addEventListener("pointerup", (e) => {
+  sv.addEventListener("pointerup", (e) => {
     isPanning = false;
     panStart = null;
     if (dragging && dragging.pointerId === e.pointerId){
       dragging = null;
     }
     setCanvasCursor();
-    try { cv.releasePointerCapture(e.pointerId); } catch {}
+    try { sv.releasePointerCapture(e.pointerId); } catch {}
     saveToStorage();
     markOverlayDirty();
   });
 
-  cv.addEventListener("wheel", (e) => {
+  sv.addEventListener("wheel", (e) => {
     cancelFloatingTip();
     if (isEditorOpen()) return;
 
@@ -2052,7 +2087,7 @@
   }, {passive:false});
 
   // 모든 객체 더블클릭: 속성창
-  cv.addEventListener("dblclick", (e) => {
+  sv.addEventListener("dblclick", (e) => {
     cancelFloatingTip();
     if (isEditorOpen()) return;
 
@@ -2078,29 +2113,12 @@
     e.preventDefault();
   });
 
-  overlay.addEventListener("pointerup", (e) => {
-    if (dragging && dragging.pointerId === e.pointerId){
-      dragging = null;
-      isPanning = false;
-      panStart = null;
-      saveToStorage();
-      markOverlayDirty();
-      setCanvasCursor();
-    }
-  }, {passive:true});
-
   // =========================
   // init
   // =========================
   function loop(){
     updateDependentPoints();
-
-    const {w,h} = canvasSizeCSS();
-    ctx.clearRect(0,0,w,h);
-    drawGrid();
-    drawAxes();
-    drawObjects();
-    syncOverlay();
+    renderSVG();
 
     requestAnimationFrame(loop);
   }
