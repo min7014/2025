@@ -40,6 +40,28 @@
       border:1px solid rgba(36,49,74,.65);
       border-radius:16px;
     }
+
+    /* dropdown (mobile friendly) */
+    .dropdown{ position:relative; }
+    .dropdownMenu{
+      position:absolute;
+      top: calc(100% + 8px);
+      left:0;
+      display:none;
+      flex-direction:column;
+      gap:6px;
+      padding:8px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      z-index: 40;
+      min-width: 160px;
+      max-height: 60vh;
+      overflow:auto;
+    }
+    .dropdown.open .dropdownMenu{ display:flex; }
+    .dropdownMenu .btn{ width:100%; justify-content:flex-start; }
     .btn{
       appearance:none;
       border:1px solid rgba(36,49,74,.9);
@@ -164,13 +186,20 @@
   <div id="topbar">
     <div class="group" id="toolGroup">
       <button class="btn" data-tool="select"   id="btnSelect">선택/이동</button>
-      <button class="btn" data-tool="point"    id="btnPoint">점</button>
-      <button class="btn" data-tool="segment"  id="btnSeg">선분</button>
-      <button class="btn" data-tool="line"     id="btnLine">직선</button>
-      <button class="btn" data-tool="circle"   id="btnCircle">원</button>
-      <button class="btn" data-tool="parabola" id="btnParabola">포물선</button>
-      <button class="btn" data-tool="ellipse"  id="btnEllipse">타원</button>
-      <button class="btn" data-tool="hyperbola" id="btnHyperbola">쌍곡선</button>
+
+      <div class="dropdown" id="shapeDropdown">
+        <button class="btn" id="btnShapeTools" type="button">도구 ▾</button>
+        <div class="dropdownMenu" id="shapeMenu">
+          <button class="btn" data-tool="point"     id="btnPoint">점</button>
+          <button class="btn" data-tool="segment"   id="btnSeg">선분</button>
+          <button class="btn" data-tool="line"      id="btnLine">직선</button>
+          <button class="btn" data-tool="circle"    id="btnCircle">원</button>
+          <button class="btn" data-tool="parabola"  id="btnParabola">포물선</button>
+          <button class="btn" data-tool="ellipse"   id="btnEllipse">타원</button>
+          <button class="btn" data-tool="hyperbola" id="btnHyperbola">쌍곡선</button>
+        </div>
+      </div>
+
       <button class="btn" data-tool="text"     id="btnText">텍스트</button>
     </div>
 
@@ -1563,7 +1592,31 @@
   // =========================
   // UI
   // =========================
-  const toolButtons = [...document.querySelectorAll("#toolGroup .btn")];
+  const toolButtons = [...document.querySelectorAll("#toolGroup .btn[data-tool]")];
+
+  // mobile-friendly tool dropdown (shape tools)
+  const SHAPE_TOOL_KEYS = ["point","segment","line","circle","parabola","ellipse","hyperbola"];
+  const shapeDropdown = $("shapeDropdown");
+  const btnShapeTools = $("btnShapeTools");
+  const shapeMenu = $("shapeMenu");
+  const closeShapeMenu = () => { if (shapeDropdown) shapeDropdown.classList.remove("open"); };
+
+  if (btnShapeTools && shapeDropdown){
+    btnShapeTools.addEventListener("click", (e) => {
+      cancelFloatingTip();
+      e.preventDefault();
+      e.stopPropagation();
+      shapeDropdown.classList.toggle("open");
+    });
+    document.addEventListener("pointerdown", (e) => {
+      if (!shapeDropdown.classList.contains("open")) return;
+      if (shapeDropdown.contains(e.target)) return;
+      closeShapeMenu();
+    }, true);
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeShapeMenu();
+    }, true);
+  }
 
   let hintTimer = null;
   function setHint(text){
@@ -1600,6 +1653,19 @@
       b.classList.toggle("active", key === tool);
       b.textContent = t().tools[key].name;
     }
+
+    // dropdown main button label / active state
+    if (btnShapeTools){
+      const base = (lang === "ko") ? "도구 ▾" : "Tools ▾";
+      if (SHAPE_TOOL_KEYS.includes(tool)){
+        btnShapeTools.textContent = t().tools[tool].name + " ▾";
+        btnShapeTools.classList.add("active");
+      } else {
+        btnShapeTools.textContent = base;
+        btnShapeTools.classList.remove("active");
+      }
+    }
+
     $("btnUndo").textContent = t().ui.undo;
     $("btnRedo").textContent = t().ui.redo;
     $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
@@ -1610,6 +1676,11 @@
   toolButtons.forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.tool;
+      if (!key) return;
+
+      // close dropdown if a tool is chosen
+      closeShapeMenu();
+
       tool = key;
       selected = null;
       dragging = null;
@@ -1618,7 +1689,10 @@
       resetToolProgress();
       syncToolUI();
       markOverlayDirty();
-      armTipForButton(btn, key);
+
+      // if tool was chosen inside dropdown, anchor tooltip near the dropdown button
+      const anchor = (shapeMenu && btnShapeTools && btn.closest && btn.closest("#shapeMenu")) ? btnShapeTools : btn;
+      armTipForButton(anchor, key);
       saveToStorage();
     });
   });
