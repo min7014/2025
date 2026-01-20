@@ -12,16 +12,16 @@
   <style>
     :root{
       --bg:#0b0f14;
-      --panel:#121826cc;
       --border:#24314a;
       --text:#e8eefc;
       --muted:#aab6d1;
       --accent:#5aa2ff;
       --danger:#ff5a7a;
       --shadow:0 12px 40px rgba(0,0,0,.45);
-      --r:12px;
-      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
+      --btnRadius:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial, "Apple Color Emoji","Segoe UI Emoji";
     }
+
     html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--font); overflow:hidden; user-select:none; }
     #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
 
@@ -33,25 +33,29 @@
       backdrop-filter: blur(10px);
       z-index:10;
     }
+
     .group{
       display:flex; gap:8px; align-items:center;
       padding:6px;
       background:rgba(15,21,34,.55);
       border:1px solid rgba(36,49,74,.65);
       border-radius:16px;
+      position:relative;
     }
+
     .btn{
       appearance:none;
       border:1px solid rgba(36,49,74,.9);
       background:rgba(18,24,38,.65);
       color:var(--text);
       padding:9px 10px;
-      border-radius:var(--r);
+      border-radius:var(--btnRadius);
       cursor:pointer;
       font-size:13px;
       line-height:1;
       display:inline-flex;
       align-items:center;
+      gap:8px;
       transition: transform .05s ease, background .15s ease, border-color .15s ease;
       white-space:nowrap;
     }
@@ -64,49 +68,40 @@
     }
     .btn.danger{ border-color: rgba(255,90,122,.55); }
     .btn.danger:hover{ border-color: rgba(255,90,122,.9); background: rgba(255,90,122,.12); }
+
     .sep{ width:1px; height:26px; background:rgba(36,49,74,.75); margin:0 4px; }
+
     #hint{ margin-left:auto; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 44vw; }
 
     #canvasWrap{ position:relative; flex:1; overflow:hidden; }
-    #sv{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 
-    .textItem{
-      position:relative;
-      pointer-events:auto;
-      white-space:pre-wrap;
-      color:var(--text);
-      font-size:16px;
-      line-height:1.25;
-      padding:4px 6px;
-      border-radius:10px;
-      background: rgba(18,24,38,0);
-      border:1px solid rgba(0,0,0,0);
-      max-width: 60vw;
+    svg{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      display:block;
+      touch-action:none;
     }
-    .textItem.selected{
-      background: rgba(90,162,255,.10);
-      border-color: rgba(90,162,255,.50);
-      box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
+
+    /* dropdown */
+    #toolsMenu{
+      position:absolute;
+      top: calc(100% + 6px);
+      left: 6px;
+      min-width: 170px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding:6px;
+      display:none;
+      z-index:40;
     }
-    .labelItem{
-      position:relative;
-      pointer-events:none;
-      font-size:13px;
-      color: rgba(232,238,252,.92);
-      background: rgba(18,24,38,.55);
-      border: 1px solid rgba(36,49,74,.7);
-      border-radius:10px;
-      padding:3px 6px;
-      box-shadow: 0 10px 26px rgba(0,0,0,.30);
-      white-space:nowrap;
-      transform: translate(-50%, -50%);
-      transform-origin: 0 0;
-    }
+    #toolsMenu .mBtn{ width:100%; justify-content:flex-start; }
 
     #floatingTip{
       position:fixed;
       z-index:50;
-      max-width: 380px;
+      max-width: 360px;
       background: rgba(18,24,38,.92);
       border:1px solid rgba(36,49,74,.9);
       border-radius: 14px;
@@ -115,6 +110,7 @@
       display:none;
       font-size:12px;
       color: var(--text);
+      pointer-events:none;
     }
     #floatingTip .t{ font-weight:700; margin-bottom:6px; font-size:12px; }
     #floatingTip .d{ color: var(--muted); line-height:1.35; }
@@ -132,6 +128,7 @@
       user-select:text;
     }
     .panel h3{ margin:0 0 8px 0; font-size:14px; color: var(--text); }
+
     .row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
     .row label{ width:88px; color: var(--muted); font-size:12px; }
     .row input, .row textarea{
@@ -150,33 +147,45 @@
 
     #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
 
-    /* Tool dropdown (mobile-friendly) */
-    .dropdown{ position:relative; display:inline-flex; }
-    .menu{
-      position:absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      display:none;
-      flex-direction:column;
-      gap:6px;
-      padding:8px;
-      background: rgba(18,24,38,.96);
-      border:1px solid rgba(36,49,74,.95);
-      border-radius: 16px;
-      box-shadow: var(--shadow);
-      z-index: 40;
-      min-width: 170px;
-      max-height: 60vh;
-      overflow:auto;
+    /* SVG foreignObject inner styling */
+    .foText, .foLabel{ overflow:visible; }
+
+    .textItem{
+      pointer-events:auto;
+      white-space:pre-wrap;
+      color:var(--text);
+      font-size:16px;
+      line-height:1.25;
+      padding:4px 6px;
+      border-radius:10px;
+      background: rgba(18,24,38,.0);
+      border:1px solid rgba(0,0,0,0);
+      transform: translate(-50%, -50%);
+      display:inline-block;
     }
-    .menu.open{ display:flex; }
-    .menu .btn{ width:100%; justify-content:flex-start; }
+    .textItem.selected{
+      background: rgba(90,162,255,.10);
+      border-color: rgba(90,162,255,.50);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
+    }
 
+    .labelItem{
+      pointer-events:none;
+      transform: translate(-50%, -50%);
+      font-size:13px;
+      color: rgba(232,238,252,.92);
+      background: rgba(18,24,38,.55);
+      border: 1px solid rgba(36,49,74,.7);
+      border-radius:10px;
+      padding:3px 6px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.30);
+      white-space:nowrap;
+      display:inline-block;
+    }
 
-    @media (max-width: 920px){
+    @media (max-width: 820px){
       #hint{ display:none; }
       .panel{ width: 90vw; }
-      #topbar{ flex-wrap:wrap; }
     }
   </style>
 </head>
@@ -187,16 +196,16 @@
     <div class="group" id="toolGroup">
       <button class="btn" data-tool="select" id="btnSelect">선택/이동</button>
 
-      <div class="dropdown" id="toolsDropdown">
+      <div class="group" style="padding:0; background:transparent; border:none;">
         <button class="btn" id="btnTools">도구 ▾</button>
-        <div class="menu" id="toolsMenu" role="menu" aria-hidden="true">
-          <button class="btn menuItem" data-tool="point" id="mPoint">점</button>
-          <button class="btn menuItem" data-tool="segment" id="mSeg">선분</button>
-          <button class="btn menuItem" data-tool="line" id="mLine">직선</button>
-          <button class="btn menuItem" data-tool="circle" id="mCircle">원</button>
-          <button class="btn menuItem" data-tool="parabola" id="mParabola">포물선</button>
-          <button class="btn menuItem" data-tool="ellipse" id="mEllipse">타원</button>
-          <button class="btn menuItem" data-tool="hyperbola" id="mHyperbola">쌍곡선</button>
+        <div id="toolsMenu" aria-hidden="true">
+          <button class="btn mBtn" data-tool="point">점</button>
+          <button class="btn mBtn" data-tool="segment">선분</button>
+          <button class="btn mBtn" data-tool="line">직선</button>
+          <button class="btn mBtn" data-tool="circle">원</button>
+          <button class="btn mBtn" data-tool="parabola">포물선</button>
+          <button class="btn mBtn" data-tool="ellipse">타원</button>
+          <button class="btn mBtn" data-tool="hyperbola">쌍곡선</button>
         </div>
       </div>
 
@@ -214,14 +223,7 @@
   </div>
 
   <div id="canvasWrap">
-    <svg id="sv" xmlns="http://www.w3.org/2000/svg">
-      <g id="gridLayer"></g>
-      <g id="axesLayer"></g>
-      <g id="objLayer"></g>
-      <g id="pointLayer"></g>
-      <g id="labelLayer"></g>
-      <g id="textLayer"></g>
-    </svg>
+    <svg id="sv" xmlns="http://www.w3.org/2000/svg"></svg>
   </div>
 </div>
 
@@ -237,7 +239,7 @@
   <div class="row"><label id="lblKind">종류</label><input id="objKind" readonly /></div>
   <div class="row"><label>ID</label><input id="objId" readonly /></div>
   <div class="row"><label id="lblName">이름</label><input id="objName" placeholder="예: A, l1, c1 ..." /></div>
-  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
+  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
   <div class="row" id="rowX"><label>X</label><input id="objX" /></div>
   <div class="row" id="rowY"><label>Y</label><input id="objY" /></div>
   <div class="actions">
@@ -260,9 +262,9 @@
   "use strict";
 
   // =========================
-  // 0) "찌꺼기" 자동 정리(버전 변경 시)
+  // 0) localStorage "찌꺼기" 정리(버전 변경 시)
   // =========================
-  const BUILD_ID = "2026-01-19-build-02";
+  const BUILD_ID = "2026-01-20-svg-smooth-v1";
   const BUILD_KEY = "mathlab_build_id";
   try{
     const prev = localStorage.getItem(BUILD_KEY);
@@ -271,9 +273,7 @@
       for (let i=0;i<localStorage.length;i++){
         const k = localStorage.key(i);
         if (!k) continue;
-        if (k.startsWith("mathlab_state_v1_") || k === "mathlab_session_id_v1"){
-          del.push(k);
-        }
+        if (k.startsWith("mathlab_state_v1_") || k === "mathlab_session_id_v1") del.push(k);
       }
       for (const k of del) localStorage.removeItem(k);
       localStorage.setItem(BUILD_KEY, BUILD_ID);
@@ -283,44 +283,52 @@
   const I18N = {
     ko: {
       tools: {
-        select:    { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
-        point:     { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
-        segment:   { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
-        line:      { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
-        circle:    { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
-        parabola:  { name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
-        ellipse:   { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
-        hyperbola: { name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점으로 쌍곡선 생성. (|PF1-PF2|>0 이어야 함)" },
-        text:      { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
+        select: { name:"선택/이동", desc:"객체 선택 후 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. 선택된 객체에서 Enter 키를 누르면 속성창이 열립니다." },
+        point:  { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 그 위에서만 움직이는 종속점 생성. 교점도 생성 가능." },
+        segment:{ name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성하면 선분 생성. 선분 1개 생성 후 다음 클릭은 새 선분의 첫 점입니다." },
+        line:   { name:"직선", desc:"두 점 선택/생성하면 그 두 점을 지나는 직선 생성." },
+        circle: { name:"원", desc:"중심점 선택/생성 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:{ name:"포물선", desc:"초점 점 선택/생성 → 준선(직선/선분) 선택 또는 두 점으로 준선 지정 시 포물선 생성." },
+        ellipse:{ name:"타원", desc:"초점1 → 초점2 → 타원 위 점(3번째 점)으로 타원 생성." },
+        hyperbola:{ name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점(3번째 점)으로 쌍곡선 생성." },
+        text:   { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다." },
       },
       ui: {
-        hint:"선택: 빈 공간 드래그=평행이동, 점/텍스트 드래그 이동, Enter=속성, 더블클릭=속성, 텍스트 더블클릭=편집(Shift+더블클릭=속성)",
+        hint:"팁: 선택도구에서 빈 공간 드래그 → 좌표평면 이동 / 객체 선택 후 Enter → 속성창 / 텍스트 더블클릭 → 내용 편집 / Shift+더블클릭 → 속성창",
         objTitle:"객체 속성",
-        kind:"종류", name:"이름", caption:"캡션",
-        textTitle:"텍스트 편집", content:"내용",
-        undo:"이전(Undo)", redo:"다음(Redo)",
-        warnHyperbola:"쌍곡선 생성 실패: 두 초점과 점 선택을 확인해 주세요.",
+        kind:"종류",
+        name:"이름",
+        caption:"캡션",
+        textTitle:"텍스트 편집",
+        content:"내용",
+        undo:"이전(Undo)",
+        redo:"다음(Redo)",
+        tools:"도구",
       }
     },
     en: {
       tools: {
-        select:    { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
-        point:     { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
-        segment:   { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
-        line:      { name:"Line", desc:"Pick/create two points to create a line." },
-        circle:    { name:"Circle", desc:"Center point → point on circle." },
-        parabola:  { name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
-        ellipse:   { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
-        hyperbola: { name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola. (Requires |PF1-PF2|>0)" },
-        text:      { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
+        select: { name:"Select/Move", desc:"Select and drag to move objects. Drag empty space to pan the plane. Press Enter on a selected object to open properties." },
+        point:  { name:"Point", desc:"Click to create a point. Click on objects to create constrained points (also intersections)." },
+        segment:{ name:"Segment", desc:"Pick/create first point → pick/create second point to create a segment. Then it resets for a new segment." },
+        line:   { name:"Line", desc:"Pick/create two points to create a line." },
+        circle: { name:"Circle", desc:"Pick/create center → pick/create a point on circle." },
+        parabola:{ name:"Parabola", desc:"Pick/create focus → choose directrix (line/segment) or define by two points." },
+        ellipse:{ name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        hyperbola:{ name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola." },
+        text:   { name:"Text", desc:"Click to create text. Anything inside $...$ is rendered as LaTeX." },
       },
       ui: {
-        hint:"Select: drag empty space to pan, drag points/text to move, Enter=properties, double-click=properties, text double-click=edit (Shift+double-click=properties)",
+        hint:"Tip: In Select tool, drag empty space to pan / Enter opens properties / Double-click text edits content / Shift+Double-click opens properties",
         objTitle:"Object Properties",
-        kind:"Kind", name:"Name", caption:"Caption",
-        textTitle:"Edit Text", content:"Content",
-        undo:"Undo", redo:"Redo",
-        warnHyperbola:"Failed to create hyperbola: check the two foci and the chosen point.",
+        kind:"Kind",
+        name:"Name",
+        caption:"Caption",
+        textTitle:"Edit Text",
+        content:"Content",
+        undo:"Undo",
+        redo:"Redo",
+        tools:"Tools",
       }
     }
   };
@@ -335,13 +343,11 @@
   const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
   function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[c]));
+    return s.replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
   }
 
   function renderMixedLatex(raw){
-    raw = String(raw ?? "");
+    if (!raw) return "";
     const hasKaTeX = typeof katex !== "undefined" && katex.renderToString;
     if (!hasKaTeX) return escapeHtml(raw);
 
@@ -352,6 +358,7 @@
       if (s === -1){ out += escapeHtml(raw.slice(i)); break; }
       const e = raw.indexOf("$", s+1);
       if (e === -1){ out += escapeHtml(raw.slice(i)); break; }
+
       out += escapeHtml(raw.slice(i, s));
       const latex = raw.slice(s+1, e);
       try{
@@ -364,7 +371,9 @@
     return out;
   }
 
-  // ===== per-session separation (탭별 분리) =====
+  // =========================
+  // per-session separation (탭/사용자별 분리)
+  // =========================
   const SESSION_KEY = "mathlab_session_id_v1";
   let sessionId = sessionStorage.getItem(SESSION_KEY);
   if (!sessionId) {
@@ -373,26 +382,23 @@
   }
   const STORE_KEY = "mathlab_state_v1_" + sessionId;
 
-  // ===== state =====
+  // =========================
+  // state
+  // =========================
   let objects = [];
   let tool = "select";
   let selected = null;
 
-  // interaction
-  let dragging = null; // {id, kind, offX, offY, pointerId}
+  let dragging = null; // {id, kind}
   let isPanning = false;
   let panStart = null; // {sx, sy, camX, camY, scale}
 
-  // tool partial selections
-  let segP1 = null;
-  let lineP1 = null;
-  let circleC = null;
-  let parabolaFocus = null;
-  let parabolaD1 = null;
-  let ellipseF1 = null;
-  let ellipseF2 = null;
-  let hyperbolaF1 = null;
-  let hyperbolaF2 = null;
+  let segmentPending = null;
+  let linePending = null;
+  let circlePending = null;
+  let parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
+  let ellipsePending = { f1:null, f2:null };
+  let hyperbolaPending = { f1:null, f2:null };
 
   const cam = { x:0, y:0, scale:70 };
   let lastMouseClient = { cx: 200, cy: 120 };
@@ -400,11 +406,15 @@
   const undoStack = [];
   const redoStack = [];
 
+  // =========================
+  // storage
+  // =========================
   function saveToStorage(){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify({
         objects, cam, tool, selected,
-        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
+        segmentPending, linePending, circlePending,
+        parabolaPending, ellipsePending, hyperbolaPending
       }));
     }catch(e){}
   }
@@ -421,36 +431,33 @@
       tool = st.tool || "select";
       selected = st.selected || null;
 
-      segP1 = st.segP1 ?? null;
-      lineP1 = st.lineP1 ?? null;
-      circleC = st.circleC ?? null;
-      parabolaFocus = st.parabolaFocus ?? null;
-      parabolaD1 = st.parabolaD1 ?? null;
-      ellipseF1 = st.ellipseF1 ?? null;
-      ellipseF2 = st.ellipseF2 ?? null;
-      hyperbolaF1 = st.hyperbolaF1 ?? null;
-      hyperbolaF2 = st.hyperbolaF2 ?? null;
+      segmentPending = st.segmentPending ?? null;
+      linePending = st.linePending ?? null;
+      circlePending = st.circlePending ?? null;
+      parabolaPending = st.parabolaPending || { focusId:null, directrixP1:null, directrixP2:null };
+      ellipsePending = st.ellipsePending || { f1:null, f2:null };
+      hyperbolaPending = st.hyperbolaPending || { f1:null, f2:null };
       return true;
     }catch(e){
       return false;
     }
   }
 
-  function snapshot(){
-    return {
+  function pushState(){
+    undoStack.push({
       objects: deepClone(objects),
       cam: deepClone(cam),
       tool,
       selected: selected ? deepClone(selected) : null,
-      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
-    };
-  }
-
-  function pushState(){
-    undoStack.push(snapshot());
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending),
+      hyperbolaPending: deepClone(hyperbolaPending)
+    });
     if (undoStack.length > 80) undoStack.shift();
     redoStack.length = 0;
     saveToStorage();
+    sceneDirty = true;
   }
 
   function applyState(st){
@@ -461,41 +468,55 @@
     tool = st.tool || "select";
     selected = st.selected ? deepClone(st.selected) : null;
 
-    segP1 = st.segP1 ?? null;
-    lineP1 = st.lineP1 ?? null;
-    circleC = st.circleC ?? null;
-    parabolaFocus = st.parabolaFocus ?? null;
-    parabolaD1 = st.parabolaD1 ?? null;
-    ellipseF1 = st.ellipseF1 ?? null;
-    ellipseF2 = st.ellipseF2 ?? null;
-    hyperbolaF1 = st.hyperbolaF1 ?? null;
-    hyperbolaF2 = st.hyperbolaF2 ?? null;
+    segmentPending = st.segmentPending ?? null;
+    linePending = st.linePending ?? null;
+    circlePending = st.circlePending ?? null;
+    parabolaPending = st.parabolaPending ? deepClone(st.parabolaPending) : { focusId:null, directrixP1:null, directrixP2:null };
+    ellipsePending = st.ellipsePending ? deepClone(st.ellipsePending) : { f1:null, f2:null };
+    hyperbolaPending = st.hyperbolaPending ? deepClone(st.hyperbolaPending) : { f1:null, f2:null };
 
     syncToolUI();
-    markOverlayDirty();
     saveToStorage();
+    sceneDirty = true;
   }
 
   function undo(){
     if (!undoStack.length) return;
-    const cur = snapshot();
+    const cur = {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending),
+      hyperbolaPending: deepClone(hyperbolaPending)
+    };
     redoStack.push(cur);
     const prev = undoStack.pop();
     applyState(prev);
   }
+
   function redo(){
     if (!redoStack.length) return;
-    const cur = snapshot();
+    const cur = {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segmentPending, linePending, circlePending,
+      parabolaPending: deepClone(parabolaPending),
+      ellipsePending: deepClone(ellipsePending),
+      hyperbolaPending: deepClone(hyperbolaPending)
+    };
     undoStack.push(cur);
     const next = redoStack.pop();
     applyState(next);
   }
 
   // =========================
-  // Name uniqueness (STEAL MODE) + 캡션은 절대 변경하지 않음
+  // Name uniqueness (STEAL MODE) + 캡션은 변경하지 않음
   // =========================
-  function getById(id){ return objects.find(o => o.id === id) || null; }
-
   function getUsedNames(exceptId=null){
     const s = new Set();
     for (const o of objects){
@@ -525,11 +546,10 @@
     }
   }
 
-  // ✅ 이름 중복 시: "기존 객체"의 이름만 A_{n}으로 변경(캡션은 그대로)
-  // ✅ 대상 객체는 원하는 이름을 유지(steal)
+  // ✅ 이름 중복이면 기존 객체 이름만 A_{n}으로 바꾸고, 캡션은 그대로 둠
   function assignNameSteal(targetId, desiredRaw){
     const desired = String(desiredRaw || "").trim();
-    const target = getById(targetId);
+    const target = objects.find(o => o.id === targetId);
     if (!target) return;
 
     if (!desired){
@@ -548,15 +568,16 @@
         c.name = newName;
         c.nameAuto = false;
         used.add(newName);
-        // 캡션은 그대로 유지
+        // 캡션은 절대 변경하지 않음
       }
     }
+
     target.name = desired;
     target.nameAuto = false;
   }
 
   // =========================
-  // Auto point labels (A,B,C... / caption = $\mathrm{A}$ ...)
+  // Auto point labels (creation only)
   // =========================
   const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -592,7 +613,6 @@
     const usedNames = getUsedNames(null);
     const usedIdx = new Set();
     for (const o of objects){
-      if (o.kind !== "point") continue;
       const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
       const idx = labelToIndex(nm);
       if (idx !== null) usedIdx.add(idx);
@@ -613,6 +633,7 @@
 
   function applyAutoPointLabel(p){
     if (!p || p.kind !== "point") return;
+
     const hasName = !!(p.name && String(p.name).trim());
     const hasCap  = !!(p.caption && String(p.caption).trim());
 
@@ -626,6 +647,7 @@
       }
       return;
     }
+
     if (!hasCap){
       p.caption = buildCaptionForLabel(String(p.name).trim());
       p.captionAuto = true;
@@ -639,58 +661,66 @@
   }
 
   // =========================
-  // SVG & coords (정확도 개선)
+  // SVG + coords
   // =========================
   const sv = $("sv");
-  const SVGNS = "http://www.w3.org/2000/svg";
-  const gridLayer = $("gridLayer");
-  const axesLayer = $("axesLayer");
-  const objLayer = $("objLayer");
-  const pointLayer = $("pointLayer");
-  const labelLayer = $("labelLayer");
-  const textLayer = $("textLayer");
+  const NS = "http://www.w3.org/2000/svg";
 
-  function canvasRect(){ return sv.getBoundingClientRect(); }
-  function clientToCanvas(clientX, clientY){
-    const r = canvasRect();
+  let W = 0, H = 0;
+  function svgRect(){ return sv.getBoundingClientRect(); }
+  function clientToSvg(clientX, clientY){
+    const r = svgRect();
     return { sx: clientX - r.left, sy: clientY - r.top };
   }
   function canvasSizeCSS(){
-    const r = canvasRect();
+    const r = svgRect();
     return { w: r.width, h: r.height };
   }
 
   function resize(){
-    const r = canvasRect();
-    const w = Math.max(1, Math.floor(r.width));
-    const h = Math.max(1, Math.floor(r.height));
-    sv.setAttribute('viewBox', `0 0 ${w} ${h}`);
-    markOverlayDirty();
+    const r = svgRect();
+    W = r.width; H = r.height;
+    if (W < 10) W = 10;
+    if (H < 10) H = 10;
+    sv.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    sceneDirty = true;
   }
   window.addEventListener("resize", resize);
 
   function worldToScreen(wx, wy){
-    const {w,h} = canvasSizeCSS();
     return {
-      sx: (wx - cam.x) * cam.scale + w/2,
-      sy: h/2 - (wy - cam.y) * cam.scale
+      sx: (wx - cam.x) * cam.scale + W/2,
+      sy: H/2 - (wy - cam.y) * cam.scale
     };
   }
   function screenToWorld(sx, sy){
-    const {w,h} = canvasSizeCSS();
     return {
-      wx: (sx - w/2) / cam.scale + cam.x,
-      wy: (h/2 - sy) / cam.scale + cam.y
+      wx: (sx - W/2) / cam.scale + cam.x,
+      wy: (H/2 - sy) / cam.scale + cam.y
     };
   }
+
   function worldTol(){ return 10 / cam.scale; }
 
+  function getViewportWorldBounds(){
+    const a = screenToWorld(0,0);
+    const b = screenToWorld(W,H);
+    return {
+      xmin: Math.min(a.wx, b.wx),
+      xmax: Math.max(a.wx, b.wx),
+      ymin: Math.min(a.wy, b.wy),
+      ymax: Math.max(a.wy, b.wy)
+    };
+  }
+
   // =========================
-  // Geometry sampling & intersections (polyline approximation)
+  // Geometry helpers
   // =========================
-  const isFinitePt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+  function getById(id){ return objects.find(o => o.id === id) || null; }
 
   function segmentIntersection(a,b,c,d){
+    // skip invalid
+    if (!Number.isFinite(a.x+a.y+b.x+b.y+c.x+c.y+d.x+d.y)) return null;
     const r = {x: b.x-a.x, y: b.y-a.y};
     const s = {x: d.x-c.x, y: d.y-c.y};
     const denom = r.x*s.y - r.y*s.x;
@@ -707,27 +737,22 @@
 
   function polylineProject(poly, pt){
     if (!poly || poly.length < 2) return {x:pt.x, y:pt.y, t:0};
-
-    // build segments skipping NaN breaks
-    const segs = [];
-    let total = 0;
-    for (let i=0;i<poly.length-1;i++){
-      const A = poly[i], B = poly[i+1];
-      if (!isFinitePt(A) || !isFinitePt(B)) { segs.push(null); continue; }
-      const L = dist(A.x,A.y, B.x,B.y);
-      const seg = {A, B, L, acc: total};
-      segs.push(seg);
-      total += L;
-    }
-
-    if (total < 1e-12) return {x:pt.x, y:pt.y, t:0};
-
     let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
 
-    for (let i=0;i<segs.length;i++){
-      const seg = segs[i];
-      if (!seg) continue;
-      const A = seg.A, B = seg.B;
+    let total = 0;
+    const lens = [];
+    for (let i=0;i<poly.length-1;i++){
+      const A = poly[i], B = poly[i+1];
+      if (!Number.isFinite(A.x+A.y+B.x+B.y)) { lens.push(0); continue; }
+      const L = dist(A.x,A.y, B.x,B.y);
+      lens.push(L); total += L;
+    }
+    if (total < 1e-12) return {x:poly[0].x, y:poly[0].y, t:0};
+
+    let acc = 0;
+    for (let i=0;i<poly.length-1;i++){
+      const A = poly[i], B = poly[i+1];
+      if (!Number.isFinite(A.x+A.y+B.x+B.y)) { acc += lens[i]; continue; }
       const vx = B.x - A.x, vy = B.y - A.y;
       const vv = vx*vx + vy*vy;
       let u = 0;
@@ -739,8 +764,10 @@
       const py = A.y + u*vy;
       const d = dist2(px,py, pt.x,pt.y);
       if (d < best.d){
-        best = {d, x:px, y:py, t: (seg.acc + u*seg.L)/total};
+        const tLocal = (acc + u*lens[i]) / total;
+        best = {d, x:px, y:py, t: tLocal};
       }
+      acc += lens[i];
     }
     return {x:best.x, y:best.y, t:best.t};
   }
@@ -750,27 +777,15 @@
     if (!polyA || !polyB || polyA.length<2 || polyB.length<2) return out;
     for (let i=0;i<polyA.length-1;i++){
       const a = polyA[i], b = polyA[i+1];
-      if (!isFinitePt(a) || !isFinitePt(b)) continue;
+      if (!Number.isFinite(a.x+a.y+b.x+b.y)) continue;
       for (let j=0;j<polyB.length-1;j++){
         const c = polyB[j], d = polyB[j+1];
-        if (!isFinitePt(c) || !isFinitePt(d)) continue;
+        if (!Number.isFinite(c.x+c.y+d.x+d.y)) continue;
         const p = segmentIntersection(a,b,c,d);
         if (p) out.push(p);
       }
     }
     return out;
-  }
-
-  function getViewportWorldBounds(){
-    const {w,h} = canvasSizeCSS();
-    const a = screenToWorld(0,0);
-    const b = screenToWorld(w,h);
-    return {
-      xmin: Math.min(a.wx, b.wx),
-      xmax: Math.max(a.wx, b.wx),
-      ymin: Math.min(a.wy, b.wy),
-      ymax: Math.max(a.wy, b.wy)
-    };
   }
 
   function getLineEqFromTwoPoints(p1, p2){
@@ -784,11 +799,76 @@
     return {nx, ny, d};
   }
 
-  function acosh(x){
-    // x >= 1
-    return Math.log(x + Math.sqrt(x*x - 1));
+  function acosh(x){ return Math.log(x + Math.sqrt(x*x - 1)); }
+
+  function dynamicN(pixelSpan, minN, maxN, stepPx){
+    const n = Math.ceil(Math.max(0, pixelSpan) / stepPx);
+    return clamp(n, minN, maxN);
   }
 
+  // =========================
+  // Curve params (world)
+  // =========================
+  function getCircleParams(obj){
+    const C = getById(obj.cId), P = getById(obj.pId);
+    if (!C || !P) return null;
+    const r = dist(C.x,C.y, P.x,P.y);
+    if (r < 1e-12) return null;
+    return {cx:C.x, cy:C.y, r};
+  }
+
+  function getEllipseParams(obj){
+    const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+    if (!F1 || !F2 || !P) return null;
+    const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+    const a = sum/2;
+    const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+    if (a < 1e-10 || a < c + 1e-10) return null;
+    const b = Math.sqrt(Math.max(0, a*a - c*c));
+    const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+    const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+    return {cx, cy, a, b, ang};
+  }
+
+  function getHyperbolaParams(obj){
+    const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+    if (!F1 || !F2 || !P) return null;
+
+    const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+    const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+
+    const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+    if (c < 1e-9) return null;
+    const diff = Math.abs(dist(P.x,P.y, F1.x,F1.y) - dist(P.x,P.y, F2.x,F2.y));
+    const a = diff/2;
+    if (a < 1e-6 || a >= c - 1e-6) return null;
+    const b = Math.sqrt(Math.max(0, c*c - a*a));
+
+    return {cx, cy, a, b, ang, ca, sa};
+  }
+
+  function getParabolaFrame(obj){
+    const F = getById(obj.fId);
+    const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
+    if (!F || !p1 || !p2) return null;
+    const L = getLineEqFromTwoPoints(p1,p2);
+    if (!L) return null;
+
+    const nx = L.nx, ny = L.ny, d = L.d;
+    const ux = -ny, uy = nx;
+    const Ox = nx*d, Oy = ny*d;
+
+    const fx = ux*(F.x - Ox) + uy*(F.y - Oy);
+    const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
+    if (Math.abs(fy) < 1e-6) return null;
+
+    return {nx, ny, ux, uy, Ox, Oy, fx, fy};
+  }
+
+  // =========================
+  // sampleObject (for intersections/constraints/hitTest)
+  // =========================
   function sampleObject(obj){
     const b = getViewportWorldBounds();
     const margin = 1.35;
@@ -817,128 +897,95 @@
     }
 
     if (obj.kind === "circle"){
-      const C = getById(obj.cId), P = getById(obj.pId);
-      if (!C || !P) return null;
-      const r = dist(C.x,C.y, P.x,P.y);
-      if (r < 1e-12) return null;
-      const N = 240;
+      const p = getCircleParams(obj);
+      if (!p) return null;
+      const rPx = p.r * cam.scale;
+      const circPx = 2*Math.PI*Math.max(1, rPx);
+      const N = dynamicN(circPx, 240, 12000, 0.8);
       const pts = [];
       for (let i=0;i<=N;i++){
         const ang = (i/N)*Math.PI*2;
-        pts.push({x:C.x + r*Math.cos(ang), y:C.y + r*Math.sin(ang)});
+        pts.push({x:p.cx + p.r*Math.cos(ang), y:p.cy + p.r*Math.sin(ang)});
       }
       return pts;
     }
 
     if (obj.kind === "ellipse"){
-      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
-      if (!F1 || !F2 || !P) return null;
-      const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
-      const a = sum/2;
-      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
-      if (a < 1e-10 || a < c + 1e-10) return null;
-      const b0 = Math.sqrt(Math.max(0, a*a - c*c));
-
-      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
-      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
-      const ca = Math.cos(ang), sa = Math.sin(ang);
-
-      const N = 260;
+      const ep = getEllipseParams(obj);
+      if (!ep) return null;
+      // Ramanujan circumference approximation
+      const aPx = ep.a * cam.scale;
+      const bPx = ep.b * cam.scale;
+      const h = Math.pow((aPx-bPx),2)/Math.pow((aPx+bPx),2);
+      const per = Math.PI*(aPx+bPx)*(1 + (3*h)/(10+Math.sqrt(4-3*h)));
+      const N = dynamicN(per, 260, 14000, 0.8);
+      const ca = Math.cos(ep.ang), sa = Math.sin(ep.ang);
       const pts = [];
       for (let i=0;i<=N;i++){
         const th = (i/N)*Math.PI*2;
-        const ex = a*Math.cos(th);
-        const ey = b0*Math.sin(th);
-        const wx = cx + ex*ca - ey*sa;
-        const wy = cy + ex*sa + ey*ca;
+        const ex = ep.a*Math.cos(th);
+        const ey = ep.b*Math.sin(th);
+        const wx = ep.cx + ex*ca - ey*sa;
+        const wy = ep.cy + ex*sa + ey*ca;
         pts.push({x:wx,y:wy});
       }
       return pts;
     }
 
     if (obj.kind === "hyperbola"){
-      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
-      if (!F1 || !F2 || !P) return null;
+      const hp = getHyperbolaParams(obj);
+      if (!hp) return null;
 
-      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
-      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
-      const ca = Math.cos(ang), sa = Math.sin(ang);
-
-      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
-      if (c < 1e-9) return null;
-      const diff = Math.abs(dist(P.x,P.y, F1.x,F1.y) - dist(P.x,P.y, F2.x,F2.y));
-      const a = diff/2;
-      // a must be >0 and < c
-      if (a < 1e-6 || a >= c - 1e-6) return null;
-      const b0 = Math.sqrt(Math.max(0, c*c - a*a));
-
-      // estimate visible range in local coords
       function toLocal(x,y){
-        const dx = x - cx, dy = y - cy;
-        return {
-          x: dx*ca + dy*sa,
-          y: -dx*sa + dy*ca
-        };
+        const dx = x - hp.cx, dy = y - hp.cy;
+        return { x: dx*hp.ca + dy*hp.sa, y: -dx*hp.sa + dy*hp.ca };
       }
-      const corners = [
-        toLocal(xmin,ymin), toLocal(xmin,ymax),
-        toLocal(xmax,ymin), toLocal(xmax,ymax)
-      ];
+      const corners = [ toLocal(xmin,ymin), toLocal(xmin,ymax), toLocal(xmax,ymin), toLocal(xmax,ymax) ];
       let maxAbsX = 0;
       for (const p of corners) maxAbsX = Math.max(maxAbsX, Math.abs(p.x));
-      let xMax = Math.max(a*1.05, maxAbsX*1.6 + a);
+      const xMax = Math.max(hp.a*1.05, maxAbsX*1.6 + hp.a);
 
-      const T = acosh(xMax / a);
-      const N = 320;
+      const T = acosh(xMax / hp.a);
+      const pixelSpan = (xMax - hp.a) * cam.scale * 2;
+      const N = dynamicN(pixelSpan, 400, 16000, 0.9);
+
       const pts = [];
-      // right branch
       for (let i=0;i<=N;i++){
         const tt = -T + (2*T)*i/N;
-        const x = a*Math.cosh(tt);
-        const y = b0*Math.sinh(tt);
-        const wx = cx + x*ca - y*sa;
-        const wy = cy + x*sa + y*ca;
+        const x = hp.a*Math.cosh(tt);
+        const y = hp.b*Math.sinh(tt);
+        const wx = hp.cx + x*hp.ca - y*hp.sa;
+        const wy = hp.cy + x*hp.sa + y*hp.ca;
         pts.push({x:wx,y:wy});
       }
-      // break
       pts.push({x:NaN, y:NaN});
-      // left branch
       for (let i=0;i<=N;i++){
         const tt = -T + (2*T)*i/N;
-        const x = -a*Math.cosh(tt);
-        const y = b0*Math.sinh(tt);
-        const wx = cx + x*ca - y*sa;
-        const wy = cy + x*sa + y*ca;
+        const x = -hp.a*Math.cosh(tt);
+        const y = hp.b*Math.sinh(tt);
+        const wx = hp.cx + x*hp.ca - y*hp.sa;
+        const wy = hp.cy + x*hp.sa + y*hp.ca;
         pts.push({x:wx,y:wy});
       }
       return pts;
     }
 
     if (obj.kind === "parabola"){
-      const F = getById(obj.fId);
-      const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
-      if (!F || !p1 || !p2) return null;
-      const L = getLineEqFromTwoPoints(p1,p2);
-      if (!L) return null;
-
-      const nx = L.nx, ny = L.ny, d = L.d;
-      const ux = -ny, uy = nx;
-      const Ox = nx*d, Oy = ny*d;
-
-      const fx = ux*(F.x - Ox) + uy*(F.y - Oy);
-      const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
-      if (Math.abs(fy) < 1e-6) return null;
+      const fr = getParabolaFrame(obj);
+      if (!fr) return null;
 
       const span = Math.max(xmax-xmin, ymax-ymin) * 1.5;
-      const xMin = fx - span;
-      const xMax = fx + span;
+      const xMin = fr.fx - span;
+      const xMax = fr.fx + span;
 
-      const N = 260;
+      const pixelSpan = Math.abs(xMax - xMin) * cam.scale;
+      const N = dynamicN(pixelSpan, 420, 20000, 0.8);
+
       const pts = [];
       for (let i=0;i<=N;i++){
         const x = xMin + (i/N)*(xMax-xMin);
-        const y = (((x - fx)*(x - fx)) + fy*fy) / (2*fy);
-        pts.push({x: Ox + ux*x + nx*y, y: Oy + uy*x + ny*y});
+        const y = (((x - fr.fx)*(x - fr.fx)) + fr.fy*fr.fy) / (2*fr.fy);
+        pts.push({x: fr.Ox + fr.ux*x + fr.nx*y, y: fr.Oy + fr.uy*x + fr.ny*y});
       }
       return pts.length >= 2 ? pts : null;
     }
@@ -946,7 +993,109 @@
     return null;
   }
 
+
+
+  // =========================
+  // Render sampling (high-res curves for smooth SVG)
+  // =========================
+  function polylineScreenLengthFromWorld(poly){
+    let len = 0;
+    let prev = null;
+    for (const p of poly || []){
+      if (!p || !Number.isFinite(p.x + p.y)) { prev = null; continue; }
+      const s = worldToScreen(p.x, p.y);
+      if (prev) len += Math.hypot(s.sx - prev.sx, s.sy - prev.sy);
+      prev = s;
+    }
+    return len;
+  }
+
+  function sampleObjectRender(obj){
+    // Use higher resolution for visually smooth curves without affecting intersections logic.
+    if (!obj) return null;
+
+    if (obj.kind === "parabola"){
+      const fr = getParabolaFrame(obj);
+      if (!fr) return null;
+
+      const b = getViewportWorldBounds();
+      const margin = 1.35;
+      const xmin = b.xmin*margin, xmax = b.xmax*margin;
+      const ymin = b.ymin*margin, ymax = b.ymax*margin;
+
+      const span = Math.max(xmax-xmin, ymax-ymin) * 1.5;
+      const xMin = fr.fx - span;
+      const xMax = fr.fx + span;
+
+      const build = (N) => {
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const x = xMin + (i/N)*(xMax-xMin);
+          const y = (((x - fr.fx)*(x - fr.fx)) + fr.fy*fr.fy) / (2*fr.fy);
+          pts.push({x: fr.Ox + fr.ux*x + fr.nx*y, y: fr.Oy + fr.uy*x + fr.ny*y});
+        }
+        return pts;
+      };
+
+      const rough = build(240);
+      const lenPx = polylineScreenLengthFromWorld(rough);
+      const N = dynamicN(lenPx, 1000, 9000, 0.50);
+      return build(N);
+    }
+
+    if (obj.kind === "hyperbola"){
+      const hp = getHyperbolaParams(obj);
+      if (!hp) return null;
+
+      const b = getViewportWorldBounds();
+      const margin = 1.35;
+      const xmin = b.xmin*margin, xmax = b.xmax*margin;
+      const ymin = b.ymin*margin, ymax = b.ymax*margin;
+
+      function toLocal(x,y){
+        const dx = x - hp.cx, dy = y - hp.cy;
+        return { x: dx*hp.ca + dy*hp.sa, y: -dx*hp.sa + dy*hp.ca };
+      }
+      const corners = [ toLocal(xmin,ymin), toLocal(xmin,ymax), toLocal(xmax,ymin), toLocal(xmax,ymax) ];
+      let maxAbsX = 0;
+      for (const p of corners) maxAbsX = Math.max(maxAbsX, Math.abs(p.x));
+      const xMax = Math.max(hp.a*1.05, maxAbsX*1.6 + hp.a);
+
+      const T = acosh(xMax / hp.a);
+
+      const buildBranch = (sign, N) => {
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const tt = -T + (2*T)*i/N;
+          const x = sign*hp.a*Math.cosh(tt);
+          const y = hp.b*Math.sinh(tt);
+          const wx = hp.cx + x*hp.ca - y*hp.sa;
+          const wy = hp.cy + x*hp.sa + y*hp.ca;
+          pts.push({x:wx,y:wy});
+        }
+        return pts;
+      };
+
+      const rough1 = buildBranch(1, 220);
+      const rough2 = buildBranch(-1, 220);
+      const lenPx = polylineScreenLengthFromWorld(rough1) + polylineScreenLengthFromWorld(rough2);
+      const N = dynamicN(lenPx/2, 1000, 9000, 0.50);
+
+      const pts = [];
+      pts.push(...buildBranch(1, N));
+      pts.push({x:NaN,y:NaN});
+      pts.push(...buildBranch(-1, N));
+      return pts;
+    }
+
+    // Others: use existing sampling
+    return sampleObject(obj);
+  }
+  // =========================
+  // dependent points
+  // =========================
   function updateDependentPoints(){
+    let changed = false;
     for (const o of objects){
       if (o.kind !== "point" || !o.constraint) continue;
       const c = o.constraint;
@@ -956,8 +1105,10 @@
         if (!parent) continue;
         const poly = sampleObject(parent);
         if (!poly) continue;
+        const prevX = o.x, prevY = o.y;
         const proj = polylineProject(poly, {x:o.x,y:o.y});
         o.x = proj.x; o.y = proj.y; c.t = proj.t;
+        if (Math.abs(o.x-prevX) > 1e-12 || Math.abs(o.y-prevY) > 1e-12) changed = true;
       }
 
       if (c.type === "intersection"){
@@ -976,9 +1127,12 @@
           const dd = dist2(ints[i].x,ints[i].y, ref.x,ref.y);
           if (dd < bestD){ bestD = dd; best = ints[i]; }
         }
+
+        if (Math.abs(o.x-best.x) > 1e-12 || Math.abs(o.y-best.y) > 1e-12) changed = true;
         o.x = best.x; o.y = best.y;
       }
     }
+    return changed;
   }
 
   // =========================
@@ -987,7 +1141,6 @@
   function hitTest(wx, wy){
     const tol = worldTol();
 
-    // points first
     let bestP = null;
     for (const o of objects){
       if (o.kind !== "point") continue;
@@ -996,10 +1149,9 @@
     }
     if (bestP) return bestP.id;
 
-    // other drawable objects
     let bestO = null;
     for (const o of objects){
-      if (o.kind==="point" || o.kind==="text") continue;
+      if (o.kind === "point" || o.kind === "text") continue;
       const poly = sampleObject(o);
       if (!poly) continue;
       const proj = polylineProject(poly, {x:wx,y:wy});
@@ -1013,7 +1165,6 @@
     const tol = worldTol()*1.25;
     let best = null;
 
-    // ✅ 미래 객체까지 고려: point/text 제외 전부 대상으로
     const candidates = objects.filter(o => o.kind !== "point" && o.kind !== "text");
     for (let i=0;i<candidates.length;i++){
       for (let j=i+1;j<candidates.length;j++){
@@ -1033,30 +1184,32 @@
   }
 
   // =========================
-  // Object creation helpers
+  // Object creation
   // =========================
   function ensurePointAt(wx, wy){
     const id = "p_" + rndId();
     const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null, nameAuto:true, captionAuto:true };
     applyAutoPointLabel(p);
     objects.push(p);
-    markOverlayDirty();
+    sceneDirty = true;
     return p;
   }
 
-  function getOrCreatePointForClick(wx, wy){
-    const tol = worldTol();
+  function getOrCreatePointNear(wx, wy, tolWorld){
+    const tol2 = tolWorld*tolWorld;
     let best = null;
     for (const o of objects){
       if (o.kind !== "point") continue;
       const d = dist2(o.x,o.y, wx,wy);
-      if (d <= tol*tol && (!best || d < best.d)) best = {p:o, d};
+      if (d <= tol2 && (!best || d < best.d)) best = {p:o, d};
     }
-    if (best){
-      applyAutoPointLabel(best.p);
-      return best.p;
-    }
-    return ensurePointAt(wx,wy);
+    if (best){ applyAutoPointLabel(best.p); return best.p; }
+    return ensurePointAt(wx, wy);
+  }
+
+  function getOrCreatePointForClick(wx, wy){
+    const tol = worldTol();
+    return getOrCreatePointNear(wx, wy, tol);
   }
 
   function createIntersectionPoint(hit){
@@ -1070,7 +1223,7 @@
     };
     applyAutoPointLabel(p);
     objects.push(p);
-    markOverlayDirty();
+    sceneDirty = true;
     return p;
   }
 
@@ -1080,57 +1233,58 @@
     const poly = sampleObject(parent);
     if (!poly) return null;
     const proj = polylineProject(poly, {x:wx,y:wy});
+
     const p = ensurePointAt(proj.x, proj.y);
     p.constraint = {type:"on", parentId, t: proj.t};
-    markOverlayDirty();
+    sceneDirty = true;
     return p;
   }
 
   function createSegment(aId, bId){
     const id = "s_" + rndId();
     objects.push({id, kind:"segment", aId, bId, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createLine(aId, bId){
     const id = "l_" + rndId();
     objects.push({id, kind:"line", aId, bId, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createCircle(cId, pId){
     const id = "c_" + rndId();
     objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createParabola(fId, p1Id, p2Id){
     const id = "pa_" + rndId();
     objects.push({id, kind:"parabola", fId, p1Id, p2Id, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createEllipse(f1Id, f2Id, pId){
     const id = "e_" + rndId();
     objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createHyperbola(f1Id, f2Id, pId){
     const id = "h_" + rndId();
     objects.push({id, kind:"hyperbola", f1Id, f2Id, pId, name:"", caption:""});
-    markOverlayDirty();
+    sceneDirty = true;
     return id;
   }
   function createText(wx, wy, content){
     const id = "t_" + rndId();
-    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? (lang==="ko" ? "텍스트" : "Text"), name:"", caption:""});
-    markOverlayDirty();
+    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? (lang==="ko"?"텍스트":"Text"), name:"", caption:""});
+    sceneDirty = true;
     return id;
   }
 
   // =========================
-  // Tooltip (버튼 클릭 후 1초 정지 시만 표시)
+  // UI: tooltip (1s idle after button click)
   // =========================
   const floatingTip = $("floatingTip");
   const tipTitle = $("tipTitle");
@@ -1144,13 +1298,12 @@
     floatingTip.style.display = "none";
   }
 
-  function armTipForButton(btnEl, toolKey){
+  function armTipNear(el, toolKey){
     cancelFloatingTip();
     tipArmed = true;
-    const rect = btnEl.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
     const x = rect.right + 8;
     const y = rect.top;
-
     tipTimer = setTimeout(() => {
       if (!tipArmed) return;
       const info = t().tools[toolKey];
@@ -1167,7 +1320,7 @@
   });
 
   // =========================
-  // Editors (속성/텍스트)
+  // Editors
   // =========================
   const objEditor = $("objEditor");
   const objKind = $("objKind");
@@ -1180,8 +1333,8 @@
   const objY = $("objY");
   let editingObjId = null;
 
-  function openObjEditor(id, clientX, clientY){
-    const obj = getById(id);
+  function openObjEditor(sel, clientX, clientY){
+    const obj = getById(sel.id);
     if (!obj) return;
 
     editingObjId = obj.id;
@@ -1228,11 +1381,11 @@
 
     pushState();
 
-    // 이름 저장: STEAL MODE (캡션은 건드리지 않음)
-    assignNameSteal(obj.id, (objName.value || "").trim());
+    const proposed = (objName.value || "").trim();
+    assignNameSteal(obj.id, proposed);
 
-    // 캡션은 사용자 입력 그대로
     obj.caption = objCaption.value || "";
+    obj.captionAuto = false;
 
     if (obj.kind === "point" || obj.kind === "text"){
       const x = parseFloat(objX.value);
@@ -1243,7 +1396,7 @@
 
     closeObjEditor();
     saveToStorage();
-    markOverlayDirty();
+    sceneDirty = true;
   });
 
   const textEditor = $("textEditor");
@@ -1286,7 +1439,7 @@
     obj.content = textContent.value || "";
     closeTextEditor();
     saveToStorage();
-    markOverlayDirty();
+    sceneDirty = true;
   });
 
   // ✅ 편집창 바깥 클릭 시 자동 닫힘
@@ -1304,10 +1457,35 @@
   });
 
   // =========================
-  // Overlay (text + labels)
+  // Labels (caption default; name on selection)
   // =========================
-  let overlayDirty = true;
-  function markOverlayDirty(){ overlayDirty = true; }
+  function renderNamePretty(name){
+    const s = String(name||"").trim();
+    if (!s) return "";
+    return renderMixedLatex(`$\\mathrm{${s}}$`);
+  }
+
+  function buildLabelHtml(obj){
+    const name = (obj.name && obj.name.trim()) ? obj.name.trim() : "";
+    const cap  = (obj.caption && obj.caption.trim()) ? obj.caption.trim() : "";
+    const isSel = (selected?.id === obj.id);
+
+    if (name && cap){
+      if (isSel) return renderNamePretty(name);
+      return renderMixedLatex(cap);
+    }
+    if (cap) return renderMixedLatex(cap);
+    if (name) return renderNamePretty(name);
+    return "";
+  }
+
+  // 라벨 오프셋(픽셀) - SVG 전(캔버스) 체감
+  function labelOffsetPx(kind){
+    // offset distance is half of previous (pixel-constant, independent of zoom)
+    if (kind === "point")   return {dx: 4, dy: -4};
+    if (kind === "text")    return {dx: 3, dy: -4};
+    return {dx: 0, dy: -4};
+  }
 
   function getObjectAnchor(obj){
     if (!obj) return {x:0,y:0};
@@ -1326,145 +1504,69 @@
       if (F) return {x:F.x, y:F.y};
     }
     if (obj.kind === "ellipse"){
-      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
-      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+      const ep = getEllipseParams(obj);
+      if (ep) return {x:ep.cx, y:ep.cy};
     }
     if (obj.kind === "hyperbola"){
-      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
-      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+      const hp = getHyperbolaParams(obj);
+      if (hp) return {x:hp.cx, y:hp.cy};
     }
     return {x:0,y:0};
   }
 
-  // ✅ 라벨 오프셋(픽셀): SVG 전(캔버스 버전)과 동일한 체감 위치로 조정
-  function labelOffsetPx(kind){
-    if (kind === "point")     return {dx: 7, dy: -7};
-    if (kind === "text")      return {dx: 5, dy: -7};
-    if (kind === "segment")   return {dx: 0, dy: -7};
-    if (kind === "line")      return {dx: 0, dy: -7};
-    if (kind === "circle")    return {dx: 6, dy: -7};
-    if (kind === "parabola")  return {dx: 6, dy: -7};
-    if (kind === "ellipse")   return {dx: 6, dy: -7};
-    if (kind === "hyperbola") return {dx: 6, dy: -7};
-    return {dx: 5, dy: -7};
-  }
-
-  function renderNamePretty(name){
-    const s = String(name||"").trim();
-    if (!s) return "";
-    return renderMixedLatex(`$\\mathrm{${s}}$`);
-  }
-
-  // ✅ 캡션이 있으면 기본은 캡션, 선택 시 이름 표시
-  function buildLabelHtml(obj){
-    const name = (obj.name && obj.name.trim()) ? obj.name.trim() : "";
-    const cap  = (obj.caption && obj.caption.trim()) ? obj.caption.trim() : "";
-    const isSel = (selected?.id === obj.id);
-
-    if (name && cap){
-      if (isSel) return renderNamePretty(name);
-      return renderMixedLatex(cap);
-    }
-    if (cap) return renderMixedLatex(cap);
-    if (name) return renderNamePretty(name);
-    return "";
-  }
-
-  function svgEl(name, attrs={}){
-    const el = document.createElementNS(SVGNS, name);
-    for (const k in attrs) el.setAttribute(k, String(attrs[k]));
+  // =========================
+  // SVG layers
+  // =========================
+  let gridLayer, axesLayer, geomLayer, pointLayer, labelLayer, textLayer;
+  function svgEl(tag, attrs={}){
+    const el = document.createElementNS(NS, tag);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, String(v));
     return el;
   }
-  function clearLayer(layer){ while(layer.firstChild) layer.removeChild(layer.firstChild); }
 
-  function makeForeignObject(x, y, w, h, cls, htmlStr, pointer='auto'){
-    const fo = svgEl('foreignObject', {x, y, width:w, height:h});
-    fo.setAttribute('style', `overflow:visible; pointer-events:${pointer};`);
-    const div = document.createElementNS('http://www.w3.org/1999/xhtml','div');
-    div.className = cls;
-    div.innerHTML = htmlStr || '';
-    // textItem: full area (for editing/drag), labelItem: shrink-to-fit
-    if (String(cls).includes('textItem')){
-      div.style.width = '100%';
-      div.style.height = '100%';
-    } else {
-      div.style.display = 'inline-block';
-      div.style.width = 'fit-content';
-      div.style.height = 'fit-content';
-    }
-    fo.appendChild(div);
-    return {fo, div};
-  }
+  function ensureLayers(){
+    if (gridLayer) return;
+    sv.innerHTML = "";
+    gridLayer  = svgEl("g", {id:"gridLayer"});
+    axesLayer  = svgEl("g", {id:"axesLayer"});
+    geomLayer  = svgEl("g", {id:"geomLayer"});
+    pointLayer = svgEl("g", {id:"pointLayer"});
+    labelLayer = svgEl("g", {id:"labelLayer"});
+    textLayer  = svgEl("g", {id:"textLayer"});
 
-  function syncOverlay(){
-    // In SVG mode, labels/text are rendered as foreignObject elements.
-    clearLayer(labelLayer);
-    clearLayer(textLayer);
-
-    // texts
-    for (const o of objects){
-      if (o.kind !== 'text') continue;
-      const s = worldToScreen(o.x, o.y);
-      const W = 640, H = 320;
-      const x = s.sx - W/2;
-      const y = s.sy - H/2;
-      const {fo, div} = makeForeignObject(x, y, W, H, 'textItem' + ((selected?.id===o.id)?' selected':''), renderMixedLatex(o.content||''), 'auto');
-      fo.dataset.id = o.id;
-
-      // drag/select
-      fo.addEventListener('pointerdown', (e) => {
-        cancelFloatingTip();
-        if (isEditorOpen()) return;
-        if (tool !== 'select') return;
-        const id = fo.dataset.id;
-        selected = {id};
-        pushState();
-        const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
-        const w = screenToWorld(sx, sy);
-        const obj = getById(id);
-        if (!obj) return;
-        dragging = { id, kind:'text', pointerId: e.pointerId, offX: obj.x - w.wx, offY: obj.y - w.wy };
-        try { sv.setPointerCapture(e.pointerId); } catch {}
-        markOverlayDirty();
-        setCanvasCursor();
-        e.preventDefault();
-        e.stopPropagation();
-      });
-
-      // dblclick: edit text; Shift/Alt dblclick: properties
-      fo.addEventListener('dblclick', (e) => {
-        if (isEditorOpen()) return;
-        const id = fo.dataset.id;
-        if (tool === 'select' && (e.shiftKey || e.altKey)) {
-          selected = {id};
-          markOverlayDirty();
-          openObjEditor(id, e.clientX, e.clientY);
-        } else {
-          openTextEditorFor(id, e.clientX, e.clientY);
-        }
-        e.preventDefault();
-        e.stopPropagation();
-      });
-
-      textLayer.appendChild(fo);
-    }
-
-    // labels (anchor at screen point + fixed px offset, like the previous canvas version)
-    const labelTargets = objects.filter(o => (o.name && o.name.trim()) || (o.caption && o.caption.trim()));
-    for (const o of labelTargets){
-      const a = getObjectAnchor(o);
-      const s = worldToScreen(a.x, a.y);
-      const off = labelOffsetPx(o.kind);
-      const x = (s.sx + off.dx);
-      const y = (s.sy + off.dy);
-      const {fo} = makeForeignObject(x, y, 10, 10, 'labelItem', buildLabelHtml(o), 'none');
-      fo.dataset.id = o.id;
-      labelLayer.appendChild(fo);
-    }
+    sv.appendChild(gridLayer);
+    sv.appendChild(axesLayer);
+    sv.appendChild(geomLayer);
+    sv.appendChild(pointLayer);
+    sv.appendChild(labelLayer);
+    sv.appendChild(textLayer);
   }
 
   // =========================
-  // SVG Rendering (vector)
+  // Drawing: smooth curve path (Catmull-Rom -> cubic)
+  // =========================
+  function pointsToSmoothPath(pts){
+    if (!pts || pts.length < 2) return "";
+    const n = pts.length;
+    const p = (i) => pts[clamp(i,0,n-1)];
+    let d = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
+    if (n === 2){
+      d += ` L ${pts[1].x.toFixed(2)} ${pts[1].y.toFixed(2)}`;
+      return d;
+    }
+    for (let i=0;i<n-1;i++){
+      const p0 = p(i-1), p1 = p(i), p2 = p(i+1), p3 = p(i+2);
+      const cp1x = p1.x + (p2.x - p0.x)/6;
+      const cp1y = p1.y + (p2.y - p0.y)/6;
+      const cp2x = p2.x - (p3.x - p1.x)/6;
+      const cp2y = p2.y - (p3.y - p1.y)/6;
+      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)} ${cp2x.toFixed(2)} ${cp2y.toFixed(2)} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    }
+    return d;
+  }
+
+  // =========================
+  // Grid/Axes drawing
   // =========================
   function niceStep(target){
     const pow = Math.pow(10, Math.floor(Math.log10(target)));
@@ -1475,25 +1577,10 @@
     return 10*pow;
   }
 
-  function polyToPath(poly){
-    if (!poly || poly.length < 2) return '';
-    let d = '';
-    let started = false;
-    for (const p of poly){
-      if (!isFinitePt(p)) { started = false; continue; }
-      const s = worldToScreen(p.x, p.y);
-      if (!started){
-        d += `M ${s.sx.toFixed(2)} ${s.sy.toFixed(2)} `;
-        started = true;
-      } else {
-        d += `L ${s.sx.toFixed(2)} ${s.sy.toFixed(2)} `;
-      }
-    }
-    return d.trim();
-  }
+  function drawGridAxes(){
+    gridLayer.innerHTML = "";
+    axesLayer.innerHTML = "";
 
-  function drawGrid(){
-    clearLayer(gridLayer);
     const bounds = getViewportWorldBounds();
     const step = niceStep(40 / cam.scale);
 
@@ -1502,234 +1589,411 @@
     const ymin = Math.floor(bounds.ymin/step)*step;
     const ymax = Math.ceil(bounds.ymax/step)*step;
 
-    const stroke = 'rgba(36,49,74,.35)';
+    // grid lines
     for (let x=xmin; x<=xmax; x+=step){
       const s1 = worldToScreen(x, ymin);
       const s2 = worldToScreen(x, ymax);
-      gridLayer.appendChild(svgEl('line', {x1:s1.sx, y1:s1.sy, x2:s2.sx, y2:s2.sy, stroke, 'stroke-width':1}));
+      const ln = svgEl("line", {
+        x1: s1.sx, y1: s1.sy, x2: s2.sx, y2: s2.sy,
+        stroke: "rgba(36,49,74,.35)",
+        "stroke-width": 1,
+        "shape-rendering": "geometricPrecision"
+      });
+      gridLayer.appendChild(ln);
     }
     for (let y=ymin; y<=ymax; y+=step){
       const s1 = worldToScreen(xmin, y);
       const s2 = worldToScreen(xmax, y);
-      gridLayer.appendChild(svgEl('line', {x1:s1.sx, y1:s1.sy, x2:s2.sx, y2:s2.sy, stroke, 'stroke-width':1}));
+      const ln = svgEl("line", {
+        x1: s1.sx, y1: s1.sy, x2: s2.sx, y2: s2.sy,
+        stroke: "rgba(36,49,74,.35)",
+        "stroke-width": 1,
+        "shape-rendering": "geometricPrecision"
+      });
+      gridLayer.appendChild(ln);
     }
-  }
 
-  function drawAxes(){
-    clearLayer(axesLayer);
-    const {w,h} = canvasSizeCSS();
-    const origin = worldToScreen(0,0);
+    // axes
+    const o = worldToScreen(0,0);
 
-    const axisStroke = 'rgba(170,182,209,.45)';
-    axesLayer.appendChild(svgEl('line', {x1:0, y1:origin.sy, x2:w, y2:origin.sy, stroke:axisStroke, 'stroke-width':1}));
-    axesLayer.appendChild(svgEl('line', {x1:origin.sx, y1:0, x2:origin.sx, y2:h, stroke:axisStroke, 'stroke-width':1}));
+    axesLayer.appendChild(svgEl("line", {x1:0, y1:o.sy, x2:W, y2:o.sy, stroke:"rgba(170,182,209,.45)", "stroke-width":1}));
+    axesLayer.appendChild(svgEl("line", {x1:o.sx, y1:0, x2:o.sx, y2:H, stroke:"rgba(170,182,209,.45)", "stroke-width":1}));
 
+    // arrowheads
     const ah = 8;
-    const fill = 'rgba(170,182,209,.75)';
-    // x-axis arrowheads
-    axesLayer.appendChild(svgEl('polygon', {points:`${w-ah},${origin.sy-ah/2} ${w},${origin.sy} ${w-ah},${origin.sy+ah/2}`, fill}));
-    axesLayer.appendChild(svgEl('polygon', {points:`${ah},${origin.sy-ah/2} 0,${origin.sy} ${ah},${origin.sy+ah/2}`, fill}));
-    // y-axis arrowheads
-    axesLayer.appendChild(svgEl('polygon', {points:`${origin.sx-ah/2},${ah} ${origin.sx},0 ${origin.sx+ah/2},${ah}`, fill}));
-    axesLayer.appendChild(svgEl('polygon', {points:`${origin.sx-ah/2},${h-ah} ${origin.sx},${h} ${origin.sx+ah/2},${h-ah}`, fill}));
+    const arrow = (d) => axesLayer.appendChild(svgEl("path", {d, fill:"rgba(170,182,209,.75)"}));
+    arrow(`M ${W-ah} ${o.sy-ah/2} L ${W} ${o.sy} L ${W-ah} ${o.sy+ah/2} Z`);
+    arrow(`M ${ah} ${o.sy-ah/2} L 0 ${o.sy} L ${ah} ${o.sy+ah/2} Z`);
+    arrow(`M ${o.sx-ah/2} ${ah} L ${o.sx} 0 L ${o.sx+ah/2} ${ah} Z`);
+    arrow(`M ${o.sx-ah/2} ${H-ah} L ${o.sx} ${H} L ${o.sx+ah/2} ${H-ah} Z`);
 
-    const txt = svgEl('text', {x: origin.sx + 6, y: origin.sy - 6, fill:'rgba(232,238,252,.75)', 'font-size':12, 'font-family': getComputedStyle(document.body).fontFamily});
-    txt.textContent = '0';
-    axesLayer.appendChild(txt);
+    // origin label "0"
+    const fo = svgEl("foreignObject", {x: o.sx + 6, y: o.sy - 18, width: 1, height: 1, class:"foLabel", style:"overflow:visible"});
+    const div = document.createElement("div");
+    div.setAttribute("xmlns","http://www.w3.org/1999/xhtml");
+    div.style.transform = "translate(0,0)";
+    div.style.fontSize = "12px";
+    div.style.color = "rgba(232,238,252,.75)";
+    div.style.whiteSpace = "nowrap";
+    div.textContent = "0";
+    fo.appendChild(div);
+    axesLayer.appendChild(fo);
   }
 
+  // =========================
+  // Drawing objects
+  // =========================
   function drawObjects(){
-    clearLayer(objLayer);
-    clearLayer(pointLayer);
+    geomLayer.innerHTML = "";
+    pointLayer.innerHTML = "";
+    labelLayer.innerHTML = "";
+    textLayer.innerHTML = "";
 
-    // curves/segments/lines
+    // draw non-point geometry first
     for (const o of objects){
-      if (o.kind === 'point' || o.kind === 'text') continue;
-
-      if (o.kind === 'segment'){
+      if (o.kind === "segment"){
         const A = getById(o.aId), B = getById(o.bId);
         if (!A || !B) continue;
-        const a = worldToScreen(A.x, A.y);
-        const b = worldToScreen(B.x, B.y);
-        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.72)';
-        const ln = svgEl('line', {x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy, stroke, 'stroke-width':2, 'stroke-linecap':'round'});
-        objLayer.appendChild(ln);
-        continue;
+        const a = worldToScreen(A.x,A.y);
+        const b = worldToScreen(B.x,B.y);
+        const ln = svgEl("line", {
+          x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy,
+          stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.72)",
+          "stroke-width": 2,
+          "stroke-linecap":"round",
+          "stroke-linejoin":"round",
+          "shape-rendering":"geometricPrecision"
+        });
+        geomLayer.appendChild(ln);
       }
 
-      if (o.kind === 'line'){
-        const poly = sampleObject(o);
-        if (!poly || poly.length < 2) continue;
-        const a = worldToScreen(poly[0].x, poly[0].y);
-        const b = worldToScreen(poly[1].x, poly[1].y);
-        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.55)';
-        const ln = svgEl('line', {x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy, stroke, 'stroke-width':2, 'stroke-linecap':'round'});
-        objLayer.appendChild(ln);
-        continue;
-      }
-
-      if (o.kind === 'circle'){
-        const C = getById(o.cId), P = getById(o.pId);
-        if (!C || !P) continue;
-        const r = dist(C.x,C.y,P.x,P.y);
-        const c = worldToScreen(C.x,C.y);
-        const rr = r * cam.scale;
-        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.62)';
-        const cir = svgEl('circle', {cx:c.sx, cy:c.sy, r: rr, fill:'none', stroke, 'stroke-width':2});
-        objLayer.appendChild(cir);
-        continue;
-      }
-
-      if (o.kind === 'parabola' || o.kind === 'ellipse' || o.kind === 'hyperbola'){
+      if (o.kind === "line"){
         const poly = sampleObject(o);
         if (!poly) continue;
-        const d = polyToPath(poly);
+        const a = worldToScreen(poly[0].x,poly[0].y);
+        const b = worldToScreen(poly[1].x,poly[1].y);
+        const ln = svgEl("line", {
+          x1:a.sx, y1:a.sy, x2:b.sx, y2:b.sy,
+          stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.55)",
+          "stroke-width": 2,
+          "stroke-linecap":"round",
+          "stroke-linejoin":"round",
+          "shape-rendering":"geometricPrecision"
+        });
+        geomLayer.appendChild(ln);
+      }
+
+      if (o.kind === "circle"){
+        const cp = getCircleParams(o);
+        if (!cp) continue;
+        const c = worldToScreen(cp.cx, cp.cy);
+        const r = cp.r * cam.scale;
+        const el = svgEl("circle", {
+          cx: c.sx, cy: c.sy, r: r,
+          fill:"none",
+          stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.62)",
+          "stroke-width": 2,
+          "stroke-linecap":"round",
+          "stroke-linejoin":"round",
+          "shape-rendering":"geometricPrecision"
+        });
+        geomLayer.appendChild(el);
+      }
+
+      if (o.kind === "ellipse"){
+        const ep = getEllipseParams(o);
+        if (!ep) continue;
+        const c = worldToScreen(ep.cx, ep.cy);
+        const rx = ep.a * cam.scale;
+        const ry = ep.b * cam.scale;
+        const el = svgEl("ellipse", {
+          cx: c.sx, cy: c.sy, rx: rx, ry: ry,
+          fill:"none",
+          stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.62)",
+          "stroke-width": 2,
+          "stroke-linecap":"round",
+          "stroke-linejoin":"round",
+          "shape-rendering":"geometricPrecision"
+        });
+        const deg = ep.ang * 180/Math.PI;
+        el.setAttribute("transform", `rotate(${deg.toFixed(4)} ${c.sx.toFixed(2)} ${c.sy.toFixed(2)})`);
+        geomLayer.appendChild(el);
+      }
+
+      if (o.kind === "parabola"){
+        const poly = sampleObjectRender(o);
+        if (!poly) continue;
+        const pts = poly.map(p => {
+          const s = worldToScreen(p.x,p.y);
+          return {x:s.sx, y:s.sy};
+        });
+        const d = pointsToSmoothPath(pts);
         if (!d) continue;
-        const stroke = (selected?.id===o.id) ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.62)';
-        const pth = svgEl('path', {d, fill:'none', stroke, 'stroke-width':2, 'stroke-linejoin':'round', 'stroke-linecap':'round'});
-        objLayer.appendChild(pth);
-        continue;
+        const path = svgEl("path", {
+          d,
+          fill:"none",
+          stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.62)",
+          "stroke-width": 2,
+          "stroke-linecap":"round",
+          "stroke-linejoin":"round",
+          "shape-rendering":"geometricPrecision"
+        });
+        geomLayer.appendChild(path);
+      }
+
+      if (o.kind === "hyperbola"){
+        const poly = sampleObjectRender(o);
+        if (!poly) continue;
+        const branches = [];
+        let cur = [];
+        for (const p of poly){
+          if (!Number.isFinite(p.x+p.y)){
+            if (cur.length>=2) branches.push(cur);
+            cur = [];
+            continue;
+          }
+          const s = worldToScreen(p.x,p.y);
+          cur.push({x:s.sx, y:s.sy});
+        }
+        if (cur.length>=2) branches.push(cur);
+
+        for (const b of branches){
+          const d = pointsToSmoothPath(b);
+          if (!d) continue;
+          const path = svgEl("path", {
+            d,
+            fill:"none",
+            stroke: (selected?.id===o.id)?"rgba(90,162,255,.95)":"rgba(232,238,252,.62)",
+            "stroke-width": 2,
+            "stroke-linecap":"round",
+            "stroke-linejoin":"round",
+            "shape-rendering":"geometricPrecision"
+          });
+          geomLayer.appendChild(path);
+        }
       }
     }
 
-    // points
+    // draw points
     for (const o of objects){
-      if (o.kind !== 'point') continue;
-      const p = worldToScreen(o.x, o.y);
-      const sel = (selected?.id===o.id);
-      const r = sel ? 6 : 5;
-      const fill = sel ? 'rgba(90,162,255,.95)' : 'rgba(232,238,252,.9)';
-      const c = svgEl('circle', {cx:p.sx, cy:p.sy, r, fill});
-      pointLayer.appendChild(c);
+      if (o.kind !== "point") continue;
+      const p = worldToScreen(o.x,o.y);
+      const r = (selected?.id===o.id) ? 6 : 5;
+      const fill = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.9)";
+
+      const circle = svgEl("circle", {
+        cx: p.sx, cy: p.sy, r: r,
+        fill: fill,
+        stroke: "none",
+        "shape-rendering":"geometricPrecision"
+      });
+      pointLayer.appendChild(circle);
 
       if (o.constraint){
-        const ring = svgEl('circle', {cx:p.sx, cy:p.sy, r:r+2, fill:'none', stroke:'rgba(55,214,138,.8)', 'stroke-width':2});
+        const ring = svgEl("circle", {
+          cx: p.sx, cy: p.sy, r: r+2,
+          fill:"none",
+          stroke:"rgba(55,214,138,.8)",
+          "stroke-width": 2,
+          "shape-rendering":"geometricPrecision"
+        });
         pointLayer.appendChild(ring);
       }
     }
-  }
 
-  function renderSVG(){
-    drawGrid();
-    drawAxes();
-    drawObjects();
-    syncOverlay();
+    // labels
+    for (const o of objects){
+      const has = ((o.name && o.name.trim()) || (o.caption && o.caption.trim()));
+      if (!has) continue;
+
+      const a = getObjectAnchor(o);
+      const s = worldToScreen(a.x,a.y);
+      const off = labelOffsetPx(o.kind);
+
+      const html = buildLabelHtml(o);
+      if (!html) continue;
+
+      const fo = svgEl("foreignObject", {x: s.sx + off.dx, y: s.sy + off.dy, width: 1, height: 1, class:"foLabel", style:"overflow:visible"});
+      const div = document.createElement("div");
+      div.setAttribute("xmlns","http://www.w3.org/1999/xhtml");
+      div.className = "labelItem";
+      div.innerHTML = html;
+      fo.appendChild(div);
+      labelLayer.appendChild(fo);
+    }
+
+    // text objects
+    for (const o of objects){
+      if (o.kind !== "text") continue;
+      const s = worldToScreen(o.x,o.y);
+      const fo = svgEl("foreignObject", {x: s.sx, y: s.sy, width: 1, height: 1, class:"foText", style:"overflow:visible"});
+      const div = document.createElement("div");
+      div.setAttribute("xmlns","http://www.w3.org/1999/xhtml");
+      div.className = "textItem" + ((selected?.id===o.id)?" selected":"");
+      div.dataset.id = o.id;
+      div.innerHTML = renderMixedLatex(o.content || "");
+
+      // pointerdown for drag (select tool)
+      div.addEventListener("pointerdown", (e) => {
+        cancelFloatingTip();
+        e.stopPropagation();
+        e.preventDefault();
+        if (tool !== "select") return;
+        const obj = getById(o.id);
+        if (!obj) return;
+        selected = {id:o.id};
+        pushState();
+        dragging = {id:o.id, kind:"text"};
+        const {sx,sy} = clientToSvg(e.clientX, e.clientY);
+        const w = screenToWorld(sx, sy);
+        obj.x = w.wx; obj.y = w.wy;
+        saveToStorage();
+        sceneDirty = true;
+        try { sv.setPointerCapture(e.pointerId); } catch {}
+      });
+
+      // dblclick: content edit (any tool), Shift+ dblclick: properties
+      div.addEventListener("dblclick", (e) => {
+        cancelFloatingTip();
+        e.stopPropagation();
+        e.preventDefault();
+        if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
+        if (tool === "select" && (e.shiftKey || e.altKey)){
+          openObjEditor({id:o.id}, e.clientX, e.clientY);
+        } else {
+          openTextEditorFor(o.id, e.clientX, e.clientY);
+        }
+      });
+
+      fo.appendChild(div);
+      textLayer.appendChild(fo);
+    }
   }
 
   // =========================
-  // UI
+  // Tools UI (dropdown)
   // =========================
-  const integratedTools = new Set(["point","segment","line","circle","parabola","ellipse","hyperbola"]);
-  const toolButtons = [...document.querySelectorAll("#toolGroup [data-tool]")];
+  const btnSelect = $("btnSelect");
+  const btnText = $("btnText");
   const btnTools = $("btnTools");
   const toolsMenu = $("toolsMenu");
+  const toolItems = [...toolsMenu.querySelectorAll(".mBtn")];
 
+  function openToolsMenu(){
+    toolsMenu.style.display = "block";
+    toolsMenu.setAttribute("aria-hidden","false");
+  }
   function closeToolsMenu(){
-    if (!toolsMenu) return;
-    toolsMenu.classList.remove("open");
+    toolsMenu.style.display = "none";
     toolsMenu.setAttribute("aria-hidden","true");
   }
   function toggleToolsMenu(){
-    if (!toolsMenu) return;
-    const open = toolsMenu.classList.contains("open");
-    if (open) closeToolsMenu();
-    else {
-      toolsMenu.classList.add("open");
-      toolsMenu.setAttribute("aria-hidden","false");
+    if (toolsMenu.style.display === "block") closeToolsMenu();
+    else openToolsMenu();
+  }
+
+  function isGroupedTool(k){
+    return ["point","segment","line","circle","parabola","ellipse","hyperbola"].includes(k);
+  }
+
+  function setHint(){ $("hint").textContent = t().ui.hint; }
+
+  function syncToolUI(){
+    btnSelect.textContent = t().tools.select.name;
+    btnText.textContent = t().tools.text.name;
+
+    // grouped tools main label
+    if (isGroupedTool(tool)) btnTools.textContent = `${t().tools[tool].name} ▾`;
+    else btnTools.textContent = `${t().ui.tools} ▾`;
+
+    btnSelect.classList.toggle("active", tool === "select");
+    btnText.classList.toggle("active", tool === "text");
+    btnTools.classList.toggle("active", isGroupedTool(tool));
+
+    // menu items labels & active
+    for (const it of toolItems){
+      const k = it.dataset.tool;
+      it.textContent = t().tools[k].name;
+      it.classList.toggle("active", tool === k);
     }
+
+    $("btnUndo").textContent = t().ui.undo;
+    $("btnRedo").textContent = t().ui.redo;
+    $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
+    setHint();
   }
 
+  btnSelect.addEventListener("click", () => {
+    tool = "select";
+    segmentPending = null; linePending = null; circlePending = null;
+    parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
+    ellipsePending = { f1:null, f2:null };
+    hyperbolaPending = { f1:null, f2:null };
+    closeToolsMenu();
+    selected = null;
+    dragging = null;
+    isPanning = false; panStart = null;
+    syncToolUI();
+    armTipNear(btnSelect, "select");
+    saveToStorage();
+    sceneDirty = true;
+  });
 
-  let hintTimer = null;
-  function setHint(text){
-    $("hint").textContent = text;
-  }
-  function flashHint(msg, ms=2200){
-    if (hintTimer) clearTimeout(hintTimer);
-    setHint(msg);
-    hintTimer = setTimeout(() => {
-      hintTimer = null;
-      setHint(t().ui.hint);
-    }, ms);
-  }
+  btnText.addEventListener("click", () => {
+    tool = "text";
+    segmentPending = null; linePending = null; circlePending = null;
+    parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
+    ellipsePending = { f1:null, f2:null };
+    hyperbolaPending = { f1:null, f2:null };
+    closeToolsMenu();
+    selected = null;
+    dragging = null;
+    isPanning = false; panStart = null;
+    syncToolUI();
+    armTipNear(btnText, "text");
+    saveToStorage();
+    sceneDirty = true;
+  });
 
-  function setCanvasCursor(){
-    if (tool === "select"){
-      if (isPanning || dragging) sv.style.cursor = "grabbing";
-      else sv.style.cursor = "grab";
-    } else {
-      sv.style.cursor = "crosshair";
-    }
-  }
+  btnTools.addEventListener("click", (e) => {
+    cancelFloatingTip();
+    e.stopPropagation();
+    toggleToolsMenu();
+    // tool tip: show currently selected grouped tool (if any) after idle
+    const key = isGroupedTool(tool) ? tool : "point";
+    armTipNear(btnTools, key);
+  });
 
-  
-
-  // Tools dropdown interactions
-  if (btnTools){
-    btnTools.addEventListener("click", (e) => {
+  toolItems.forEach(it => {
+    it.addEventListener("click", (e) => {
       cancelFloatingTip();
-      e.preventDefault();
       e.stopPropagation();
-      toggleToolsMenu();
+      const k = it.dataset.tool;
+      tool = k;
+      segmentPending = null; linePending = null; circlePending = null;
+      parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
+      ellipsePending = { f1:null, f2:null };
+      hyperbolaPending = { f1:null, f2:null };
+      selected = null;
+      dragging = null;
+      isPanning = false; panStart = null;
+      closeToolsMenu();
+      syncToolUI();
+      saveToStorage();
+      sceneDirty = true;
     });
-  }
+  });
 
-  // Close dropdown when clicking outside
+  // close dropdown on outside click
   document.addEventListener("pointerdown", (e) => {
-    if (!toolsMenu || !toolsMenu.classList.contains("open")) return;
-    const target = e.target;
-    if (target === btnTools) return;
-    if (toolsMenu.contains(target)) return;
+    if (toolsMenu.style.display !== "block") return;
+    const t0 = e.target;
+    if (btnTools.contains(t0) || toolsMenu.contains(t0)) return;
     closeToolsMenu();
   }, true);
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeToolsMenu();
-  });
-function resetToolProgress(){
-    segP1 = null; lineP1 = null; circleC = null;
-    parabolaFocus = null; parabolaD1 = null;
-    ellipseF1 = null; ellipseF2 = null;
-    hyperbolaF1 = null; hyperbolaF2 = null;
-  }
-
-  function syncToolUI(){
-    for (const b of toolButtons){
-      const key = b.dataset.tool;
-      b.classList.toggle("active", key === tool);
-      b.textContent = t().tools[key].name;
-    }
-    $("btnUndo").textContent = t().ui.undo;
-    $("btnRedo").textContent = t().ui.redo;
-    $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
-
-    // dropdown button label (shows current tool inside the menu)
-    if (btnTools){
-      const baseLabel = (lang === "ko") ? "도구" : "Tools";
-      btnTools.textContent = (integratedTools.has(tool) ? t().tools[tool].name : baseLabel) + " ▾";
-      btnTools.classList.toggle("active", integratedTools.has(tool));
-    }
-    if (!hintTimer) setHint(t().ui.hint);
-    setCanvasCursor();
-  }
-
-  toolButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const key = btn.dataset.tool;
-      tool = key;
-      selected = null;
-      dragging = null;
-      isPanning = false;
-      panStart = null;
-      resetToolProgress();
-      closeToolsMenu();
-      syncToolUI();
-      markOverlayDirty();
-      if (integratedTools.has(key)) armTipForButton(btnTools || btn, key);
-      else armTipForButton(btn, key);
-      saveToStorage();
-
-    });
   });
 
   $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); undo(); });
@@ -1739,83 +2003,81 @@ function resetToolProgress(){
     cancelFloatingTip();
     lang = (lang === "ko") ? "en" : "ko";
     syncToolUI();
-    markOverlayDirty();
+    sceneDirty = true;
   });
 
   // =========================
-  // Canvas events
+  // Pointer events on SVG
   // =========================
-  function isEditorOpen(){
-    return objEditor.style.display === "block" || textEditor.style.display === "block";
+  let sceneDirty = true;
+  let camDirty = true;
+  let lastCamSig = "";
+
+  function camSignature(){
+    return `${cam.x.toFixed(6)}|${cam.y.toFixed(6)}|${cam.scale.toFixed(3)}|${W.toFixed(1)}|${H.toFixed(1)}`;
   }
 
   sv.addEventListener("pointermove", (e) => {
     lastMouseClient.cx = e.clientX;
     lastMouseClient.cy = e.clientY;
 
-    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const {sx,sy} = clientToSvg(e.clientX, e.clientY);
 
-    // pan
     if (isPanning && panStart){
       const dx = sx - panStart.sx;
       const dy = sy - panStart.sy;
       cam.x = panStart.camX - dx / panStart.scale;
       cam.y = panStart.camY + dy / panStart.scale;
       saveToStorage();
-      markOverlayDirty();
-      setCanvasCursor();
+      sceneDirty = true;
+      camDirty = true;
       return;
     }
 
-    // drag (point/text)
-    if (dragging && dragging.pointerId === e.pointerId){
+    if (dragging){
       const w = screenToWorld(sx, sy);
       const obj = getById(dragging.id);
       if (!obj) return;
 
-      const nx = w.wx + (dragging.offX || 0);
-      const ny = w.wy + (dragging.offY || 0);
-
       if (dragging.kind === "point"){
-        if (obj.constraint?.type === "intersection"){
-          return;
-        }
+        if (obj.constraint?.type === "intersection") return;
         if (obj.constraint?.type === "on"){
           const parent = getById(obj.constraint.parentId);
           const poly = parent ? sampleObject(parent) : null;
           if (poly){
-            const proj = polylineProject(poly, {x:nx, y:ny});
+            const proj = polylineProject(poly, {x:w.wx, y:w.wy});
             obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
           } else {
-            obj.x = nx; obj.y = ny;
+            obj.x = w.wx; obj.y = w.wy;
           }
         } else {
-          obj.x = nx; obj.y = ny;
+          obj.x = w.wx; obj.y = w.wy;
         }
       }
 
       if (dragging.kind === "text"){
-        obj.x = nx; obj.y = ny;
+        obj.x = w.wx; obj.y = w.wy;
       }
 
       saveToStorage();
-      markOverlayDirty();
-      setCanvasCursor();
+      sceneDirty = true;
       return;
     }
   });
 
   sv.addEventListener("pointerdown", (e) => {
     cancelFloatingTip();
-    if (isEditorOpen()) return;
+    closeToolsMenu();
 
     lastMouseClient.cx = e.clientX;
     lastMouseClient.cy = e.clientY;
 
-    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const {sx,sy} = clientToSvg(e.clientX, e.clientY);
     const w = screenToWorld(sx, sy);
 
-    // ===== SELECT TOOL =====
+    // avoid if editing
+    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
+
     if (tool === "select"){
       const id = hitTest(w.wx,w.wy);
       if (id){
@@ -1823,15 +2085,24 @@ function resetToolProgress(){
         const obj = getById(id);
 
         if (obj?.kind === "point"){
-          if (!obj.constraint || obj.constraint.type !== "intersection"){
+          if (obj.constraint?.type === "intersection"){
+            dragging = null;
+          } else {
             pushState();
-            dragging = {
-              id, kind:"point",
-              offX: obj.x - w.wx,
-              offY: obj.y - w.wy,
-              pointerId: e.pointerId
-            };
-            try { sv.setPointerCapture(e.pointerId); } catch {}
+            dragging = {id, kind:"point"};
+            if (obj.constraint?.type === "on"){
+              const parent = getById(obj.constraint.parentId);
+              const poly = parent ? sampleObject(parent) : null;
+              if (poly){
+                const proj = polylineProject(poly, {x:w.wx, y:w.wy});
+                obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
+              } else {
+                obj.x = w.wx; obj.y = w.wy;
+              }
+            } else {
+              obj.x = w.wx; obj.y = w.wy;
+            }
+            saveToStorage();
           }
         } else {
           dragging = null;
@@ -1840,35 +2111,31 @@ function resetToolProgress(){
         isPanning = false;
         panStart = null;
       } else {
-        // pan on empty space
         selected = null;
         dragging = null;
         pushState();
         isPanning = true;
         panStart = { sx, sy, camX: cam.x, camY: cam.y, scale: cam.scale };
-        try { sv.setPointerCapture(e.pointerId); } catch {}
+        camDirty = true;
       }
 
+      sceneDirty = true;
       saveToStorage();
-      markOverlayDirty();
-      setCanvasCursor();
+      try { sv.setPointerCapture(e.pointerId); } catch {}
       return;
     }
 
-    // ===== POINT TOOL =====
     if (tool === "point"){
-      // 1) intersection first
       const hit = findNearestIntersectionCandidate(w.wx, w.wy);
       if (hit){
         pushState();
         const p = createIntersectionPoint(hit);
         selected = {id:p.id};
         saveToStorage();
-        markOverlayDirty();
+        sceneDirty = true;
         return;
       }
 
-      // 2) on-object point
       const id = hitTest(w.wx,w.wy);
       const obj = id ? getById(id) : null;
       if (obj && obj.kind !== "point" && obj.kind !== "text"){
@@ -1877,177 +2144,140 @@ function resetToolProgress(){
         if (p){
           selected = {id:p.id};
           saveToStorage();
-          markOverlayDirty();
+          sceneDirty = true;
           return;
         }
       }
 
-      // 3) free point
       pushState();
       const p = ensurePointAt(w.wx,w.wy);
       selected = {id:p.id};
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== SEGMENT TOOL =====
     if (tool === "segment"){
       pushState();
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!segP1){
-        segP1 = p.id;
+      if (!segmentPending){
+        segmentPending = p.id;
       } else {
-        if (segP1 !== p.id) createSegment(segP1, p.id);
-        segP1 = null;
+        createSegment(segmentPending, p.id);
+        segmentPending = null; // reset: next click starts a new segment
       }
       selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== LINE TOOL =====
     if (tool === "line"){
       pushState();
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!lineP1){
-        lineP1 = p.id;
+      if (!linePending){
+        linePending = p.id;
       } else {
-        if (lineP1 !== p.id) createLine(lineP1, p.id);
-        lineP1 = null;
+        createLine(linePending, p.id);
+        linePending = null;
       }
       selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== CIRCLE TOOL =====
     if (tool === "circle"){
       pushState();
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!circleC){
-        circleC = p.id;
+      if (!circlePending){
+        circlePending = p.id;
       } else {
-        if (circleC !== p.id) createCircle(circleC, p.id);
-        circleC = null;
+        createCircle(circlePending, p.id);
+        circlePending = null;
       }
       selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== PARABOLA TOOL =====
     if (tool === "parabola"){
+      // focus point then directrix: (line/segment) or two points
       pushState();
 
-      if (!parabolaFocus){
+      if (!parabolaPending.focusId){
         const p = getOrCreatePointForClick(w.wx,w.wy);
-        parabolaFocus = p.id;
+        parabolaPending.focusId = p.id;
         saveToStorage();
-        markOverlayDirty();
+        sceneDirty = true;
         return;
       }
 
-      // prefer clicking existing line/segment as directrix
+      // second click: try select existing line/segment
       const id = hitTest(w.wx,w.wy);
       const obj = id ? getById(id) : null;
       if (obj && (obj.kind === "line" || obj.kind === "segment")){
-        const p1 = getById(obj.aId);
-        const p2 = getById(obj.bId);
-        if (p1 && p2 && parabolaFocus){
-          createParabola(parabolaFocus, p1.id, p2.id);
-        }
-        parabolaFocus = null;
-        parabolaD1 = null;
-        selected = null;
+        // use its two points as directrix
+        createParabola(parabolaPending.focusId, obj.aId, obj.bId);
+        parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
         saveToStorage();
-        markOverlayDirty();
+        sceneDirty = true;
         return;
       }
 
-      // else define directrix by two points
+      // else treat as directrix point1/point2
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!parabolaD1){
-        parabolaD1 = p.id;
+      if (!parabolaPending.directrixP1){
+        parabolaPending.directrixP1 = p.id;
       } else {
-        if (parabolaD1 !== p.id && parabolaFocus){
-          createParabola(parabolaFocus, parabolaD1, p.id);
-        }
-        parabolaFocus = null;
-        parabolaD1 = null;
+        parabolaPending.directrixP2 = p.id;
+        createParabola(parabolaPending.focusId, parabolaPending.directrixP1, parabolaPending.directrixP2);
+        parabolaPending = { focusId:null, directrixP1:null, directrixP2:null };
       }
-
-      selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== ELLIPSE TOOL =====
     if (tool === "ellipse"){
       pushState();
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!ellipseF1){
-        ellipseF1 = p.id;
-      } else if (!ellipseF2){
-        ellipseF2 = p.id;
-        if (ellipseF2 === ellipseF1) ellipseF2 = null;
+      if (!ellipsePending.f1){
+        ellipsePending.f1 = p.id;
+      } else if (!ellipsePending.f2){
+        ellipsePending.f2 = p.id;
       } else {
-        if (ellipseF1 && ellipseF2 && p.id !== ellipseF1 && p.id !== ellipseF2){
-          createEllipse(ellipseF1, ellipseF2, p.id);
-        }
-        ellipseF1 = null;
-        ellipseF2 = null;
+        createEllipse(ellipsePending.f1, ellipsePending.f2, p.id);
+        ellipsePending = { f1:null, f2:null };
       }
-      selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== HYPERBOLA TOOL =====
     if (tool === "hyperbola"){
       pushState();
       const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!hyperbolaF1){
-        hyperbolaF1 = p.id;
-      } else if (!hyperbolaF2){
-        hyperbolaF2 = p.id;
-        if (hyperbolaF2 === hyperbolaF1) hyperbolaF2 = null;
+      if (!hyperbolaPending.f1){
+        hyperbolaPending.f1 = p.id;
+      } else if (!hyperbolaPending.f2){
+        hyperbolaPending.f2 = p.id;
       } else {
-        // validate before create
-        const F1 = getById(hyperbolaF1);
-        const F2 = getById(hyperbolaF2);
-        const P  = getById(p.id);
-        if (F1 && F2 && P){
-          const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
-          const a = Math.abs(dist(P.x,P.y,F1.x,F1.y) - dist(P.x,P.y,F2.x,F2.y))/2;
-          if (a > 1e-6 && a < c - 1e-6){
-            createHyperbola(hyperbolaF1, hyperbolaF2, p.id);
-          } else {
-            flashHint(t().ui.warnHyperbola);
-          }
-        }
-        hyperbolaF1 = null;
-        hyperbolaF2 = null;
+        createHyperbola(hyperbolaPending.f1, hyperbolaPending.f2, p.id);
+        hyperbolaPending = { f1:null, f2:null };
       }
-      selected = null;
       saveToStorage();
-      markOverlayDirty();
+      sceneDirty = true;
       return;
     }
 
-    // ===== TEXT TOOL =====
     if (tool === "text"){
       pushState();
-      const id = createText(w.wx, w.wy, (lang==="ko" ? "텍스트" : "Text") + "\n$y=x^2$");
+      const id = createText(w.wx,w.wy, lang==="ko"?"텍스트":"Text");
       selected = {id};
       saveToStorage();
-      markOverlayDirty();
-      openTextEditorFor(id, e.clientX, e.clientY);
+      sceneDirty = true;
       return;
     }
   });
@@ -2055,23 +2285,19 @@ function resetToolProgress(){
   sv.addEventListener("pointerup", (e) => {
     isPanning = false;
     panStart = null;
-    if (dragging && dragging.pointerId === e.pointerId){
-      dragging = null;
-    }
-    setCanvasCursor();
+    dragging = null;
     try { sv.releasePointerCapture(e.pointerId); } catch {}
     saveToStorage();
-    markOverlayDirty();
   });
 
   sv.addEventListener("wheel", (e) => {
     cancelFloatingTip();
-    if (isEditorOpen()) return;
+    closeToolsMenu();
 
     const delta = Math.sign(e.deltaY);
     const factor = (delta > 0) ? 0.92 : 1.08;
 
-    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const {sx,sy} = clientToSvg(e.clientX, e.clientY);
     const before = screenToWorld(sx, sy);
 
     pushState();
@@ -2081,57 +2307,81 @@ function resetToolProgress(){
     cam.x += (before.wx - after.wx);
     cam.y += (before.wy - after.wy);
 
+    camDirty = true;
     saveToStorage();
-    markOverlayDirty();
+    sceneDirty = true;
     e.preventDefault();
   }, {passive:false});
 
-  // 모든 객체 더블클릭: 속성창
+  // dblclick: open properties (except text handled in FO)
   sv.addEventListener("dblclick", (e) => {
     cancelFloatingTip();
-    if (isEditorOpen()) return;
+    closeToolsMenu();
+    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
 
-    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const {sx,sy} = clientToSvg(e.clientX, e.clientY);
     const w = screenToWorld(sx, sy);
     const id = hitTest(w.wx,w.wy);
     if (!id) return;
 
     selected = {id};
-    markOverlayDirty();
-    openObjEditor(id, e.clientX, e.clientY);
+    sceneDirty = true;
+    openObjEditor({id}, e.clientX, e.clientY);
     e.preventDefault();
   });
 
-  // 선택 상태에서 Enter: 속성창
+  // Enter: open properties for selected (select tool)
   window.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
-    if (isEditorOpen()) return;
+    if (objEditor.style.display === "block" || textEditor.style.display === "block") return;
     if (tool !== "select") return;
     if (!selected?.id) return;
 
-    openObjEditor(selected.id, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
+    openObjEditor({id: selected.id}, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
     e.preventDefault();
   });
 
   // =========================
-  // init
+  // Render loop
   // =========================
   function loop(){
-    updateDependentPoints();
-    renderSVG();
+    const depChanged = updateDependentPoints();
+    if (depChanged) sceneDirty = true;
+
+    const sig = camSignature();
+    if (sig !== lastCamSig){
+      lastCamSig = sig;
+      camDirty = true;
+      sceneDirty = true;
+    }
+
+    if (camDirty){
+      drawGridAxes();
+      camDirty = false;
+    }
+    if (sceneDirty){
+      drawObjects();
+      sceneDirty = false;
+    }
 
     requestAnimationFrame(loop);
   }
 
+  // =========================
+  // init
+  // =========================
+  ensureLayers();
   resize();
   loadFromStorage();
   normalizeAllPointLabels();
   syncToolUI();
+  camDirty = true;
+  sceneDirty = true;
   pushState();
-  markOverlayDirty();
   loop();
 
 })();
 </script>
+
 </body>
 </html>
