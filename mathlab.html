@@ -2,113 +2,160 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>mathlab</title>
 
-  <!-- KaTeX (LaTeX 렌더링). 오프라인이면 로드 실패할 수 있으며, 그 경우 일반 텍스트로 표시됩니다. -->
+  <!-- KaTeX (LaTeX 렌더링). 오프라인이면 로드 실패할 수 있으나, 그 경우 일반 텍스트로 표시됩니다. -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 
   <style>
     :root{
-      --bg:#0b1220;
-      --panel:#0f182b;
-      --stroke:#c7d2fe;
-      --muted:#93a4c7;
+      --bg:#0b0f14;
+      --panel:#121826cc;
+      --border:#24314a;
       --text:#e8eefc;
-      --accent:#7c5cff;
-      --danger:#ff5a6a;
-      --shadow: 0 14px 40px rgba(0,0,0,.35);
-      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      --muted:#aab6d1;
+      --accent:#5aa2ff;
+      --danger:#ff5a7a;
+      --shadow:0 12px 40px rgba(0,0,0,.45);
+      --r:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
     }
-    html,body{height:100%; margin:0; background:var(--bg); color:var(--text); font-family:var(--font);}
-    #app{height:100%; display:flex; flex-direction:column;}
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--font); overflow:hidden; user-select:none; }
+    #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
 
     #topbar{
-      display:flex; gap:10px; align-items:center; justify-content:space-between;
-      padding:10px 12px; background:rgba(15,24,43,.96); border-bottom:1px solid rgba(199,210,254,.12);
-      position:sticky; top:0; z-index:50;
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      background:linear-gradient(180deg, rgba(18,24,38,.95), rgba(18,24,38,.70));
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
+      z-index:10;
     }
-    .group{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
-    .sep{width:1px; height:26px; background:rgba(199,210,254,.14); margin:0 4px;}
-
+    .group{
+      display:flex; gap:8px; align-items:center;
+      padding:6px;
+      background:rgba(15,21,34,.55);
+      border:1px solid rgba(36,49,74,.65);
+      border-radius:16px;
+    }
     .btn{
-      appearance:none; border:1px solid rgba(199,210,254,.18);
-      background:rgba(255,255,255,.04);
+      appearance:none;
+      border:1px solid rgba(36,49,74,.9);
+      background:rgba(18,24,38,.65);
       color:var(--text);
-      padding:8px 10px; border-radius:12px;
-      font-size:13px; line-height:1; cursor:pointer;
-      transition:transform .05s ease, background .12s ease, border-color .12s ease;
-      user-select:none;
+      padding:9px 10px;
+      border-radius:var(--r);
+      cursor:pointer;
+      font-size:13px;
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+      white-space:nowrap;
     }
-    .btn:hover{ background:rgba(255,255,255,.07); border-color:rgba(199,210,254,.28); }
-    .btn:active{ transform:translateY(1px); }
-    .btn.active{ background:rgba(124,92,255,.18); border-color:rgba(124,92,255,.55); }
-    .btn.danger{ background:rgba(255,90,106,.12); border-color:rgba(255,90,106,.35); }
+    .btn:hover{ background:rgba(24,32,52,.75); border-color:rgba(90,162,255,.6); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.active{
+      border-color: rgba(90,162,255,.9);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.18) inset;
+      background: rgba(90,162,255,.12);
+    }
 
     .dropdown{ position:relative; }
-    .dropdownMenu{
-      position:absolute; top:calc(100% + 8px); left:0;
-      display:none; flex-direction:column; gap:6px;
-      background:rgba(15,24,43,.98);
-      border:1px solid rgba(199,210,254,.16);
-      border-radius:14px;
-      padding:10px;
+    .menu{
+      position:absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      display:none;
+      flex-direction:column;
+      gap:6px;
+      min-width: 132px;
+      padding:8px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
       box-shadow: var(--shadow);
-      min-width: 170px;
-      z-index:60;
+      z-index: 30;
+      max-height: 52vh;
+      overflow:auto;
     }
-    .dropdown.open .dropdownMenu{ display:flex; }
+    .menu.open{ display:flex; }
+    .menu .btn{ width:100%; justify-content:flex-start; }
+    .menu .btn.active{
+      border-color: rgba(90,162,255,.9);
+      background: rgba(90,162,255,.12);
+    }
+    .btn.danger{ border-color: rgba(255,90,122,.55); }
+    .btn.danger:hover{ border-color: rgba(255,90,122,.9); background: rgba(255,90,122,.12); }
+    .sep{ width:1px; height:26px; background:rgba(36,49,74,.75); margin:0 4px; }
+    #hint{ margin-left:auto; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 44vw; }
 
-    #hint{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:42vw; }
+    #canvasWrap{ position:relative; flex:1; overflow:hidden; }
+    canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
 
-    #work{
-      position:relative;
-      flex:1;
-      overflow:hidden;
-      background: radial-gradient(1000px 600px at 20% 20%, rgba(124,92,255,.08), transparent 55%),
-                  radial-gradient(900px 600px at 80% 40%, rgba(124,92,255,.06), transparent 55%);
+    #overlay{ position:absolute; inset:0; pointer-events:none; z-index:6; }
+    .textItem{
+      position:absolute;
+      pointer-events:auto;
+      white-space:pre-wrap;
+      color:var(--text);
+      font-size:16px;
+      line-height:1.25;
+      padding:4px 6px;
+      border-radius:10px;
+      background: rgba(18,24,38,0);
+      border:1px solid rgba(0,0,0,0);
+      transform: translate(-50%, -50%);
+      max-width: 60vw;
+    }
+    .textItem.selected{
+      background: rgba(90,162,255,.10);
+      border-color: rgba(90,162,255,.50);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
+    }
+    .labelItem{
+      position:absolute;
+      pointer-events:none;
+      transform: translate(-50%, -50%);
+      font-size:13px;
+      color: rgba(232,238,252,.92);
+      background: rgba(18,24,38,.55);
+      border: 1px solid rgba(36,49,74,.7);
+      border-radius:10px;
+      padding:3px 6px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.30);
+      white-space:nowrap;
     }
 
-    #sv{
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      touch-action:none; /* ✅ 모바일 핀치/드래그를 pointer events로 처리 */
-      user-select:none;
-    }
-
-    #overlay{ position:absolute; inset:0; pointer-events:none; }
-
-    /* floating tooltip */
     #floatingTip{
       position:fixed;
-      z-index:100;
-      display:none;
-      max-width:min(360px, 80vw);
-      background:rgba(15,24,43,.98);
-      border:1px solid rgba(199,210,254,.18);
-      border-radius:14px;
-      box-shadow: var(--shadow);
+      z-index:50;
+      max-width: 380px;
+      background: rgba(18,24,38,.92);
+      border:1px solid rgba(36,49,74,.9);
+      border-radius: 14px;
       padding:10px 12px;
-      pointer-events:none;
+      box-shadow: var(--shadow);
+      display:none;
+      font-size:12px;
+      color: var(--text);
     }
-    #floatingTip .t{ font-size:13px; font-weight:700; margin-bottom:6px; }
-    #floatingTip .d{ font-size:12px; color:var(--muted); line-height:1.35; }
+    #floatingTip .t{ font-weight:700; margin-bottom:6px; font-size:12px; }
+    #floatingTip .d{ color: var(--muted); line-height:1.35; }
 
-    /* editors */
     .panel{
       position:fixed;
-      right:14px; top:70px;
+      z-index:60;
       width: 340px;
-      max-width: 92vw;
-      background:rgba(15,24,43,.98);
-      border:1px solid rgba(199,210,254,.18);
-      border-radius:16px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
       box-shadow: var(--shadow);
       padding:12px;
       display:none;
       user-select:text;
-      z-index:120;
     }
     .panel h3{ margin:0 0 8px 0; font-size:14px; color: var(--text); }
     .row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
@@ -127,27 +174,12 @@
     .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
     .mini{ font-size:12px; padding:8px 10px; border-radius: 12px; }
 
-    #siteLink{ position:fixed; left:12px; bottom:12px; z-index:130; text-decoration:none; }
+    #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
 
     @media (max-width: 920px){
       #hint{ display:none; }
-      .panel{ width: 92vw; left:4vw; right:auto; }
+      .panel{ width: 90vw; }
       #topbar{ flex-wrap:wrap; }
-    }
-
-    /* label HTML inside foreignObject */
-    .lbl{
-      display:inline-block;
-      padding: 3px 6px;
-      border-radius: 10px;
-      background: rgba(15,24,43,.78);
-      border: 1px solid rgba(199,210,254,.14);
-      color: var(--text);
-      font-size: 12px;
-      line-height: 1.1;
-      white-space: nowrap;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
     }
   </style>
 </head>
@@ -156,25 +188,24 @@
 <div id="app">
   <div id="topbar">
     <div class="group" id="toolGroup">
-      <button class="btn" data-tool="select" id="btnSelect">선택/이동</button>
+      <button class="btn toolBtn" data-tool="select" id="btnSelect">선택/이동</button>
 
-      <div class="dropdown" id="toolsDropdown">
-        <button class="btn" id="btnTools" type="button">도구 ▾</button>
-        <div class="dropdownMenu" id="toolsMenu">
-          <button class="btn" data-tool="point">점</button>
-          <button class="btn" data-tool="segment">선분</button>
-          <button class="btn" data-tool="line">직선</button>
-          <button class="btn" data-tool="circle">원</button>
-          <button class="btn" data-tool="parabola">포물선</button>
-          <button class="btn" data-tool="ellipse">타원</button>
-          <button class="btn" data-tool="hyperbola">쌍곡선</button>
+      <div class="dropdown" id="basicDropdown">
+        <button class="btn" id="btnBasicTools" type="button">도구 ▾</button>
+        <div class="menu" id="basicMenu" role="menu" aria-hidden="true">
+          <button class="btn mBtn" type="button" data-tool="point">점</button>
+          <button class="btn mBtn" type="button" data-tool="segment">선분</button>
+          <button class="btn mBtn" type="button" data-tool="line">직선</button>
+          <button class="btn mBtn" type="button" data-tool="circle">원</button>
+          <button class="btn mBtn" type="button" data-tool="parabola">포물선</button>
+          <button class="btn mBtn" type="button" data-tool="ellipse">타원</button>
+          <button class="btn mBtn" type="button" data-tool="hyperbola">쌍곡선</button>
         </div>
       </div>
 
-      <button class="btn" data-tool="text" id="btnText">텍스트</button>
+      <button class="btn toolBtn" data-tool="text" id="btnText">텍스트</button>
     </div>
-
-    <div class="group">
+<div class="group">
       <button class="btn" id="btnUndo">이전(Undo)</button>
       <button class="btn" id="btnRedo">다음(Redo)</button>
       <div class="sep"></div>
@@ -184,8 +215,8 @@
     <div id="hint"></div>
   </div>
 
-  <div id="work">
-    <svg id="sv" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
     <div id="overlay"></div>
   </div>
 </div>
@@ -213,7 +244,7 @@
 
 <div class="panel" id="textEditor">
   <h3 id="textTitle">텍스트 편집</h3>
-  <div class="row"><label id="lblText">내용</label><textarea id="txtContent" placeholder="일반 텍스트와 $\\LaTeX$ 혼용 가능"></textarea></div>
+  <div class="row"><label id="lblText">내용</label><textarea id="textContent" placeholder="텍스트. $...$ 안은 LaTeX로 렌더링됩니다."></textarea></div>
   <div class="actions">
     <button class="btn mini danger" id="btnTextCancel">취소</button>
     <button class="btn mini" id="btnTextSave">저장</button>
@@ -225,120 +256,130 @@
   "use strict";
 
   // =========================
-  // i18n
+  // 0) "찌꺼기" 자동 정리(버전 변경 시)
   // =========================
+  const BUILD_ID = "2026-01-19-build-02";
+  const BUILD_KEY = "mathlab_build_id";
+  try{
+    const prev = localStorage.getItem(BUILD_KEY);
+    if (prev !== BUILD_ID){
+      const del = [];
+      for (let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.startsWith("mathlab_state_v1_") || k === "mathlab_session_id_v1"){
+          del.push(k);
+        }
+      }
+      for (const k of del) localStorage.removeItem(k);
+      localStorage.setItem(BUILD_KEY, BUILD_ID);
+    }
+  }catch(e){}
+
   const I18N = {
     ko: {
-      ui: {
-        hint: "도구 선택 → 화면을 클릭/드래그로 생성/이동. (모바일: 두 손가락 핀치 확대/축소)",
-        undo: "이전(Undo)",
-        redo: "다음(Redo)",
-        tools: "도구",
-        select: "선택/이동",
-        text: "텍스트",
-      },
       tools: {
-        select: { name: "선택/이동", desc: "객체 선택, 점/텍스트 드래그, 빈 공간 드래그로 평면 이동" },
-        point: { name: "점", desc: "빈 곳 클릭: 점 생성. 교점 근처 클릭: 교점 생성. 도형 위 클릭: 도형에 종속된 점 생성" },
-        segment: { name: "선분", desc: "두 점을 찍거나 선택하면 선분 생성 (1-2, 3-4, ...)" },
-        line: { name: "직선", desc: "두 점을 찍거나 선택하면 직선 생성" },
-        circle: { name: "원", desc: "중심점 → 원 위의 점 선택/생성" },
-        parabola: { name: "포물선", desc: "초점 점 선택/생성 → 준선(직선/선분 또는 두 점) 선택" },
-        ellipse: { name: "타원", desc: "두 초점 점 선택/생성 → 타원 위의 점 선택/생성" },
-        hyperbola: { name: "쌍곡선", desc: "두 초점 점 선택/생성 → 쌍곡선 위의 점 선택/생성" },
-        text: { name: "텍스트", desc: "클릭으로 텍스트 생성, 더블클릭/Enter로 편집" },
+        select:    { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
+        point:     { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
+        segment:   { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
+        line:      { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
+        circle:    { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:  { name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
+        ellipse:   { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
+        hyperbola: { name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점으로 쌍곡선 생성. (|PF1-PF2|>0 이어야 함)" },
+        text:      { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
       },
-      editor: {
-        objTitle: "객체 속성",
-        textTitle: "텍스트 편집",
-        kind: "종류",
-        name: "이름",
-        caption: "캡션",
-        content: "내용",
-        save: "저장",
-        cancel: "취소",
+      ui: {
+        hint:"선택: 빈 공간 드래그=평행이동, 점/텍스트 드래그 이동, Enter=속성, 더블클릭=속성, 텍스트 더블클릭=편집(Shift+더블클릭=속성)",
+        objTitle:"객체 속성",
+        kind:"종류", name:"이름", caption:"캡션",
+        textTitle:"텍스트 편집", content:"내용",
+        undo:"이전(Undo)", redo:"다음(Redo)",
+        warnHyperbola:"쌍곡선 생성 실패: 두 초점과 점 선택을 확인해 주세요.",
       }
     },
     en: {
-      ui: {
-        hint: "Select a tool → click/drag to create/move. (Mobile: pinch to zoom)",
-        undo: "Undo",
-        redo: "Redo",
-        tools: "Tools",
-        select: "Select/Move",
-        text: "Text",
-      },
       tools: {
-        select: { name: "Select/Move", desc: "Select objects, drag points/text, drag empty space to pan" },
-        point: { name: "Point", desc: "Click empty: create point. Near intersection: create intersection point. On object: constrained point" },
-        segment: { name: "Segment", desc: "Pick/create two points to create a segment (1-2, 3-4, ...)" },
-        line: { name: "Line", desc: "Pick/create two points to create a line" },
-        circle: { name: "Circle", desc: "Center point → point on circle" },
-        parabola: { name: "Parabola", desc: "Focus point → directrix (line/segment or two points)" },
-        ellipse: { name: "Ellipse", desc: "Two foci → a point on ellipse" },
-        hyperbola: { name: "Hyperbola", desc: "Two foci → a point on hyperbola" },
-        text: { name: "Text", desc: "Click to create text. Double-click / Enter to edit" },
+        select:    { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
+        point:     { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
+        segment:   { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
+        line:      { name:"Line", desc:"Pick/create two points to create a line." },
+        circle:    { name:"Circle", desc:"Center point → point on circle." },
+        parabola:  { name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
+        ellipse:   { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        hyperbola: { name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola. (Requires |PF1-PF2|>0)" },
+        text:      { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
       },
-      editor: {
-        objTitle: "Object",
-        textTitle: "Text",
-        kind: "Kind",
-        name: "Name",
-        caption: "Caption",
-        content: "Content",
-        save: "Save",
-        cancel: "Cancel",
+      ui: {
+        hint:"Select: drag empty space to pan, drag points/text to move, Enter=properties, double-click=properties, text double-click=edit (Shift+double-click=properties)",
+        objTitle:"Object Properties",
+        kind:"Kind", name:"Name", caption:"Caption",
+        textTitle:"Edit Text", content:"Content",
+        undo:"Undo", redo:"Redo",
+        warnHyperbola:"Failed to create hyperbola: check the two foci and the chosen point.",
       }
     }
   };
 
-  let lang = (localStorage.getItem("mathlab.lang") || "ko");
-
+  let lang = "ko";
+  const t = () => I18N[lang];
   const $ = (id) => document.getElementById(id);
-  const sv = $("sv");
-  const overlay = $("overlay");
-  const hint = $("hint");
-  const objEditor = $("objEditor");
-  const textEditor = $("textEditor");
+  const rndId = () => Math.random().toString(36).slice(2, 10);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const dist2 = (ax,ay,bx,by) => (ax-bx)*(ax-bx)+(ay-by)*(ay-by);
+  const dist = (ax,ay,bx,by) => Math.hypot(ax-bx, ay-by);
+  const deepClone = (o) => JSON.parse(JSON.stringify(o));
 
-  const btnSelect = $("btnSelect");
-  const btnTools = $("btnTools");
-  const toolsDropdown = $("toolsDropdown");
-  const toolsMenu = $("toolsMenu");
-  const btnText = $("btnText");
-  const btnUndo = $("btnUndo");
-  const btnRedo = $("btnRedo");
-  const btnLang = $("btnLang");
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
 
-  const floatingTip = $("floatingTip");
-  const tipTitle = $("tipTitle");
-  const tipDesc = $("tipDesc");
+  function renderMixedLatex(raw){
+    raw = String(raw ?? "");
+    const hasKaTeX = typeof katex !== "undefined" && katex.renderToString;
+    if (!hasKaTeX) return escapeHtml(raw);
 
-  const t = () => I18N[lang] || I18N.ko;
+    let out = "";
+    let i = 0;
+    while (i < raw.length){
+      const s = raw.indexOf("$", i);
+      if (s === -1){ out += escapeHtml(raw.slice(i)); break; }
+      const e = raw.indexOf("$", s+1);
+      if (e === -1){ out += escapeHtml(raw.slice(i)); break; }
+      out += escapeHtml(raw.slice(i, s));
+      const latex = raw.slice(s+1, e);
+      try{
+        out += katex.renderToString(latex, {throwOnError:false, displayMode:false});
+      }catch(err){
+        out += "<span style='color:rgba(255,90,122,.95)'>" + escapeHtml("$"+latex+"$") + "</span>";
+      }
+      i = e+1;
+    }
+    return out;
+  }
 
-  // =========================
-  // State
-  // =========================
-  const cam = {
-    x: 0,
-    y: 0,
-    scale: 70, // px per world unit
-  };
+  // ===== per-session separation (탭별 분리) =====
+  const SESSION_KEY = "mathlab_session_id_v1";
+  let sessionId = sessionStorage.getItem(SESSION_KEY);
+  if (!sessionId) {
+    sessionId = "s_" + rndId();
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+  }
+  const STORE_KEY = "mathlab_state_v1_" + sessionId;
 
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-  // objects
+  // ===== state =====
   let objects = [];
-  let nextId = 1;
-
-  // tool state
   let tool = "select";
-  let selected = null; // {id}
-  let dragging = null; // {id, kind, pointerId, offX, offY}
-  let isPanning = false;
-  let panStart = null; // {sx,sy, camX, camY, scale}
+  let selected = null;
 
-  // tool-progress variables
+  // interaction
+  let dragging = null; // {id, kind, offX, offY, pointerId}
+  let isPanning = false;
+  let panStart = null; // {sx, sy, camX, camY, scale}
+
+  // tool partial selections
   let segP1 = null;
   let lineP1 = null;
   let circleC = null;
@@ -346,793 +387,630 @@
   let parabolaD1 = null;
   let ellipseF1 = null;
   let ellipseF2 = null;
-  let hyperF1 = null;
-  let hyperF2 = null;
+  let hyperbolaF1 = null;
+  let hyperbolaF2 = null;
 
-  // undo/redo
-  let undoStack = [];
-  let redoStack = [];
+  const cam = { x:0, y:0, scale:70 };
+  const SCALE_MIN = 10;
+  const SCALE_MAX = 2600; // 약 10배 확대 허용
 
-  // =========================
-  // Pinch zoom (mobile)
-  // =========================
-  const activeTouches = new Map();
-  let pinchState = null; // {ids:[id1,id2], startDist, startScale, anchor:{wx,wy}}
+  let lastMouseClient = { cx: 200, cy: 120 };
 
-  // =========================
-  // Utilities
-  // =========================
-  function svgEl(name, attrs = {}, parent = sv){
-    const el = document.createElementNS("http://www.w3.org/2000/svg", name);
-    for (const [k,v] of Object.entries(attrs)){
-      if (v === null || v === undefined) continue;
-      el.setAttribute(k, String(v));
-    }
-    parent.appendChild(el);
-    return el;
-  }
-
-  function clearSvg(){
-    while (sv.firstChild) sv.removeChild(sv.firstChild);
-    while (overlay.firstChild) overlay.removeChild(overlay.firstChild);
-  }
-
-  function size(){
-    const r = sv.getBoundingClientRect();
-    return { w: r.width || 1, h: r.height || 1, left: r.left, top: r.top };
-  }
-
-  function clientToScreen(cx, cy){
-    const r = sv.getBoundingClientRect();
-    return { sx: cx - r.left, sy: cy - r.top };
-  }
-
-  function worldToScreen(wx, wy){
-    const {w,h} = size();
-    const sx = (wx - cam.x) * cam.scale + w/2;
-    const sy = h/2 - (wy - cam.y) * cam.scale;
-    return {sx, sy};
-  }
-
-  function screenToWorld(sx, sy){
-    const {w,h} = size();
-    const wx = cam.x + (sx - w/2) / cam.scale;
-    const wy = cam.y + (h/2 - sy) / cam.scale;
-    return {wx, wy};
-  }
-
-  function viewBoundsWorld(){
-    const {w,h} = size();
-    const xMin = cam.x - (w/2)/cam.scale;
-    const xMax = cam.x + (w/2)/cam.scale;
-    const yMin = cam.y - (h/2)/cam.scale;
-    const yMax = cam.y + (h/2)/cam.scale;
-    return {xMin,xMax,yMin,yMax,w,h};
-  }
-
-  function dist(a,b){
-    const dx = a.x - b.x, dy = a.y - b.y;
-    return Math.hypot(dx,dy);
-  }
-
-  function getById(id){
-    return objects.find(o => o.id === id) || null;
-  }
-
-  function newId(){
-    return "o" + (nextId++);
-  }
-
-  // =========================
-  // Naming
-  // =========================
-  function idxToLetters(n){
-    // 0->A, 25->Z, 26->AA
-    let s = "";
-    n = Math.max(0, n|0);
-    while (true){
-      const r = n % 26;
-      s = String.fromCharCode(65 + r) + s;
-      n = Math.floor(n/26) - 1;
-      if (n < 0) break;
-    }
-    return s;
-  }
-
-  function usedNames(){
-    const set = new Set();
-    for (const o of objects){
-      if (o.name) set.add(o.name);
-    }
-    return set;
-  }
-
-  function nextPointName(){
-    const used = usedNames();
-    for (let i=0; i<10000; i++){
-      const name = idxToLetters(i);
-      if (!used.has(name)) return name;
-    }
-    return "P" + Math.floor(Math.random()*9999);
-  }
-
-  function ensureUniqueName(obj, desired){
-    desired = (desired || "").trim();
-    if (!desired){
-      obj.name = "";
-      return;
-    }
-    const used = usedNames();
-    if (!used.has(desired) || obj.name === desired){
-      // ok
-      obj.name = desired;
-      return;
-    }
-    // duplicate: change THIS object name by appending _{n} (caption unchanged)
-    let n = 1;
-    while (true){
-      const cand = `${desired}_{${n}}`;
-      if (!used.has(cand)){
-        obj.name = cand;
-        return;
-      }
-      n++;
-      if (n > 9999){
-        obj.name = desired + "_" + Math.floor(Math.random()*9999);
-        return;
-      }
-    }
-  }
-
-  // =========================
-  // Storage
-  // =========================
-  const STORAGE_KEY = "mathlab.state.v3";
-
-  function snapshot(){
-    return JSON.stringify({ objects, nextId, cam, lang });
-  }
-
-  function restoreFrom(json){
-    const s = JSON.parse(json);
-    objects = Array.isArray(s.objects) ? s.objects : [];
-    nextId = (typeof s.nextId === "number") ? s.nextId : 1;
-    if (s.cam && typeof s.cam.x === "number"){
-      cam.x = s.cam.x; cam.y = s.cam.y; cam.scale = s.cam.scale;
-    }
-    if (s.lang === "ko" || s.lang === "en") lang = s.lang;
-  }
+  const undoStack = [];
+  const redoStack = [];
 
   function saveToStorage(){
-    try{ localStorage.setItem(STORAGE_KEY, snapshot()); } catch {}
-    try{ localStorage.setItem("mathlab.lang", lang); } catch {}
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        objects, cam, tool, selected,
+        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
+      }));
+    }catch(e){}
   }
 
   function loadFromStorage(){
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    try{ restoreFrom(raw); } catch {}
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return false;
+      const st = JSON.parse(raw);
+      objects = st.objects || [];
+      cam.x = st.cam?.x ?? 0;
+      cam.y = st.cam?.y ?? 0;
+      cam.scale = st.cam?.scale ?? 70;
+      tool = st.tool || "select";
+      selected = st.selected || null;
+
+      segP1 = st.segP1 ?? null;
+      lineP1 = st.lineP1 ?? null;
+      circleC = st.circleC ?? null;
+      parabolaFocus = st.parabolaFocus ?? null;
+      parabolaD1 = st.parabolaD1 ?? null;
+      ellipseF1 = st.ellipseF1 ?? null;
+      ellipseF2 = st.ellipseF2 ?? null;
+      hyperbolaF1 = st.hyperbolaF1 ?? null;
+      hyperbolaF2 = st.hyperbolaF2 ?? null;
+      return true;
+    }catch(e){
+      return false;
+    }
   }
 
-  // =========================
-  // Undo/Redo
-  // =========================
+  function snapshot(){
+    return {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
+    };
+  }
+
   function pushState(){
     undoStack.push(snapshot());
     if (undoStack.length > 80) undoStack.shift();
     redoStack.length = 0;
+    saveToStorage();
+  }
+
+  function applyState(st){
+    objects = deepClone(st.objects || []);
+    cam.x = st.cam?.x ?? 0;
+    cam.y = st.cam?.y ?? 0;
+    cam.scale = st.cam?.scale ?? 70;
+    tool = st.tool || "select";
+    selected = st.selected ? deepClone(st.selected) : null;
+
+    segP1 = st.segP1 ?? null;
+    lineP1 = st.lineP1 ?? null;
+    circleC = st.circleC ?? null;
+    parabolaFocus = st.parabolaFocus ?? null;
+    parabolaD1 = st.parabolaD1 ?? null;
+    ellipseF1 = st.ellipseF1 ?? null;
+    ellipseF2 = st.ellipseF2 ?? null;
+    hyperbolaF1 = st.hyperbolaF1 ?? null;
+    hyperbolaF2 = st.hyperbolaF2 ?? null;
+
+    syncToolUI();
+    markOverlayDirty();
+    saveToStorage();
   }
 
   function undo(){
     if (!undoStack.length) return;
-    redoStack.push(snapshot());
-    const s = undoStack.pop();
-    restoreFrom(s);
-    closeEditors(true);
-    saveToStorage();
-    render();
-    syncUI();
+    const cur = snapshot();
+    redoStack.push(cur);
+    const prev = undoStack.pop();
+    applyState(prev);
   }
-
   function redo(){
     if (!redoStack.length) return;
-    undoStack.push(snapshot());
-    const s = redoStack.pop();
-    restoreFrom(s);
-    closeEditors(true);
-    saveToStorage();
-    render();
-    syncUI();
+    const cur = snapshot();
+    undoStack.push(cur);
+    const next = redoStack.pop();
+    applyState(next);
   }
 
   // =========================
-  // Grid/Axes
+  // Name uniqueness (STEAL MODE) + 캡션은 절대 변경하지 않음
   // =========================
-  function niceStep(target){
-    const pow = Math.pow(10, Math.floor(Math.log10(target)));
-    const t = target / pow;
-    let m;
-    if (t <= 1) m = 1;
-    else if (t <= 2) m = 2;
-    else if (t <= 5) m = 5;
-    else m = 10;
-    return m * pow;
-  }
+  function getById(id){ return objects.find(o => o.id === id) || null; }
 
-  function gridStep(){
-    const px = 80; // prefer 80px
-    return niceStep(px / cam.scale);
-  }
-
-  function drawGridAndAxes(){
-    const {xMin,xMax,yMin,yMax,w,h} = viewBoundsWorld();
-    const step = gridStep();
-
-    // background
-    svgEl("rect", {x:0,y:0,width:w,height:h,fill:"transparent"});
-
-    // grid lines
-    const g = svgEl("g", {opacity:"0.85"});
-    const startX = Math.floor(xMin/step)*step;
-    const endX = Math.ceil(xMax/step)*step;
-    const startY = Math.floor(yMin/step)*step;
-    const endY = Math.ceil(yMax/step)*step;
-
-    for (let x = startX; x <= endX + 1e-9; x += step){
-      const {sx} = worldToScreen(x, 0);
-      svgEl("line", {x1:sx,y1:0,x2:sx,y2:h,stroke:"rgba(199,210,254,.08)","stroke-width":1}, g);
+  function getUsedNames(exceptId=null){
+    const s = new Set();
+    for (const o of objects){
+      if (exceptId && o.id === exceptId) continue;
+      const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
+      if (nm) s.add(nm);
     }
-    for (let y = startY; y <= endY + 1e-9; y += step){
-      const {sy} = worldToScreen(0, y);
-      svgEl("line", {x1:0,y1:sy,x2:w,y2:sy,stroke:"rgba(199,210,254,.08)","stroke-width":1}, g);
+    return s;
+  }
+
+  function splitBaseAndIndex(name){
+    const s = String(name || "").trim();
+    let m = s.match(/^(.+)_\{(\d+)\}$/);
+    if (m) return {base: m[1], idx: parseInt(m[2],10)};
+    m = s.match(/^(.+)_([0-9]+)$/);
+    if (m) return {base: m[1], idx: parseInt(m[2],10)};
+    return {base: s, idx: null};
+  }
+
+  function nextIndexedName(base, usedSet){
+    let k = 1;
+    while (true){
+      const cand = `${base}_{${k}}`;
+      if (!usedSet.has(cand)) return cand;
+      k++;
+      if (k > 9999) return `${base}_{${Date.now()%100000}}`;
+    }
+  }
+
+  // ✅ 이름 중복 시: "기존 객체"의 이름만 A_{n}으로 변경(캡션은 그대로)
+  // ✅ 대상 객체는 원하는 이름을 유지(steal)
+  function assignNameSteal(targetId, desiredRaw){
+    const desired = String(desiredRaw || "").trim();
+    const target = getById(targetId);
+    if (!target) return;
+
+    if (!desired){
+      target.name = "";
+      target.nameAuto = false;
+      return;
     }
 
-    // axes with arrowheads
-    const defs = svgEl("defs", {});
-    const marker = svgEl("marker", {id:"arrow", viewBox:"0 0 10 10", refX:"7", refY:"5", markerWidth:"6", markerHeight:"6", orient:"auto-start-reverse"}, defs);
-    svgEl("path", {d:"M 0 0 L 10 5 L 0 10 z", fill:"rgba(199,210,254,.55)"}, marker);
+    const used = getUsedNames(null);
+    const conflicts = objects.filter(o => o.id !== targetId && (o.name||"").trim() === desired);
 
-    const ax = svgEl("g", {opacity:"1"});
-    const y0 = worldToScreen(0, cam.y).sy;
-    const x0 = worldToScreen(cam.x, 0).sx;
-
-    // x-axis line
-    svgEl("line", {x1:0,y1:y0,x2:w,y2:y0,stroke:"rgba(199,210,254,.35)","stroke-width":1.4,"marker-start":"url(#arrow)","marker-end":"url(#arrow)"}, ax);
-    // y-axis line
-    svgEl("line", {x1:x0,y1:0,x2:x0,y2:h,stroke:"rgba(199,210,254,.35)","stroke-width":1.4,"marker-start":"url(#arrow)","marker-end":"url(#arrow)"}, ax);
-
-    // origin label "0"
-    const origin = worldToScreen(0,0);
-    addOverlayLabel(origin.sx + 10, origin.sy + 14, "0");
+    if (conflicts.length){
+      const {base} = splitBaseAndIndex(desired);
+      for (const c of conflicts){
+        const newName = nextIndexedName(base, used);
+        c.name = newName;
+        c.nameAuto = false;
+        used.add(newName);
+        // 캡션은 그대로 유지
+      }
+    }
+    target.name = desired;
+    target.nameAuto = false;
   }
 
   // =========================
-  // LaTeX rendering helper (HTML)
+  // Auto point labels (A,B,C... / caption = $\mathrm{A}$ ...)
   // =========================
-  function renderInlineLatexToHTML(str){
-    if (typeof str !== "string") return "";
-    if (!str.includes("$")){
-      return escapeHtml(str);
+  const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  function labelToIndex(name){
+    const s = String(name || "").trim();
+    let m = s.match(/^([A-Z])$/);
+    if (m) return (m[1].charCodeAt(0) - 65);
+    m = s.match(/^([A-Z])_\{(\d+)\}$/);
+    if (m){
+      const r = (m[1].charCodeAt(0) - 65);
+      const q = parseInt(m[2],10);
+      if (!Number.isFinite(q) || q < 1) return null;
+      return q*26 + r;
     }
-    const parts = str.split("$");
-    let out = "";
-    for (let i=0; i<parts.length; i++){
-      const seg = parts[i];
-      if (i % 2 === 0){
-        out += escapeHtml(seg);
-      } else {
-        out += `<span class="katex-inline" data-latex="${escapeAttr(seg)}"></span>`;
+    m = s.match(/^([A-Z])_(\d+)$/);
+    if (m){
+      const r = (m[1].charCodeAt(0) - 65);
+      const q = parseInt(m[2],10);
+      if (!Number.isFinite(q) || q < 1) return null;
+      return q*26 + r;
+    }
+    return null;
+  }
+
+  function indexToLabel(i){
+    const r = i % 26;
+    const q = Math.floor(i / 26);
+    if (q === 0) return ALPH[r];
+    return `${ALPH[r]}_{${q}}`;
+  }
+
+  function nextPointLabel(){
+    const usedNames = getUsedNames(null);
+    const usedIdx = new Set();
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
+      const idx = labelToIndex(nm);
+      if (idx !== null) usedIdx.add(idx);
+    }
+    let i = 0;
+    while (true){
+      const cand = indexToLabel(i);
+      if (!usedIdx.has(i) && !usedNames.has(cand)) return cand;
+      i++;
+      if (i > 5000) return `P_{${Date.now()%10000}}`;
+    }
+  }
+
+  function buildCaptionForLabel(label){
+    const s = String(label || "").trim();
+    return `$\\mathrm{${s}}$`;
+  }
+
+  function applyAutoPointLabel(p){
+    if (!p || p.kind !== "point") return;
+    const hasName = !!(p.name && String(p.name).trim());
+    const hasCap  = !!(p.caption && String(p.caption).trim());
+
+    if (!hasName){
+      const label = nextPointLabel();
+      p.name = label;
+      p.nameAuto = true;
+      if (!hasCap){
+        p.caption = buildCaptionForLabel(label);
+        p.captionAuto = true;
+      }
+      return;
+    }
+    if (!hasCap){
+      p.caption = buildCaptionForLabel(String(p.name).trim());
+      p.captionAuto = true;
+    }
+  }
+
+  function normalizeAllPointLabels(){
+    for (const o of objects){
+      if (o.kind === "point") applyAutoPointLabel(o);
+    }
+  }
+
+  // =========================
+  // Canvas & coords (정확도 개선)
+  // =========================
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+  const overlay = $("overlay");
+
+  function canvasRect(){ return cv.getBoundingClientRect(); }
+  function clientToCanvas(clientX, clientY){
+    const r = canvasRect();
+    return { sx: clientX - r.left, sy: clientY - r.top };
+  }
+  function canvasSizeCSS(){
+    const r = canvasRect();
+    return { w: r.width, h: r.height };
+  }
+
+  function resize(){
+    const r = canvasRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width  = Math.floor(r.width * dpr);
+    cv.height = Math.floor(r.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    markOverlayDirty();
+  }
+  window.addEventListener("resize", resize);
+
+  function worldToScreen(wx, wy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      sx: (wx - cam.x) * cam.scale + w/2,
+      sy: h/2 - (wy - cam.y) * cam.scale
+    };
+  }
+  function screenToWorld(sx, sy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      wx: (sx - w/2) / cam.scale + cam.x,
+      wy: (h/2 - sy) / cam.scale + cam.y
+    };
+  }
+  function worldTol(){ return 10 / cam.scale; }
+
+  // =========================
+  // Geometry sampling & intersections (polyline approximation)
+  // =========================
+  const isFinitePt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+  function segmentIntersection(a,b,c,d){
+    const r = {x: b.x-a.x, y: b.y-a.y};
+    const s = {x: d.x-c.x, y: d.y-c.y};
+    const denom = r.x*s.y - r.y*s.x;
+    if (Math.abs(denom) < 1e-12) return null;
+    const uNumer = (c.x-a.x)*r.y - (c.y-a.y)*r.x;
+    const tNumer = (c.x-a.x)*s.y - (c.y-a.y)*s.x;
+    const t = tNumer/denom;
+    const u = uNumer/denom;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1){
+      return {x: a.x + t*r.x, y: a.y + t*r.y};
+    }
+    return null;
+  }
+
+  function polylineProject(poly, pt){
+    if (!poly || poly.length < 2) return {x:pt.x, y:pt.y, t:0};
+
+    // build segments skipping NaN breaks
+    const segs = [];
+    let total = 0;
+    for (let i=0;i<poly.length-1;i++){
+      const A = poly[i], B = poly[i+1];
+      if (!isFinitePt(A) || !isFinitePt(B)) { segs.push(null); continue; }
+      const L = dist(A.x,A.y, B.x,B.y);
+      const seg = {A, B, L, acc: total};
+      segs.push(seg);
+      total += L;
+    }
+
+    if (total < 1e-12) return {x:pt.x, y:pt.y, t:0};
+
+    let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
+
+    for (let i=0;i<segs.length;i++){
+      const seg = segs[i];
+      if (!seg) continue;
+      const A = seg.A, B = seg.B;
+      const vx = B.x - A.x, vy = B.y - A.y;
+      const vv = vx*vx + vy*vy;
+      let u = 0;
+      if (vv > 1e-12){
+        u = ((pt.x - A.x)*vx + (pt.y - A.y)*vy) / vv;
+        u = clamp(u, 0, 1);
+      }
+      const px = A.x + u*vx;
+      const py = A.y + u*vy;
+      const d = dist2(px,py, pt.x,pt.y);
+      if (d < best.d){
+        best = {d, x:px, y:py, t: (seg.acc + u*seg.L)/total};
+      }
+    }
+    return {x:best.x, y:best.y, t:best.t};
+  }
+
+  function polylineIntersections(polyA, polyB){
+    const out = [];
+    if (!polyA || !polyB || polyA.length<2 || polyB.length<2) return out;
+    for (let i=0;i<polyA.length-1;i++){
+      const a = polyA[i], b = polyA[i+1];
+      if (!isFinitePt(a) || !isFinitePt(b)) continue;
+      for (let j=0;j<polyB.length-1;j++){
+        const c = polyB[j], d = polyB[j+1];
+        if (!isFinitePt(c) || !isFinitePt(d)) continue;
+        const p = segmentIntersection(a,b,c,d);
+        if (p) out.push(p);
       }
     }
     return out;
   }
 
-  function escapeHtml(s){
-    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  }
-  function escapeAttr(s){
-    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  }
-
-  function applyKatexWithin(el){
-    if (!window.katex) return;
-    const nodes = el.querySelectorAll(".katex-inline");
-    for (const n of nodes){
-      const tex = n.getAttribute("data-latex") || "";
-      try{
-        n.innerHTML = "";
-        window.katex.render(tex, n, {throwOnError:false});
-      } catch {
-        n.textContent = tex;
-      }
-    }
+  function getViewportWorldBounds(){
+    const {w,h} = canvasSizeCSS();
+    const a = screenToWorld(0,0);
+    const b = screenToWorld(w,h);
+    return {
+      xmin: Math.min(a.wx, b.wx),
+      xmax: Math.max(a.wx, b.wx),
+      ymin: Math.min(a.wy, b.wy),
+      ymax: Math.max(a.wy, b.wy)
+    };
   }
 
-  // =========================
-  // Overlay labels (HTML in div overlay)
-  // =========================
-  function addOverlayLabel(px, py, html){
-    const d = document.createElement("div");
-    d.className = "lbl";
-    d.style.position = "absolute";
-    d.style.left = px + "px";
-    d.style.top = py + "px";
-    d.innerHTML = renderInlineLatexToHTML(html);
-    overlay.appendChild(d);
-    applyKatexWithin(d);
-    return d;
-  }
-
-  // =========================
-  // Geometry helpers
-  // =========================
-  function lineFromPoints(p1, p2){
-    // ax + by + c = 0
-    const a = p2.y - p1.y;
-    const b = p1.x - p2.x;
-    const c = -(a*p1.x + b*p1.y);
-    const n = Math.hypot(a,b) || 1;
-    return {a:a/n, b:b/n, c:c/n};
-  }
-
-  function signedDistToLine(L, p){
-    return L.a*p.x + L.b*p.y + L.c;
-  }
-
-  function projectToLine(L, p){
-    const d = signedDistToLine(L,p);
-    return {x: p.x - L.a*d, y: p.y - L.b*d};
-  }
-
-  function intersectSegments(p, p2, q, q2){
-    // returns {x,y} or null
-    const r = {x: p2.x - p.x, y: p2.y - p.y};
-    const s = {x: q2.x - q.x, y: q2.y - q.y};
-    const denom = r.x*s.y - r.y*s.x;
-    if (Math.abs(denom) < 1e-12) return null;
-    const qp = {x: q.x - p.x, y: q.y - p.y};
-    const t = (qp.x*s.y - qp.y*s.x)/denom;
-    const u = (qp.x*r.y - qp.y*r.x)/denom;
-    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-    return {x: p.x + t*r.x, y: p.y + t*r.y};
-  }
-
-  function polylineIntersections(polyA, polyB){
-    const hits = [];
-    for (let i=0; i<polyA.length-1; i++){
-      const p = polyA[i], p2 = polyA[i+1];
-      for (let j=0; j<polyB.length-1; j++){
-        const q = polyB[j], q2 = polyB[j+1];
-        const h = intersectSegments(p,p2,q,q2);
-        if (h) hits.push(h);
-      }
-    }
-    return hits;
-  }
-
-  function polylineNearest(poly, pt){
-    // returns nearest point on polyline and t in [0,1] along cumulative length
-    let best = {x:poly[0].x, y:poly[0].y, t:0, d:Infinity};
-    let total = 0;
-    const segLens = [];
-    for (let i=0; i<poly.length-1; i++){
-      const L = Math.hypot(poly[i+1].x - poly[i].x, poly[i+1].y - poly[i].y);
-      segLens.push(L);
-      total += L;
-    }
-    if (total <= 1e-12) return best;
-
-    let acc = 0;
-    for (let i=0; i<poly.length-1; i++){
-      const a = poly[i], b = poly[i+1];
-      const vx = b.x - a.x, vy = b.y - a.y;
-      const L2 = vx*vx + vy*vy;
-      let u = 0;
-      if (L2 > 1e-12){
-        u = ((pt.x - a.x)*vx + (pt.y - a.y)*vy)/L2;
-        u = Math.max(0, Math.min(1, u));
-      }
-      const x = a.x + u*vx;
-      const y = a.y + u*vy;
-      const d = Math.hypot(x-pt.x, y-pt.y);
-      const t = (acc + u*segLens[i]) / total;
-      if (d < best.d){ best = {x,y,t,d}; }
-      acc += segLens[i];
-    }
-    return best;
-  }
-
-  function polylinePointAtT(poly, t){
-    t = Math.max(0, Math.min(1, t));
-    let total = 0;
-    const segLens = [];
-    for (let i=0; i<poly.length-1; i++){
-      const L = Math.hypot(poly[i+1].x - poly[i].x, poly[i+1].y - poly[i].y);
-      segLens.push(L);
-      total += L;
-    }
-    if (total <= 1e-12) return {...poly[0]};
-
-    const target = t * total;
-    let acc = 0;
-    for (let i=0; i<poly.length-1; i++){
-      const L = segLens[i];
-      if (acc + L >= target){
-        const u = (target - acc) / (L || 1);
-        const a = poly[i], b = poly[i+1];
-        return {x: a.x + u*(b.x-a.x), y: a.y + u*(b.y-a.y)};
-      }
-      acc += L;
-    }
-    return {...poly[poly.length-1]};
-  }
-
-  // Smooth path from polyline using Catmull-Rom -> Bezier
-  function polylineToSmoothPathScreen(pts){
-    if (pts.length < 2) return "";
-    const p = pts;
-    let d = `M ${p[0].sx.toFixed(2)} ${p[0].sy.toFixed(2)}`;
-    if (pts.length === 2){
-      d += ` L ${p[1].sx.toFixed(2)} ${p[1].sy.toFixed(2)}`;
-      return d;
-    }
-    for (let i=0; i<pts.length-1; i++){
-      const p0 = pts[Math.max(0, i-1)];
-      const p1 = pts[i];
-      const p2 = pts[i+1];
-      const p3 = pts[Math.min(pts.length-1, i+2)];
-      const c1x = p1.sx + (p2.sx - p0.sx) / 6;
-      const c1y = p1.sy + (p2.sy - p0.sy) / 6;
-      const c2x = p2.sx - (p3.sx - p1.sx) / 6;
-      const c2y = p2.sy - (p3.sy - p1.sy) / 6;
-      d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)} ${c2x.toFixed(2)} ${c2y.toFixed(2)} ${p2.sx.toFixed(2)} ${p2.sy.toFixed(2)}`;
-    }
-    return d;
-  }
-
-  // =========================
-  // Sampling (for hit tests / intersections)
-  // =========================
-  function dynamicN(pixelLen, minN, maxN, stepPx){
-    const n = Math.floor(pixelLen / Math.max(0.35, stepPx));
-    return clamp(n, minN, maxN);
-  }
-
-  function sampleLineAsSegment(obj){
-    // infinite line clipped to view bounds
-    const a = getById(obj.aId), b = getById(obj.bId);
-    if (!a || !b) return [];
-    const {xMin,xMax,yMin,yMax} = viewBoundsWorld();
-    const p1 = {x:a.x, y:a.y};
-    const p2 = {x:b.x, y:b.y};
+  function getLineEqFromTwoPoints(p1, p2){
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
-    const pts = [];
-
-    // intersect with 4 borders
-    const borders = [
-      {x:xMin, y1:yMin, y2:yMax, vertical:true},
-      {x:xMax, y1:yMin, y2:yMax, vertical:true},
-      {y:yMin, x1:xMin, x2:xMax, vertical:false},
-      {y:yMax, x1:xMin, x2:xMax, vertical:false},
-    ];
-
-    for (const br of borders){
-      if (br.vertical){
-        if (Math.abs(dx) < 1e-12) continue;
-        const t = (br.x - p1.x) / dx;
-        const y = p1.y + t*dy;
-        if (y >= br.y1 - 1e-9 && y <= br.y2 + 1e-9) pts.push({x:br.x, y});
-      } else {
-        if (Math.abs(dy) < 1e-12) continue;
-        const t = (br.y - p1.y) / dy;
-        const x = p1.x + t*dx;
-        if (x >= br.x1 - 1e-9 && x <= br.x2 + 1e-9) pts.push({x, y:br.y});
-      }
-    }
-
-    // pick two distinct
-    if (pts.length < 2) return [];
-    // remove near-duplicates
-    const uniq = [];
-    for (const p of pts){
-      if (!uniq.some(q => Math.hypot(q.x-p.x,q.y-p.y) < 1e-6)) uniq.push(p);
-    }
-    if (uniq.length < 2) return [];
-    return [uniq[0], uniq[1]];
+    let nx = dy, ny = -dx;
+    const len = Math.hypot(nx, ny);
+    if (len < 1e-12) return null;
+    nx /= len; ny /= len;
+    const d = nx*p1.x + ny*p1.y;
+    return {nx, ny, d};
   }
 
-  function sampleObject(obj){
-    const kind = obj.kind;
-    if (kind === "segment"){
-      const a = getById(obj.aId), b = getById(obj.bId);
-      if (!a || !b) return [];
-      return [{x:a.x,y:a.y},{x:b.x,y:b.y}];
-    }
-    if (kind === "line"){
-      return sampleLineAsSegment(obj);
-    }
-    if (kind === "circle"){
-      const c = getById(obj.cId), p = getById(obj.pId);
-      if (!c || !p) return [];
-      const r = Math.hypot(p.x-c.x,p.y-c.y);
-      const {w} = size();
-      const circPx = 2*Math.PI*r*cam.scale;
-      const N = dynamicN(circPx, 300, 16000, 0.55);
-      const out = [];
-      for (let i=0;i<=N;i++){
-        const th = 2*Math.PI*i/N;
-        out.push({x: c.x + r*Math.cos(th), y: c.y + r*Math.sin(th)});
-      }
-      return out;
-    }
-    if (kind === "ellipse"){
-      const f1 = getById(obj.f1Id), f2 = getById(obj.f2Id), pp = getById(obj.pId);
-      if (!f1 || !f2 || !pp) return [];
-      const d1 = Math.hypot(pp.x-f1.x, pp.y-f1.y);
-      const d2 = Math.hypot(pp.x-f2.x, pp.y-f2.y);
-      const a = (d1+d2)/2;
-      const c = Math.hypot(f2.x-f1.x, f2.y-f1.y)/2;
-      if (a <= c + 1e-9) return [];
-      const b = Math.sqrt(Math.max(0, a*a - c*c));
-      const cx = (f1.x+f2.x)/2, cy=(f1.y+f2.y)/2;
-      const ang = Math.atan2(f2.y-f1.y, f2.x-f1.x);
-      // Ramanujan perimeter approx
-      const per = Math.PI * (3*(a+b) - Math.sqrt((3*a+b)*(a+3*b)));
-      const N = dynamicN(per*cam.scale, 360, 18000, 0.55);
-      const out=[];
-      for (let i=0;i<=N;i++){
-        const th = 2*Math.PI*i/N;
-        const x = a*Math.cos(th);
-        const y = b*Math.sin(th);
-        const xr = cx + x*Math.cos(ang) - y*Math.sin(ang);
-        const yr = cy + x*Math.sin(ang) + y*Math.cos(ang);
-        out.push({x:xr,y:yr});
-      }
-      return out;
-    }
-    if (kind === "parabola"){
-      const f = getById(obj.focusId), d1 = getById(obj.d1Id), d2 = getById(obj.d2Id);
-      if (!f || !d1 || !d2) return [];
-      const L = lineFromPoints({x:d1.x,y:d1.y},{x:d2.x,y:d2.y});
-      const proj = projectToLine(L, {x:f.x,y:f.y});
-      const D = Math.abs(signedDistToLine(L, {x:f.x,y:f.y}));
-      if (D < 1e-9) return [];
-      // unit normal pointing from directrix to focus
-      const sign = signedDistToLine(L, {x:f.x,y:f.y}) >= 0 ? 1 : -1;
-      const n = {x: L.a*sign, y: L.b*sign};
-      const u = {x: -n.y, y: n.x};
-      const p = D/2;
-      const vtx = {x: (f.x + proj.x)/2, y: (f.y + proj.y)/2};
+  function acosh(x){
+    // x >= 1
+    return Math.log(x + Math.sqrt(x*x - 1));
+  }
 
-      // Determine u-range from viewport corners transformed into local coords
-      const {xMin,xMax,yMin,yMax} = viewBoundsWorld();
-      const corners = [
-        {x:xMin,y:yMin},{x:xMin,y:yMax},{x:xMax,y:yMin},{x:xMax,y:yMax}
+  function samplingParams(mode){
+    // stepPx: 화면 픽셀 기준 목표 간격(작을수록 더 정밀)
+    if (mode === "render") return {stepPx: 0.45, minN: 800, maxN: 60000};
+    if (mode === "intersect") return {stepPx: 1.25, minN: 500, maxN: 14000};
+    // hit / constraint
+    return {stepPx: 2.0, minN: 240, maxN: 8000};
+  }
+
+  function measureWorldLen(poly){
+    let len = 0;
+    let prev = null;
+    for (let i=0;i<poly.length;i++){
+      const p = poly[i];
+      if (!isFinitePt(p)) { prev = null; continue; }
+      if (prev){
+        len += dist(prev.x,prev.y, p.x,p.y);
+      }
+      prev = p;
+    }
+    return len;
+  }
+
+  function dynN(lenPx, mode, minOverride=null, maxOverride=null){
+    const sp = samplingParams(mode);
+    const minN = (minOverride ?? sp.minN);
+    const maxN = (maxOverride ?? sp.maxN);
+    const N = Math.floor(Math.max(0, lenPx) / sp.stepPx);
+    return Math.max(minN, Math.min(maxN, N));
+  }
+
+  function sampleObject(obj, mode="hit"){
+    const b = getViewportWorldBounds();
+    const margin = 1.35;
+    const xmin = b.xmin*margin, xmax = b.xmax*margin;
+    const ymin = b.ymin*margin, ymax = b.ymax*margin;
+
+    if (obj.kind === "segment"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      return [{x:A.x,y:A.y},{x:B.x,y:B.y}];
+    }
+
+    if (obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      const dx = B.x-A.x, dy = B.y-A.y;
+      const L = Math.hypot(dx,dy);
+      if (L < 1e-12) return null;
+      const ux = dx/L, uy = dy/L;
+      const diag = Math.hypot(xmax-xmin, ymax-ymin);
+      const tlen = diag*2.0;
+      return [
+        {x: A.x - ux*tlen, y: A.y - uy*tlen},
+        {x: A.x + ux*tlen, y: A.y + uy*tlen},
       ];
-      let uMax=0;
-      for (const c0 of corners){
-        const dx = c0.x - vtx.x;
-        const dy = c0.y - vtx.y;
-        const uu = dx*u.x + dy*u.y;
-        uMax = Math.max(uMax, Math.abs(uu));
-      }
-      uMax *= 1.1;
-      const spanPx = 2*uMax*cam.scale;
-      const N = dynamicN(spanPx, 900, 26000, 0.55);
-      const out=[];
-      for (let i=0;i<=N;i++){
-        const uu = -uMax + (2*uMax)*i/N;
-        const vv = (uu*uu)/(4*p);
-        const x = vtx.x + uu*u.x + vv*n.x;
-        const y = vtx.y + uu*u.y + vv*n.y;
-        out.push({x,y});
-      }
-      return out;
     }
-    if (kind === "hyperbola"){
-      const f1 = getById(obj.f1Id), f2 = getById(obj.f2Id), pp = getById(obj.pId);
-      if (!f1 || !f2 || !pp) return [];
-      const c = Math.hypot(f2.x-f1.x,f2.y-f1.y)/2;
-      const k = Math.abs(Math.hypot(pp.x-f1.x,pp.y-f1.y) - Math.hypot(pp.x-f2.x,pp.y-f2.y));
-      const a = k/2;
-      if (a <= 1e-9 || c <= a + 1e-9) return [];
-      const b = Math.sqrt(Math.max(0, c*c - a*a));
-      const cx = (f1.x+f2.x)/2, cy=(f1.y+f2.y)/2;
-      const ang = Math.atan2(f2.y-f1.y, f2.x-f1.x);
 
-      // determine t-range based on view bounds
-      const {xMin,xMax,yMin,yMax} = viewBoundsWorld();
-      const maxR = Math.max(
-        Math.hypot(xMin-cx,yMin-cy),
-        Math.hypot(xMin-cx,yMax-cy),
-        Math.hypot(xMax-cx,yMin-cy),
-        Math.hypot(xMax-cx,yMax-cy)
-      ) * 1.25;
-      // in local coords, x ~ a cosh t, y ~ b sinh t
-      const T = Math.max(1.2, Math.asinh(maxR / Math.max(1e-9, b)));
-      const approxPx = (2*T) * cam.scale * Math.max(a,b);
-      const N = dynamicN(approxPx, 1000, 32000, 0.55);
-
-      const out=[];
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId), P = getById(obj.pId);
+      if (!C || !P) return null;
+      const r = dist(C.x,C.y, P.x,P.y);
+      if (r < 1e-12) return null;
+      const lenPx = (2*Math.PI*r) * cam.scale;
+      const N = dynN(lenPx, mode, 240, (mode==="render"?60000:14000));
+      const pts = [];
       for (let i=0;i<=N;i++){
-        const tt = -T + (2*T)*i/N;
-        const ch = Math.cosh(tt);
-        const sh = Math.sinh(tt);
-        // right branch
-        let x = a*ch;
-        let y = b*sh;
-        let xr = cx + x*Math.cos(ang) - y*Math.sin(ang);
-        let yr = cy + x*Math.sin(ang) + y*Math.cos(ang);
-        out.push({x:xr,y:yr});
+        const ang = (i/N)*Math.PI*2;
+        pts.push({x:C.x + r*Math.cos(ang), y:C.y + r*Math.sin(ang)});
       }
-      // separator by NaN to allow splitting when rendering if needed
-      out.push({x:NaN,y:NaN});
-      for (let i=0;i<=N;i++){
-        const tt = -T + (2*T)*i/N;
-        const ch = Math.cosh(tt);
-        const sh = Math.sinh(tt);
-        // left branch
-        let x = -a*ch;
-        let y = b*sh;
-        let xr = cx + x*Math.cos(ang) - y*Math.sin(ang);
-        let yr = cy + x*Math.sin(ang) + y*Math.cos(ang);
-        out.push({x:xr,y:yr});
-      }
-      return out;
+      return pts;
     }
-    return [];
-  }
 
-  // =========================
-  // Intersection candidate search
-  // =========================
-  function findNearestIntersectionCandidate(wx, wy){
-    const click = {x:wx,y:wy};
-    const tol = 12 / cam.scale; // ~12px
-    let best = null;
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+      const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+      const a = sum/2;
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (a < 1e-10 || a < c + 1e-10) return null;
+      const b0 = Math.sqrt(Math.max(0, a*a - c*c));
 
-    const curveObjs = objects.filter(o => !["point","text"].includes(o.kind));
-    for (let i=0;i<curveObjs.length;i++){
-      for (let j=i+1;j<curveObjs.length;j++){
-        const A = curveObjs[i], B = curveObjs[j];
-        const polyA = sampleObject(A);
-        const polyB = sampleObject(B);
-        if (polyA.length < 2 || polyB.length < 2) continue;
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
 
-        // handle hyperbola with NaN split: just include NaNs, intersection function will ignore if we split
-        const hits = polylineIntersections(polyA.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)), polyB.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)));
-        for (const h of hits){
-          const d = Math.hypot(h.x-click.x,h.y-click.y);
-          if (d <= tol && (!best || d < best.d)){
-            best = { parents:[A.id,B.id], x:h.x, y:h.y, d };
-          }
+      // Ramanujan perimeter approximation
+      const h = Math.pow((a-b0),2) / Math.pow((a+b0),2);
+      const per = Math.PI*(a+b0)*(1 + (3*h)/(10 + Math.sqrt(4-3*h)));
+      const lenPx = per * cam.scale;
+      const N = dynN(lenPx, mode, 260, (mode==="render"?60000:14000));
+
+      const pts = [];
+      for (let i=0;i<=N;i++){
+        const th = (i/N)*Math.PI*2;
+        const ex = a*Math.cos(th);
+        const ey = b0*Math.sin(th);
+        const wx = cx + ex*ca - ey*sa;
+        const wy = cy + ex*sa + ey*ca;
+        pts.push({x:wx,y:wy});
+      }
+      return pts;
+    }
+
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (c < 1e-9) return null;
+      const diff = Math.abs(dist(P.x,P.y, F1.x,F1.y) - dist(P.x,P.y, F2.x,F2.y));
+      const a = diff/2;
+      if (a < 1e-6 || a >= c - 1e-6) return null;
+      const b0 = Math.sqrt(Math.max(0, c*c - a*a));
+
+      function toLocal(x,y){
+        const dx = x - cx, dy = y - cy;
+        return { x: dx*ca + dy*sa, y: -dx*sa + dy*ca };
+      }
+      const corners = [
+        toLocal(xmin,ymin), toLocal(xmin,ymax),
+        toLocal(xmax,ymin), toLocal(xmax,ymax)
+      ];
+      let maxAbsX = 0;
+      for (const p of corners) maxAbsX = Math.max(maxAbsX, Math.abs(p.x));
+      let xMax = Math.max(a*1.05, maxAbsX*1.8 + a);
+
+      const T = acosh(xMax / a);
+
+      function build(N){
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const tt = -T + (2*T)*i/N;
+          const x = a*Math.cosh(tt);
+          const y = b0*Math.sinh(tt);
+          pts.push({x: cx + x*ca - y*sa, y: cy + x*sa + y*ca});
         }
+        pts.push({x:NaN, y:NaN});
+        for (let i=0;i<=N;i++){
+          const tt = -T + (2*T)*i/N;
+          const x = -a*Math.cosh(tt);
+          const y = b0*Math.sinh(tt);
+          pts.push({x: cx + x*ca - y*sa, y: cy + x*sa + y*ca});
+        }
+        return pts;
       }
+
+      // coarse length estimate
+      const coarse = build(100);
+      const lenPx = measureWorldLen(coarse) * cam.scale;
+      const N = dynN(lenPx, mode, 700, (mode==="render"?60000:16000));
+      return build(N);
     }
-    return best;
-  }
 
-  function allIntersections(parentAId, parentBId){
-    const A = getById(parentAId);
-    const B = getById(parentBId);
-    if (!A || !B) return [];
-    const polyA = sampleObject(A).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
-    const polyB = sampleObject(B).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
-    if (polyA.length < 2 || polyB.length < 2) return [];
-    return polylineIntersections(polyA, polyB);
-  }
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
+      if (!F || !p1 || !p2) return null;
+      const L = getLineEqFromTwoPoints(p1,p2);
+      if (!L) return null;
 
-  // =========================
-  // Creation helpers
-  // =========================
-  function createPoint(wx, wy){
-    const name = nextPointName();
-    const p = {
-      id: newId(),
-      kind: "point",
-      x: wx,
-      y: wy,
-      name,
-      caption: `$\\mathrm{${name}}$`,
-    };
-    objects.push(p);
-    return p;
-  }
+      const nx = L.nx, ny = L.ny, d = L.d;
+      const ux = -ny, uy = nx;
+      const Ox = nx*d, Oy = ny*d;
 
-  function ensurePointAt(wx, wy){
-    return createPoint(wx, wy);
-  }
+      const fx = ux*(F.x - Ox) + uy*(F.y - Oy);
+      const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
+      if (Math.abs(fy) < 1e-6) return null;
 
-  function getOrCreatePointForClick(wx, wy){
-    const id = hitTest(wx, wy);
-    const obj = id ? getById(id) : null;
-    if (obj && obj.kind === "point") return obj;
-    return createPoint(wx, wy);
-  }
+      const span = Math.max(xmax-xmin, ymax-ymin) * 1.8;
+      const xMin = fx - span;
+      const xMax = fx + span;
 
-  function createSegment(aId,bId){
-    objects.push({id:newId(), kind:"segment", aId, bId, name:"", caption:""});
-  }
+      function build(N){
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const x = xMin + (i/N)*(xMax-xMin);
+          const y = (((x - fx)*(x - fx)) + fy*fy) / (2*fy);
+          pts.push({x: Ox + ux*x + nx*y, y: Oy + uy*x + ny*y});
+        }
+        return pts;
+      }
 
-  function createLine(aId,bId){
-    objects.push({id:newId(), kind:"line", aId, bId, name:"", caption:""});
-  }
-
-  function createCircle(cId,pId){
-    objects.push({id:newId(), kind:"circle", cId, pId, name:"", caption:""});
-  }
-
-  function createParabola(focusId, d1Id, d2Id){
-    objects.push({id:newId(), kind:"parabola", focusId, d1Id, d2Id, name:"", caption:""});
-  }
-
-  function createEllipse(f1Id,f2Id,pId){
-    objects.push({id:newId(), kind:"ellipse", f1Id,f2Id,pId, name:"", caption:""});
-  }
-
-  function createHyperbola(f1Id,f2Id,pId){
-    objects.push({id:newId(), kind:"hyperbola", f1Id,f2Id,pId, name:"", caption:""});
-  }
-
-  function createText(wx, wy, content=""){
-    const o = {id:newId(), kind:"text", x:wx, y:wy, content};
-    objects.push(o);
-    return o;
-  }
-
-  function createPointOnObject(parentId, wx, wy){
-    const parent = getById(parentId);
-    if (!parent) return null;
-    const poly = sampleObject(parent).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
-    if (poly.length < 2) return null;
-    const proj = polylineNearest(poly, {x:wx,y:wy});
-    const p = createPoint(proj.x, proj.y);
-    p.constraint = {type:"on", parentId, t: proj.t};
-    return p;
-  }
-
-  function createIntersectionPoint(hit){
-    const p = createPoint(hit.x, hit.y);
-    const parents = hit.parents;
-    // store which intersection index (nearest at creation)
-    const all = allIntersections(parents[0], parents[1]);
-    let idx = 0;
-    let bestD = Infinity;
-    for (let i=0;i<all.length;i++){
-      const h = all[i];
-      const d = Math.hypot(h.x-hit.x,h.y-hit.y);
-      if (d < bestD){ bestD = d; idx = i; }
+      const coarse = build(120);
+      const lenPx = measureWorldLen(coarse) * cam.scale;
+      const N = dynN(lenPx, mode, 900, (mode==="render"?60000:16000));
+      const pts = build(N);
+      return pts.length >= 2 ? pts : null;
     }
-    p.constraint = {type:"intersection", parents, idx};
-    return p;
+
+    return null;
   }
 
-  // =========================
-  // Constraints update
-  // =========================
-  function updateConstraints(){
-    // on-object points
+  function updateDependentPoints(){
     for (const o of objects){
-      if (o.kind !== "point") continue;
+      if (o.kind !== "point" || !o.constraint) continue;
       const c = o.constraint;
-      if (!c) continue;
+
       if (c.type === "on"){
         const parent = getById(c.parentId);
         if (!parent) continue;
-        const poly = sampleObject(parent).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
-        if (poly.length < 2) continue;
-        const p = polylinePointAtT(poly, c.t || 0);
-        o.x = p.x; o.y = p.y;
+        const poly = sampleObject(parent, "constraint");
+        if (!poly) continue;
+        const proj = polylineProject(poly, {x:o.x,y:o.y});
+        o.x = proj.x; o.y = proj.y; c.t = proj.t;
       }
+
       if (c.type === "intersection"){
-        const [aId,bId] = c.parents || [];
-        if (!aId || !bId) continue;
-        const hits = allIntersections(aId,bId);
-        if (!hits.length) continue;
-        const idx = clamp(c.idx || 0, 0, hits.length-1);
-        const h = hits[idx];
-        o.x = h.x; o.y = h.y;
+        const A = getById(c.aId), B = getById(c.bId);
+        if (!A || !B) continue;
+        const pA = sampleObject(A, "intersect");
+        const pB = sampleObject(B, "intersect");
+        if (!pA || !pB) continue;
+
+        const ints = polylineIntersections(pA, pB);
+        if (!ints.length) continue;
+
+        const ref = {x:o.x ?? c.seed?.x ?? 0, y:o.y ?? c.seed?.y ?? 0};
+        let best = ints[0], bestD = dist2(ints[0].x,ints[0].y, ref.x,ref.y);
+        for (let i=1;i<ints.length;i++){
+          const dd = dist2(ints[i].x,ints[i].y, ref.x,ref.y);
+          if (dd < bestD){ bestD = dd; best = ints[i]; }
+        }
+        o.x = best.x; o.y = best.y;
       }
     }
   }
@@ -1141,563 +1019,1128 @@
   // Hit testing
   // =========================
   function hitTest(wx, wy){
-    const tolP = 10 / cam.scale; // ~10px
+    const tol = worldTol();
+
     // points first
-    for (let i=objects.length-1;i>=0;i--){
-      const o = objects[i];
-      if (o.kind === "point"){
-        const d = Math.hypot(o.x-wx,o.y-wy);
-        if (d <= tolP) return o.id;
-      }
-    }
-    // texts
-    for (let i=objects.length-1;i>=0;i--){
-      const o = objects[i];
-      if (o.kind === "text"){
-        const d = Math.hypot(o.x-wx,o.y-wy);
-        if (d <= tolP) return o.id;
-      }
-    }
-    // curves
-    const tolC = 10 / cam.scale;
-    for (let i=objects.length-1;i>=0;i--){
-      const o = objects[i];
-      if (["point","text"].includes(o.kind)) continue;
-      const poly = sampleObject(o).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
-      if (poly.length < 2) continue;
-      const nearest = polylineNearest(poly, {x:wx,y:wy});
-      if (nearest.d <= tolC) return o.id;
-    }
-    return null;
-  }
-
-  // =========================
-  // Rendering
-  // =========================
-  function renderObject(obj){
-    const stroke = "rgba(199,210,254,.92)";
-    const stroke2 = "rgba(124,92,255,.95)";
-    const selectedStroke = "rgba(255,255,255,.98)";
-    const width = 2.0;
-    const selWidth = 2.8;
-
-    const isSel = selected && selected.id === obj.id;
-    const sCol = isSel ? selectedStroke : (obj.kind === "parabola" ? stroke2 : stroke);
-    const sw = isSel ? selWidth : width;
-
-    if (obj.kind === "segment"){
-      const a = getById(obj.aId), b = getById(obj.bId);
-      if (!a||!b) return;
-      const A = worldToScreen(a.x,a.y);
-      const B = worldToScreen(b.x,b.y);
-      svgEl("line", {x1:A.sx,y1:A.sy,x2:B.sx,y2:B.sy, stroke:sCol, "stroke-width":sw, "stroke-linecap":"round", "stroke-linejoin":"round"});
-      renderNameCaption(obj, (A.sx+B.sx)/2, (A.sy+B.sy)/2);
-      return;
-    }
-
-    if (obj.kind === "line"){
-      const seg = sampleLineAsSegment(obj);
-      if (seg.length<2) return;
-      const A = worldToScreen(seg[0].x, seg[0].y);
-      const B = worldToScreen(seg[1].x, seg[1].y);
-      svgEl("line", {x1:A.sx,y1:A.sy,x2:B.sx,y2:B.sy, stroke:sCol, "stroke-width":sw, "stroke-linecap":"round", "stroke-linejoin":"round"});
-      renderNameCaption(obj, (A.sx+B.sx)/2, (A.sy+B.sy)/2);
-      return;
-    }
-
-    if (obj.kind === "circle"){
-      const c = getById(obj.cId), p = getById(obj.pId);
-      if (!c||!p) return;
-      const C = worldToScreen(c.x,c.y);
-      const r = Math.hypot(p.x-c.x,p.y-c.y) * cam.scale;
-      svgEl("circle", {cx:C.sx, cy:C.sy, r, fill:"none", stroke:sCol, "stroke-width":sw, "stroke-linecap":"round", "stroke-linejoin":"round"});
-      // label: near top-right of circle
-      renderNameCaption(obj, C.sx + r*0.7, C.sy - r*0.7);
-      return;
-    }
-
-    if (obj.kind === "ellipse"){
-      const f1 = getById(obj.f1Id), f2 = getById(obj.f2Id), pp = getById(obj.pId);
-      if (!f1||!f2||!pp) return;
-      const d1 = Math.hypot(pp.x-f1.x, pp.y-f1.y);
-      const d2 = Math.hypot(pp.x-f2.x, pp.y-f2.y);
-      const a = (d1+d2)/2;
-      const c = Math.hypot(f2.x-f1.x,f2.y-f1.y)/2;
-      if (a <= c + 1e-9) return;
-      const b = Math.sqrt(Math.max(0, a*a - c*c));
-      const cxw = (f1.x+f2.x)/2, cyw=(f1.y+f2.y)/2;
-      const ang = Math.atan2(f2.y-f1.y, f2.x-f1.x);
-      const C = worldToScreen(cxw, cyw);
-      svgEl("ellipse", {
-        cx: C.sx,
-        cy: C.sy,
-        rx: a*cam.scale,
-        ry: b*cam.scale,
-        fill:"none",
-        stroke:sCol,
-        "stroke-width":sw,
-        transform: `rotate(${(ang*180/Math.PI).toFixed(6)} ${C.sx.toFixed(2)} ${C.sy.toFixed(2)})`,
-        "stroke-linecap":"round",
-        "stroke-linejoin":"round"
-      });
-      renderNameCaption(obj, C.sx + a*cam.scale*0.7, C.sy - b*cam.scale*0.7);
-      return;
-    }
-
-    if (obj.kind === "parabola" || obj.kind === "hyperbola"){
-      const poly = sampleObject(obj);
-      if (poly.length < 2) return;
-
-      // split by NaN separator (used for hyperbola branches)
-      const parts = [];
-      let cur = [];
-      for (const p of poly){
-        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)){
-          if (cur.length > 1) parts.push(cur);
-          cur = [];
-        } else {
-          cur.push(p);
-        }
-      }
-      if (cur.length > 1) parts.push(cur);
-      if (!parts.length) return;
-
-      for (const part of parts){
-        const spts = part.map(q => worldToScreen(q.x, q.y));
-        const d = catmullRomPath(spts);
-        svgEl("path", {
-          d,
-          fill: "none",
-          stroke: sCol,
-          "stroke-width": sw,
-          "stroke-linecap": "round",
-          "stroke-linejoin": "round"
-        });
-      }
-
-      // label anchor: midpoint of first branch
-      const mid = parts[0][Math.floor(parts[0].length/2)];
-      const M = worldToScreen(mid.x, mid.y);
-      renderNameCaption(obj, M.sx, M.sy);
-      return;
-    }
-  }
-
-
-  function renderNameCaption(obj, px, py){
-    const text = (selected && selected.id === obj.id) ? (obj.name || "") : (obj.caption || "");
-    if (!text) return;
-    addOverlayLabel(px + 10, py - 10, text);
-  }
-
-  function renderPointsAndTexts(){
-    // points
+    let bestP = null;
     for (const o of objects){
       if (o.kind !== "point") continue;
-      const P = worldToScreen(o.x,o.y);
-      const r = 4.2;
-      const isSel = selected && selected.id === o.id;
-      svgEl("circle", {cx:P.sx, cy:P.sy, r, fill: isSel?"rgba(255,255,255,.95)":"rgba(199,210,254,.92)", stroke:"none"});
-      const label = isSel ? (o.name || "") : (o.caption || "");
-      if (label) addOverlayLabel(P.sx + 10, P.sy - 10, label);
+      const d = dist(o.x,o.y, wx,wy);
+      if (d <= tol && (!bestP || d < bestP.d)) bestP = {id:o.id, d};
     }
+    if (bestP) return bestP.id;
 
-    // texts
+    // other drawable objects
+    let bestO = null;
     for (const o of objects){
-      if (o.kind !== "text") continue;
-      const P = worldToScreen(o.x,o.y);
-      addOverlayLabel(P.sx, P.sy, o.content || "");
+      if (o.kind==="point" || o.kind==="text") continue;
+      const poly = sampleObject(o, "hit");
+      if (!poly) continue;
+      const proj = polylineProject(poly, {x:wx,y:wy});
+      const d = dist(proj.x,proj.y, wx,wy);
+      if (d <= tol*1.2 && (!bestO || d < bestO.d)) bestO = {id:o.id, d};
     }
+    return bestO ? bestO.id : null;
   }
 
-  function renderCurves(){
-    // draw non-point/text objects
-    for (const o of objects){
-      if (["point","text"].includes(o.kind)) continue;
-      if (o.kind === "parabola" || o.kind === "hyperbola"){
-        const poly = sampleObject(o);
-        if (poly.length < 2) continue;
-        // split by NaN for hyperbola
-        const parts=[];
-        let cur=[];
-        for (const p of poly){
-          if (!Number.isFinite(p.x) || !Number.isFinite(p.y)){
-            if (cur.length){ parts.push(cur); cur=[]; }
-            continue;
+  function findNearestIntersectionCandidate(wx, wy){
+    const tol = worldTol()*1.25;
+    let best = null;
+
+    // ✅ 미래 객체까지 고려: point/text 제외 전부 대상으로
+    const candidates = objects.filter(o => o.kind !== "point" && o.kind !== "text");
+    for (let i=0;i<candidates.length;i++){
+      for (let j=i+1;j<candidates.length;j++){
+        const A = candidates[i], B = candidates[j];
+        const pA = sampleObject(A, "intersect"), pB = sampleObject(B, "intersect");
+        if (!pA || !pB) continue;
+        const ints = polylineIntersections(pA, pB);
+        for (const p of ints){
+          const d = dist(p.x,p.y, wx,wy);
+          if (d <= tol && (!best || d < best.d)){
+            best = {aId:A.id, bId:B.id, x:p.x, y:p.y, d};
           }
-          cur.push(p);
         }
-        if (cur.length) parts.push(cur);
-
-        const isSel = selected && selected.id === o.id;
-        const sCol = isSel ? "rgba(255,255,255,.98)" : (o.kind === "parabola" ? "rgba(124,92,255,.95)" : "rgba(199,210,254,.92)");
-        const sw = isSel ? 2.8 : 2.0;
-
-        for (const part of parts){
-          if (part.length < 2) continue;
-          const screenPts = part.map(p => {
-            const s = worldToScreen(p.x,p.y);
-            return {sx:s.sx, sy:s.sy};
-          });
-          const d = polylineToSmoothPathScreen(screenPts);
-          svgEl("path", {d, fill:"none", stroke:sCol, "stroke-width":sw, "stroke-linecap":"round", "stroke-linejoin":"round"});
-        }
-        // label near first point
-        const sp = worldToScreen(parts[0][Math.floor(parts[0].length*0.65)].x, parts[0][Math.floor(parts[0].length*0.65)].y);
-        renderNameCaption(o, sp.sx, sp.sy);
-        continue;
-      }
-      renderObject(o);
-    }
-  }
-
-  function render(){
-    updateConstraints();
-    clearSvg();
-    const {w,h} = size();
-    sv.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    drawGridAndAxes();
-    renderCurves();
-    renderPointsAndTexts();
-  }
-
-  // =========================
-  // Editors
-  // =========================
-  let editingId = null;
-  let editingTextId = null;
-  let beforeEditSnapshot = null;
-
-  function closeEditors(silent=false){
-    objEditor.style.display = "none";
-    textEditor.style.display = "none";
-    editingId = null;
-    editingTextId = null;
-    beforeEditSnapshot = null;
-    if (!silent) render();
-  }
-
-  function openObjEditor(id){
-    const o = getById(id);
-    if (!o) return;
-    beforeEditSnapshot = snapshot();
-    editingId = id;
-
-    $("objTitle").textContent = t().editor.objTitle;
-    $("lblKind").textContent = t().editor.kind;
-    $("lblName").textContent = t().editor.name;
-    $("lblCaption").textContent = t().editor.caption;
-    $("btnObjSave").textContent = t().editor.save;
-    $("btnObjCancel").textContent = t().editor.cancel;
-
-    $("objKind").value = o.kind;
-    $("objId").value = o.id;
-    $("objName").value = o.name || "";
-    $("objCaption").value = o.caption || "";
-
-    // coords row only for point/text
-    const showXY = (o.kind === "point" || o.kind === "text");
-    $("rowX").style.display = showXY ? "flex" : "none";
-    $("rowY").style.display = showXY ? "flex" : "none";
-    if (showXY){
-      $("objX").value = (o.x ?? "");
-      $("objY").value = (o.y ?? "");
-    }
-
-    objEditor.style.display = "block";
-    textEditor.style.display = "none";
-  }
-
-  function saveObjEditor(){
-    const o = getById(editingId);
-    if (!o) return;
-    const desiredName = $("objName").value;
-    const cap = $("objCaption").value;
-
-    // name uniqueness rule
-    ensureUniqueName(o, desiredName);
-    // caption should be set exactly as user typed
-    o.caption = cap;
-
-    if (o.kind === "point" || o.kind === "text"){
-      const x = parseFloat($("objX").value);
-      const y = parseFloat($("objY").value);
-      if (Number.isFinite(x)) o.x = x;
-      if (Number.isFinite(y)) o.y = y;
-    }
-
-    pushState();
-    saveToStorage();
-    closeEditors(true);
-    render();
-  }
-
-  function cancelObjEditor(){
-    if (beforeEditSnapshot){
-      restoreFrom(beforeEditSnapshot);
-    }
-    closeEditors(true);
-    render();
-    syncUI();
-  }
-
-  function openTextEditor(id){
-    const o = getById(id);
-    if (!o || o.kind !== "text") return;
-    beforeEditSnapshot = snapshot();
-    editingTextId = id;
-
-    $("textTitle").textContent = t().editor.textTitle;
-    $("lblText").textContent = t().editor.content;
-    $("btnTextSave").textContent = t().editor.save;
-    $("btnTextCancel").textContent = t().editor.cancel;
-
-    $("txtContent").value = o.content || "";
-
-    textEditor.style.display = "block";
-    objEditor.style.display = "none";
-  }
-
-  function saveTextEditor(){
-    const o = getById(editingTextId);
-    if (!o || o.kind !== "text") return;
-    o.content = $("txtContent").value;
-    pushState();
-    saveToStorage();
-    closeEditors(true);
-    render();
-  }
-
-  function cancelTextEditor(){
-    if (beforeEditSnapshot){
-      restoreFrom(beforeEditSnapshot);
-    }
-    closeEditors(true);
-    render();
-    syncUI();
-  }
-
-  // click outside editor closes (cancel)
-  document.addEventListener("pointerdown", (e) => {
-    if (objEditor.style.display === "block" || textEditor.style.display === "block"){
-      const inObj = objEditor.contains(e.target);
-      const inTxt = textEditor.contains(e.target);
-      if (!inObj && !inTxt){
-        cancelObjEditor();
-        cancelTextEditor();
       }
     }
-  }, {capture:true});
-
-  $("btnObjSave").addEventListener("click", (e) => { e.preventDefault(); saveObjEditor(); });
-  $("btnObjCancel").addEventListener("click", (e) => { e.preventDefault(); cancelObjEditor(); });
-  $("btnTextSave").addEventListener("click", (e) => { e.preventDefault(); saveTextEditor(); });
-  $("btnTextCancel").addEventListener("click", (e) => { e.preventDefault(); cancelTextEditor(); });
+    return best;
+  }
 
   // =========================
-  // Tool dropdown
+  // Object creation helpers
   // =========================
-  function openToolsMenu(){ toolsDropdown.classList.add("open"); }
-  function closeToolsMenu(){ toolsDropdown.classList.remove("open"); }
-  btnTools.addEventListener("click", (e) => {
-    cancelFloatingTip();
-    e.stopPropagation();
-    toolsDropdown.classList.toggle("open");
-  });
+  function ensurePointAt(wx, wy){
+    const id = "p_" + rndId();
+    const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null, nameAuto:true, captionAuto:true };
+    applyAutoPointLabel(p);
+    objects.push(p);
+    markOverlayDirty();
+    return p;
+  }
 
-  document.addEventListener("pointerdown", (e) => {
-    if (!toolsDropdown.contains(e.target)) closeToolsMenu();
-  });
+  function getOrCreatePointForClick(wx, wy){
+    const tol = worldTol();
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist2(o.x,o.y, wx,wy);
+      if (d <= tol*tol && (!best || d < best.d)) best = {p:o, d};
+    }
+    if (best){
+      applyAutoPointLabel(best.p);
+      return best.p;
+    }
+    return ensurePointAt(wx,wy);
+  }
+
+  function createIntersectionPoint(hit){
+    const id = "p_" + rndId();
+    const p = {
+      id, kind:"point",
+      x: hit.x, y: hit.y,
+      name:"", caption:"",
+      constraint: {type:"intersection", aId: hit.aId, bId: hit.bId, seed:{x:hit.x,y:hit.y}},
+      nameAuto:true, captionAuto:true
+    };
+    applyAutoPointLabel(p);
+    objects.push(p);
+    markOverlayDirty();
+    return p;
+  }
+
+  function createPointOnObject(parentId, wx, wy){
+    const parent = getById(parentId);
+    if (!parent) return null;
+    const poly = sampleObject(parent, "constraint");
+    if (!poly) return null;
+    const proj = polylineProject(poly, {x:wx,y:wy});
+    const p = ensurePointAt(proj.x, proj.y);
+    p.constraint = {type:"on", parentId, t: proj.t};
+    markOverlayDirty();
+    return p;
+  }
+
+  function createSegment(aId, bId){
+    const id = "s_" + rndId();
+    objects.push({id, kind:"segment", aId, bId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createLine(aId, bId){
+    const id = "l_" + rndId();
+    objects.push({id, kind:"line", aId, bId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createCircle(cId, pId){
+    const id = "c_" + rndId();
+    objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createParabola(fId, p1Id, p2Id){
+    const id = "pa_" + rndId();
+    objects.push({id, kind:"parabola", fId, p1Id, p2Id, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createEllipse(f1Id, f2Id, pId){
+    const id = "e_" + rndId();
+    objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createHyperbola(f1Id, f2Id, pId){
+    const id = "h_" + rndId();
+    objects.push({id, kind:"hyperbola", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createText(wx, wy, content){
+    const id = "t_" + rndId();
+    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? (lang==="ko" ? "텍스트" : "Text"), name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
 
   // =========================
-  // Floating tooltips (1s idle after click)
+  // Tooltip (버튼 클릭 후 1초 정지 시만 표시)
   // =========================
-  let pendingTip = null; // {toolKey, anchorEl, timer}
+  const floatingTip = $("floatingTip");
+  const tipTitle = $("tipTitle");
+  const tipDesc  = $("tipDesc");
+  let tipTimer = null;
+  let tipArmed = false;
 
   function cancelFloatingTip(){
-    if (pendingTip?.timer){ clearTimeout(pendingTip.timer); }
-    pendingTip = null;
+    tipArmed = false;
+    if (tipTimer){ clearTimeout(tipTimer); tipTimer = null; }
     floatingTip.style.display = "none";
   }
 
-  function armTipForButton(anchorEl, toolKey){
+  function armTipForButton(btnEl, toolKey){
     cancelFloatingTip();
-    pendingTip = { toolKey, anchorEl, timer: null };
-    pendingTip.timer = setTimeout(() => {
-      if (!pendingTip) return;
+    tipArmed = true;
+    const rect = btnEl.getBoundingClientRect();
+    const x = rect.right + 8;
+    const y = rect.top;
+
+    tipTimer = setTimeout(() => {
+      if (!tipArmed) return;
       const info = t().tools[toolKey];
-      if (!info) return;
-      const r = anchorEl.getBoundingClientRect();
       tipTitle.textContent = info.name;
-      tipDesc.textContent = info.desc;
-      floatingTip.style.left = (r.right + 10) + "px";
-      floatingTip.style.top = (r.top - 4) + "px";
+      tipDesc.textContent  = info.desc;
+      floatingTip.style.left = x + "px";
+      floatingTip.style.top  = y + "px";
       floatingTip.style.display = "block";
     }, 1000);
   }
 
-  function cancelTipOnAction(){
-    if (!pendingTip) return;
-    cancelFloatingTip();
+  ["pointerdown","pointermove","wheel","keydown","touchstart"].forEach(ev => {
+    window.addEventListener(ev, () => { if (tipArmed) cancelFloatingTip(); }, {passive:true});
+  });
+
+  // =========================
+  // Editors (속성/텍스트)
+  // =========================
+  const objEditor = $("objEditor");
+  const objKind = $("objKind");
+  const objId = $("objId");
+  const objName = $("objName");
+  const objCaption = $("objCaption");
+  const rowX = $("rowX");
+  const rowY = $("rowY");
+  const objX = $("objX");
+  const objY = $("objY");
+  let editingObjId = null;
+
+  function openObjEditor(id, clientX, clientY){
+    const obj = getById(id);
+    if (!obj) return;
+
+    editingObjId = obj.id;
+    $("objTitle").textContent = t().ui.objTitle;
+    $("lblKind").textContent = t().ui.kind;
+    $("lblName").textContent = t().ui.name;
+    $("lblCaption").textContent = t().ui.caption;
+
+    objKind.value = obj.kind;
+    objId.value = obj.id;
+    objName.value = obj.name || "";
+    objCaption.value = obj.caption || "";
+
+    const showXY = (obj.kind === "point" || obj.kind === "text");
+    rowX.style.display = showXY ? "flex" : "none";
+    rowY.style.display = showXY ? "flex" : "none";
+    if (showXY){
+      objX.value = (obj.x ?? 0);
+      objY.value = (obj.y ?? 0);
+    }
+
+    const pad = 10;
+    const w = 340;
+    const h = 320;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    objEditor.style.left = x + "px";
+    objEditor.style.top  = y + "px";
+    objEditor.style.display = "block";
+    setTimeout(() => objName.focus(), 0);
   }
 
-  // cancel tooltip on any interaction
-  ["pointerdown","pointermove","wheel","keydown"].forEach(ev => {
-    document.addEventListener(ev, cancelTipOnAction, {passive:true, capture:true});
+  function closeObjEditor(){
+    objEditor.style.display = "none";
+    editingObjId = null;
+  }
+
+  $("btnObjCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeObjEditor(); });
+  $("btnObjSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!editingObjId) return;
+    const obj = getById(editingObjId);
+    if (!obj) { closeObjEditor(); return; }
+
+    pushState();
+
+    // 이름 저장: STEAL MODE (캡션은 건드리지 않음)
+    assignNameSteal(obj.id, (objName.value || "").trim());
+
+    // 캡션은 사용자 입력 그대로
+    obj.caption = objCaption.value || "";
+
+    if (obj.kind === "point" || obj.kind === "text"){
+      const x = parseFloat(objX.value);
+      const y = parseFloat(objY.value);
+      if (Number.isFinite(x)) obj.x = x;
+      if (Number.isFinite(y)) obj.y = y;
+    }
+
+    closeObjEditor();
+    saveToStorage();
+    markOverlayDirty();
   });
+
+  const textEditor = $("textEditor");
+  const textContent = $("textContent");
+  let editingTextId = null;
+
+  function openTextEditorFor(id, clientX, clientY){
+    const obj = getById(id);
+    if (!obj || obj.kind !== "text") return;
+
+    editingTextId = id;
+    $("textTitle").textContent = t().ui.textTitle;
+    $("lblText").textContent = t().ui.content;
+    textContent.value = obj.content || "";
+
+    const pad = 10;
+    const w = 340;
+    const h = 240;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    textEditor.style.left = x + "px";
+    textEditor.style.top  = y + "px";
+    textEditor.style.display = "block";
+    setTimeout(() => textContent.focus(), 0);
+  }
+
+  function closeTextEditor(){
+    textEditor.style.display = "none";
+    editingTextId = null;
+  }
+
+  $("btnTextCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeTextEditor(); });
+  $("btnTextSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!editingTextId) return;
+    const obj = getById(editingTextId);
+    if (!obj) { closeTextEditor(); return; }
+
+    pushState();
+    obj.content = textContent.value || "";
+    closeTextEditor();
+    saveToStorage();
+    markOverlayDirty();
+  });
+
+  // ✅ 편집창 바깥 클릭 시 자동 닫힘
+  document.addEventListener("pointerdown", (e) => {
+    const target = e.target;
+    if (objEditor.style.display === "block" && !objEditor.contains(target)) closeObjEditor();
+    if (textEditor.style.display === "block" && !textEditor.contains(target)) closeTextEditor();
+  }, true);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape"){
+      if (objEditor.style.display === "block") closeObjEditor();
+      if (textEditor.style.display === "block") closeTextEditor();
+    }
+  });
+
+  // =========================
+  // Overlay (text + labels)
+  // =========================
+  let overlayDirty = true;
+  function markOverlayDirty(){ overlayDirty = true; }
+
+  function getObjectAnchor(obj){
+    if (!obj) return {x:0,y:0};
+    if (obj.kind === "point") return {x:obj.x, y:obj.y};
+    if (obj.kind === "text")  return {x:obj.x, y:obj.y};
+    if (obj.kind === "segment" || obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (A && B) return {x:(A.x+B.x)/2, y:(A.y+B.y)/2};
+    }
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId);
+      if (C) return {x:C.x, y:C.y};
+    }
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      if (F) return {x:F.x, y:F.y};
+    }
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
+    return {x:0,y:0};
+  }
+
+  // ✅ 라벨 오프셋(픽셀): 기존 대비 절반(추가 반영) → 4px 수준
+  function labelOffsetPx(kind){
+    if (kind === "point")   return {dx: 4, dy: -4};
+    if (kind === "text")    return {dx: 3, dy: -4};
+    if (kind === "segment") return {dx: 0, dy: -4};
+    if (kind === "line")    return {dx: 0, dy: -4};
+    if (kind === "circle")  return {dx: 3, dy: -4};
+    if (kind === "parabola")return {dx: 3, dy: -4};
+    if (kind === "ellipse") return {dx: 3, dy: -4};
+    if (kind === "hyperbola") return {dx: 3, dy: -4};
+    return {dx: 3, dy: -4};
+  }
+
+  function renderNamePretty(name){
+    const s = String(name||"").trim();
+    if (!s) return "";
+    return renderMixedLatex(`$\\mathrm{${s}}$`);
+  }
+
+  // ✅ 캡션이 있으면 기본은 캡션, 선택 시 이름 표시
+  function buildLabelHtml(obj){
+    const name = (obj.name && obj.name.trim()) ? obj.name.trim() : "";
+    const cap  = (obj.caption && obj.caption.trim()) ? obj.caption.trim() : "";
+    const isSel = (selected?.id === obj.id);
+
+    if (name && cap){
+      if (isSel) return renderNamePretty(name);
+      return renderMixedLatex(cap);
+    }
+    if (cap) return renderMixedLatex(cap);
+    if (name) return renderNamePretty(name);
+    return "";
+  }
+
+  function syncOverlay(){
+    if (!overlayDirty) return;
+    overlayDirty = false;
+
+    const existingTextEls = new Map([...overlay.querySelectorAll(".textItem")].map(el => [el.dataset.id, el]));
+    const existingLabelEls = new Map([...overlay.querySelectorAll(".labelItem")].map(el => [el.dataset.id, el]));
+
+    // text items
+    const texts = objects.filter(o => o.kind === "text");
+    for (const o of texts){
+      let el = existingTextEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "textItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
+
+        el.addEventListener("pointerdown", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (tool !== "select") return;
+
+          const obj = getById(o.id);
+          if (!obj) return;
+
+          selected = {id:o.id};
+          pushState();
+
+          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+          const w = screenToWorld(sx, sy);
+          dragging = {
+            id:o.id, kind:"text",
+            offX: obj.x - w.wx,
+            offY: obj.y - w.wy,
+            pointerId: e.pointerId
+          };
+          try { el.setPointerCapture(e.pointerId); } catch {}
+          markOverlayDirty();
+          saveToStorage();
+          setCanvasCursor();
+        });
+
+        // Select tool에서도 텍스트 더블클릭 편집
+        el.addEventListener("dblclick", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
+
+          if (tool === "select" && (e.shiftKey || e.altKey)){
+            openObjEditor(o.id, e.clientX, e.clientY);
+          } else {
+            openTextEditorFor(o.id, e.clientX, e.clientY);
+          }
+        });
+      }
+
+      const s = worldToScreen(o.x,o.y);
+      el.style.left = s.sx + "px";
+      el.style.top  = s.sy + "px";
+      el.innerHTML = renderMixedLatex(o.content || "");
+      el.classList.toggle("selected", selected?.id === o.id);
+
+      existingTextEls.delete(o.id);
+    }
+    for (const el of existingTextEls.values()) el.remove();
+
+    // labels
+    const labelTargets = objects.filter(o =>
+      (o.name && o.name.trim()) || (o.caption && o.caption.trim())
+    );
+
+    for (const o of labelTargets){
+      let el = existingLabelEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "labelItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
+      }
+
+      const a = getObjectAnchor(o);
+      const s = worldToScreen(a.x,a.y);
+      const off = labelOffsetPx(o.kind);
+
+      el.style.left = (s.sx + off.dx) + "px";
+      el.style.top  = (s.sy + off.dy) + "px";
+      el.innerHTML = buildLabelHtml(o);
+
+      existingLabelEls.delete(o.id);
+    }
+    for (const el of existingLabelEls.values()) el.remove();
+  }
+
+  // =========================
+  // Drawing
+  // =========================
+  function niceStep(target){
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const x = target / pow;
+    if (x < 1.5) return 1*pow;
+    if (x < 3.5) return 2*pow;
+    if (x < 7.5) return 5*pow;
+    return 10*pow;
+  }
+
+  function drawGrid(){
+    const bounds = getViewportWorldBounds();
+    const step = niceStep(40 / cam.scale);
+
+    const xmin = Math.floor(bounds.xmin/step)*step;
+    const xmax = Math.ceil(bounds.xmax/step)*step;
+    const ymin = Math.floor(bounds.ymin/step)*step;
+    const ymax = Math.ceil(bounds.ymax/step)*step;
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(36,49,74,.35)";
+
+    for (let x=xmin; x<=xmax; x+=step){
+      const s1 = worldToScreen(x, ymin);
+      const s2 = worldToScreen(x, ymax);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    for (let y=ymin; y<=ymax; y+=step){
+      const s1 = worldToScreen(xmin, y);
+      const s2 = worldToScreen(xmax, y);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAxes(){
+    const {w,h} = canvasSizeCSS();
+    const origin = worldToScreen(0,0);
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(170,182,209,.45)";
+    ctx.fillStyle = "rgba(170,182,209,.75)";
+
+    ctx.beginPath(); ctx.moveTo(0, origin.sy); ctx.lineTo(w, origin.sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.sx, 0); ctx.lineTo(origin.sx, h); ctx.stroke();
+
+    const ah = 8;
+    ctx.beginPath(); ctx.moveTo(w-ah, origin.sy-ah/2); ctx.lineTo(w, origin.sy); ctx.lineTo(w-ah, origin.sy+ah/2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ah, origin.sy-ah/2); ctx.lineTo(0, origin.sy); ctx.lineTo(ah, origin.sy+ah/2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, ah); ctx.lineTo(origin.sx, 0); ctx.lineTo(origin.sx+ah/2, ah); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, h-ah); ctx.lineTo(origin.sx, h); ctx.lineTo(origin.sx+ah/2, h-ah); ctx.fill();
+
+    ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = "rgba(232,238,252,.75)";
+    ctx.fillText("0", origin.sx + 6, origin.sy - 6);
+
+    ctx.restore();
+  }
+
+  function drawPolyline(poly){
+    if (!poly || poly.length < 2) return;
+    ctx.beginPath();
+    let started = false;
+    for (let i=0;i<poly.length;i++){
+      const p = poly[i];
+      if (!isFinitePt(p)) { started = false; continue; }
+      const s = worldToScreen(p.x, p.y);
+      if (!started){
+        ctx.moveTo(s.sx, s.sy);
+        started = true;
+      } else {
+        ctx.lineTo(s.sx, s.sy);
+      }
+    }
+    ctx.stroke();
+  }
+
+  function drawObjects(){
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]); // ✅ 모든 도형 기본 실선
+    ctx.lineJoin = "round";
+    ctx.lineCap  = "round";
+
+    // segments/lines/curves
+    for (const o of objects){
+      if (o.kind === "segment"){
+        const A = getById(o.aId), B = getById(o.bId);
+        if (!A || !B) continue;
+        const a = worldToScreen(A.x,A.y);
+        const b = worldToScreen(B.x,B.y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.72)";
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "line"){
+        const poly = sampleObject(o, "render");
+        if (!poly) continue;
+        const a = worldToScreen(poly[0].x,poly[0].y);
+        const b = worldToScreen(poly[1].x,poly[1].y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "circle"){
+        const C = getById(o.cId), P = getById(o.pId);
+        if (!C || !P) continue;
+        const r = dist(C.x,C.y, P.x,P.y);
+        if (r < 1e-12) continue;
+        const c = worldToScreen(C.x, C.y);
+        const rPx = r * cam.scale;
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        ctx.beginPath(); ctx.arc(c.sx, c.sy, rPx, 0, Math.PI*2); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "ellipse"){
+        const F1 = getById(o.f1Id), F2 = getById(o.f2Id), P = getById(o.pId);
+        if (!F1 || !F2 || !P) continue;
+        const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+        const a = sum/2;
+        const c0 = dist(F1.x,F1.y,F2.x,F2.y)/2;
+        if (a < 1e-10 || a < c0 + 1e-10) continue;
+        const b0 = Math.sqrt(Math.max(0, a*a - c0*c0));
+        const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+        const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+        const center = worldToScreen(cx, cy);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        ctx.beginPath();
+        // screen y-axis is inverted, so rotation sign flips
+        ctx.ellipse(center.sx, center.sy, a*cam.scale, b0*cam.scale, -ang, 0, Math.PI*2);
+        ctx.stroke();
+        continue;
+      }
+      if (o.kind === "parabola" || o.kind === "hyperbola"){
+        const poly = sampleObject(o, "render");
+        if (!poly) continue;
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        drawPolyline(poly);
+        continue;
+      }
+    }
+
+    // points
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const p = worldToScreen(o.x,o.y);
+      const r = (selected?.id===o.id) ? 6 : 5;
+      ctx.fillStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.9)";
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI*2); ctx.fill();
+
+      if (o.constraint){
+        ctx.strokeStyle = "rgba(55,214,138,.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, r+2, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 2;
+      }
+    }
+
+    ctx.restore();
+  }
 
   // =========================
   // UI
   // =========================
-  function resetToolProgress(){
-    segP1=null; lineP1=null; circleC=null;
-    parabolaFocus=null; parabolaD1=null;
-    ellipseF1=null; ellipseF2=null;
-    hyperF1=null; hyperF2=null;
+
+  const btnSelect = $("btnSelect");
+  const btnText   = $("btnText");
+  const btnBasicTools = $("btnBasicTools");
+  const basicMenu = $("basicMenu");
+
+  const integratedTools = new Set(["point","segment","line","circle","parabola","ellipse","hyperbola"]);
+  const toolButtons = [btnSelect, btnText].filter(Boolean);
+  const menuButtons = basicMenu ? [...basicMenu.querySelectorAll(".mBtn")] : [];
+
+  let hintTimer = null;
+  function setHint(text){
+    $("hint").textContent = text;
+  }
+  function flashHint(msg, ms=2200){
+    if (hintTimer) clearTimeout(hintTimer);
+    setHint(msg);
+    hintTimer = setTimeout(() => {
+      hintTimer = null;
+      setHint(t().ui.hint);
+    }, ms);
   }
 
-  function syncUI(){
-    hint.textContent = t().ui.hint;
-    btnUndo.textContent = t().ui.undo;
-    btnRedo.textContent = t().ui.redo;
-    btnLang.textContent = (lang === "ko") ? "KO" : "EN";
-
-    btnSelect.textContent = t().ui.select;
-    btnText.textContent = t().ui.text;
-
-    // active classes
-    btnSelect.classList.toggle("active", tool === "select");
-    btnText.classList.toggle("active", tool === "text");
-
-    // dropdown label shows current tool
-    const base = t().ui.tools;
-    const isInMenu = ["point","segment","line","circle","parabola","ellipse","hyperbola"].includes(tool);
-    btnTools.textContent = (isInMenu ? t().tools[tool].name : base) + " ▾";
-    btnTools.classList.toggle("active", isInMenu);
-
-    // menu labels
-    for (const b of toolsMenu.querySelectorAll("button[data-tool]")){
-      const k = b.dataset.tool;
-      b.textContent = t().tools[k]?.name || k;
-      b.classList.toggle("active", tool === k);
+  function closeBasicMenu(){
+    if (!basicMenu) return;
+    basicMenu.classList.remove("open");
+    basicMenu.setAttribute("aria-hidden","true");
+  }
+  function toggleBasicMenu(){
+    if (!basicMenu) return;
+    const open = basicMenu.classList.contains("open");
+    if (open){
+      closeBasicMenu();
+    } else {
+      basicMenu.classList.add("open");
+      basicMenu.setAttribute("aria-hidden","false");
     }
-
-    saveToStorage();
   }
 
-  function setTool(nextTool){
-    tool = nextTool;
+  // close menu when clicking outside
+  document.addEventListener("pointerdown", (e) => {
+    if (!basicMenu || !basicMenu.classList.contains("open")) return;
+    const target = e.target;
+    if (target === btnBasicTools) return;
+    if (basicMenu.contains(target)) return;
+    closeBasicMenu();
+  }, {capture:true});
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeBasicMenu();
+  });
+
+  if (btnBasicTools){
+    btnBasicTools.addEventListener("click", (e) => {
+      cancelFloatingTip();
+      e.stopPropagation();
+      toggleBasicMenu();
+    });
+  }
+
+  function setCanvasCursor(){
+    if (tool === "select"){
+      if (isPanning || dragging) cv.style.cursor = "grabbing";
+      else cv.style.cursor = "grab";
+    } else {
+      cv.style.cursor = "crosshair";
+    }
+  }
+
+  function resetToolProgress(){
+    segP1 = null; lineP1 = null; circleC = null;
+    parabolaFocus = null; parabolaD1 = null;
+    ellipseF1 = null; ellipseF2 = null;
+    hyperbolaF1 = null; hyperbolaF2 = null;
+  }
+
+  function setToolAndReset(key, tipAnchorBtn){
+    tool = key;
     selected = null;
     dragging = null;
     isPanning = false;
     panStart = null;
     resetToolProgress();
-    closeToolsMenu();
-    syncUI();
-    render();
+    syncToolUI();
+    markOverlayDirty();
+    if (tipAnchorBtn) armTipForButton(tipAnchorBtn, key);
+    saveToStorage();
   }
 
-  btnSelect.addEventListener("click", () => { setTool("select"); armTipForButton(btnSelect, "select"); });
-  btnText.addEventListener("click", () => { setTool("text"); armTipForButton(btnText, "text"); });
+  function syncToolUI(){
+    // select/text buttons
+    if (btnSelect){
+      btnSelect.classList.toggle("active", tool === "select");
+      btnSelect.textContent = t().tools.select.name;
+    }
+    if (btnText){
+      btnText.classList.toggle("active", tool === "text");
+      btnText.textContent = t().tools.text.name;
+    }
 
-  toolsMenu.querySelectorAll("button[data-tool]").forEach((b) => {
-    b.addEventListener("click", () => {
-      const k = b.dataset.tool;
-      setTool(k);
-      armTipForButton(btnTools, k);
+    // dropdown label
+    if (btnBasicTools){
+      const baseLabel = (lang === "ko") ? "도구" : "Tools";
+      btnBasicTools.textContent = (integratedTools.has(tool) ? t().tools[tool].name : baseLabel) + " ▾";
+      btnBasicTools.classList.toggle("active", integratedTools.has(tool));
+    }
+
+    // menu items
+    for (const b of menuButtons){
+      const key = b.dataset.tool;
+      b.textContent = t().tools[key].name;
+      b.classList.toggle("active", key === tool);
+    }
+
+    $("btnUndo").textContent = t().ui.undo;
+    $("btnRedo").textContent = t().ui.redo;
+    $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
+    if (!hintTimer) setHint(t().ui.hint);
+    setCanvasCursor();
+  }
+
+  toolButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      closeBasicMenu();
+      cancelFloatingTip();
+      const key = btn.dataset.tool;
+      setToolAndReset(key, btn);
     });
   });
 
-  btnUndo.addEventListener("click", () => { cancelFloatingTip(); undo(); });
-  btnRedo.addEventListener("click", () => { cancelFloatingTip(); redo(); });
-
-  btnLang.addEventListener("click", () => {
-    cancelFloatingTip();
-    lang = (lang === "ko") ? "en" : "ko";
-    syncUI();
-    render();
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeBasicMenu();
+      cancelFloatingTip();
+      const key = btn.dataset.tool;
+      setToolAndReset(key, btnBasicTools || btn);
+    });
   });
 
-  // =========================
-  // Wheel zoom (desktop)
-  // =========================
-  sv.addEventListener("wheel", (e) => {
-    e.preventDefault();
+  $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); closeBasicMenu(); undo(); });
+  $("btnRedo").addEventListener("click", () => { cancelFloatingTip(); closeBasicMenu(); redo(); });
+
+  $("btnLang").addEventListener("click", () => {
     cancelFloatingTip();
-    const {sx,sy} = clientToScreen(e.clientX,e.clientY);
-    const anchor = screenToWorld(sx,sy);
-    const factor = Math.exp(-e.deltaY / 450);
-    const newScale = clamp(cam.scale * factor, 20, 260);
+    closeBasicMenu();
+    lang = (lang === "ko") ? "en" : "ko";
+    syncToolUI();
+    markOverlayDirty();
+  });
 
-    // keep anchor stable
-    cam.x = anchor.wx - (sx - size().w/2)/newScale;
-    cam.y = anchor.wy - (size().h/2 - sy)/newScale;
-    cam.scale = newScale;
-
-    saveToStorage();
-    render();
-  }, {passive:false});
 
   // =========================
-  // Pointer events (create/move/pan + pinch zoom)
+  // Canvas events
   // =========================
   function isEditorOpen(){
     return objEditor.style.display === "block" || textEditor.style.display === "block";
   }
 
-  sv.addEventListener("pointermove", (e) => {
-    // pinch zoom
-    if (e.pointerType === "touch"){
-      if (activeTouches.has(e.pointerId)){
-        activeTouches.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  // =========================
+  // Touch: pinch zoom & multi-touch safe tap
+  // - 두 손가락 핀치: 벌어지면 확대, 모이면 축소
+  // - 두 손가락이 동시에 닿을 때는 점/도형 생성(탭)을 실행하지 않음
+  // =========================
+  const touchActive = new Map(); // pointerId -> {x,y,startX,startY,moved}
+  let pinchState = null;         // {ids:[id1,id2], startDist, startScale, anchor:{wx,wy}}
+  let pendingTap = null;         // {pointerId, toolAtDown}
+  let suppressTapUntil = 0;
+  const TAP_MOVE_PX = 8;
+
+  function startPinch(){
+    if (touchActive.size !== 2) return false;
+    const ids = [...touchActive.keys()];
+    const a = touchActive.get(ids[0]);
+    const b = touchActive.get(ids[1]);
+    if (!a || !b) return false;
+
+    const cx = (a.x + b.x) / 2;
+    const cy = (a.y + b.y) / 2;
+    const {sx,sy} = clientToCanvas(cx, cy);
+    const anchor = screenToWorld(sx, sy);
+
+    pushState();
+    pinchState = {
+      ids,
+      startDist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      startScale: cam.scale,
+      anchor: { wx: anchor.wx, wy: anchor.wy },
+    };
+
+    pendingTap = null;
+    suppressTapUntil = performance.now() + 250;
+
+    // cancel other interactions while pinching
+    dragging = null;
+    isPanning = false;
+    panStart = null;
+
+    setCanvasCursor();
+    saveToStorage();
+    markOverlayDirty();
+    return true;
+  }
+
+  function updatePinch(){
+    if (!pinchState) return false;
+    const [id1,id2] = pinchState.ids;
+    const a = touchActive.get(id1);
+    const b = touchActive.get(id2);
+    if (!a || !b) return false;
+
+    const cx = (a.x + b.x) / 2;
+    const cy = (a.y + b.y) / 2;
+    const distNow = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const ratio = distNow / (pinchState.startDist || distNow);
+    cam.scale = clamp(pinchState.startScale * ratio, SCALE_MIN, SCALE_MAX);
+
+    // keep anchor under pinch center
+    const {sx,sy} = clientToCanvas(cx, cy);
+    const {w,h} = canvasSizeCSS();
+    cam.x = pinchState.anchor.wx - (sx - w/2) / cam.scale;
+    cam.y = pinchState.anchor.wy - (h/2 - sy) / cam.scale;
+
+    saveToStorage();
+    markOverlayDirty();
+    setCanvasCursor();
+    return true;
+  }
+
+  function endPinch(){
+    pinchState = null;
+    suppressTapUntil = performance.now() + 180;
+  }
+
+  function handleCreateToolsAt(w, clientX, clientY){
+    // ===== POINT TOOL =====
+    if (tool === "point"){
+      // 1) intersection first
+      const hit = findNearestIntersectionCandidate(w.wx, w.wy);
+      if (hit){
+        pushState();
+        const p = createIntersectionPoint(hit);
+        selected = {id:p.id};
+        saveToStorage();
+        markOverlayDirty();
+        return;
       }
-      if (pinchState && activeTouches.size >= 2){
-        const ids = pinchState.ids.filter(id => activeTouches.has(id));
-        if (ids.length < 2){
-          pinchState = null;
-        } else {
-          const a = activeTouches.get(ids[0]);
-          const b = activeTouches.get(ids[1]);
-          const cx = (a.x + b.x)/2;
-          const cy = (a.y + b.y)/2;
-          const distNow = Math.hypot(a.x-b.x, a.y-b.y) || 1;
-          const ratio = distNow / (pinchState.startDist || distNow);
-          const newScale = clamp(pinchState.startScale * ratio, 20, 260);
 
-          const {sx,sy} = clientToScreen(cx,cy);
-          const {w,h} = size();
-          cam.scale = newScale;
-          cam.x = pinchState.anchor.wx - (sx - w/2)/cam.scale;
-          cam.y = pinchState.anchor.wy - (h/2 - sy)/cam.scale;
-
-          // cancel other interactions while pinching
-          dragging = null;
-          isPanning = false;
-          panStart = null;
-
+      // 2) on-object point
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && obj.kind !== "point" && obj.kind !== "text"){
+        pushState();
+        const p = createPointOnObject(obj.id, w.wx, w.wy);
+        if (p){
+          selected = {id:p.id};
           saveToStorage();
-          render();
-          try{ e.preventDefault(); } catch {}
+          markOverlayDirty();
+          return;
+        }
+      }
+
+      // 3) free point
+      pushState();
+      const p = ensurePointAt(w.wx,w.wy);
+      selected = {id:p.id};
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== SEGMENT TOOL =====
+    if (tool === "segment"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!segP1){
+        segP1 = p.id;
+      } else {
+        if (segP1 !== p.id) createSegment(segP1, p.id);
+        segP1 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== LINE TOOL =====
+    if (tool === "line"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!lineP1){
+        lineP1 = p.id;
+      } else {
+        if (lineP1 !== p.id) createLine(lineP1, p.id);
+        lineP1 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== CIRCLE TOOL =====
+    if (tool === "circle"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!circleC){
+        circleC = p.id;
+      } else {
+        if (circleC !== p.id) createCircle(circleC, p.id);
+        circleC = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== PARABOLA TOOL =====
+    if (tool === "parabola"){
+      pushState();
+
+      if (!parabolaFocus){
+        const p = getOrCreatePointForClick(w.wx,w.wy);
+        parabolaFocus = p.id;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // prefer clicking existing line/segment as directrix
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && (obj.kind === "line" || obj.kind === "segment")){
+        const p1 = getById(obj.aId);
+        const p2 = getById(obj.bId);
+        if (p1 && p2 && parabolaFocus){
+          createParabola(parabolaFocus, p1.id, p2.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+        selected = null;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // else define directrix by two points
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!parabolaD1){
+        parabolaD1 = p.id;
+      } else {
+        if (parabolaD1 !== p.id && parabolaFocus){
+          createParabola(parabolaFocus, parabolaD1, p.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+      }
+
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== ELLIPSE TOOL =====
+    if (tool === "ellipse"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!ellipseF1){
+        ellipseF1 = p.id;
+      } else if (!ellipseF2){
+        ellipseF2 = p.id;
+        if (ellipseF2 === ellipseF1) ellipseF2 = null;
+      } else {
+        if (ellipseF1 && ellipseF2 && p.id !== ellipseF1 && p.id !== ellipseF2){
+          createEllipse(ellipseF1, ellipseF2, p.id);
+        }
+        ellipseF1 = null;
+        ellipseF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== HYPERBOLA TOOL =====
+    if (tool === "hyperbola"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!hyperbolaF1){
+        hyperbolaF1 = p.id;
+      } else if (!hyperbolaF2){
+        hyperbolaF2 = p.id;
+        if (hyperbolaF2 === hyperbolaF1) hyperbolaF2 = null;
+      } else {
+        // validate before create
+        const F1 = getById(hyperbolaF1);
+        const F2 = getById(hyperbolaF2);
+        const P  = getById(p.id);
+        if (F1 && F2 && P){
+          const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+          const a = Math.abs(dist(P.x,P.y,F1.x,F1.y) - dist(P.x,P.y,F2.x,F2.y))/2;
+          if (a > 1e-6 && a < c - 1e-6){
+            createHyperbola(hyperbolaF1, hyperbolaF2, p.id);
+          } else {
+            flashHint(t().ui.warnHyperbola);
+          }
+        }
+        hyperbolaF1 = null;
+        hyperbolaF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== TEXT TOOL =====
+    if (tool === "text"){
+      pushState();
+      const id = createText(w.wx, w.wy, (lang==="ko" ? "텍스트" : "Text") + "\n$y=x^2$");
+      selected = {id};
+      saveToStorage();
+      markOverlayDirty();
+      openTextEditorFor(id, clientX, clientY);
+      return;
+    }
+  }
+
+
+  cv.addEventListener("pointermove", (e) => {
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+
+    // touch tracking / pinch
+    if (e.pointerType === "touch"){
+      const tinfo = touchActive.get(e.pointerId);
+      if (tinfo){
+        const dx0 = e.clientX - tinfo.startX;
+        const dy0 = e.clientY - tinfo.startY;
+        const moved = tinfo.moved || (dx0*dx0 + dy0*dy0 > TAP_MOVE_PX*TAP_MOVE_PX);
+        touchActive.set(e.pointerId, { ...tinfo, x:e.clientX, y:e.clientY, moved });
+        if (pendingTap && pendingTap.pointerId === e.pointerId && moved) pendingTap = null;
+      }
+
+      if (pinchState){
+        if (updatePinch()){
+          e.preventDefault();
           return;
         }
       }
     }
 
-    // regular pan/drag
+
+    // pan
     if (isPanning && panStart){
-      const {sx,sy} = clientToScreen(e.clientX,e.clientY);
       const dx = sx - panStart.sx;
       const dy = sy - panStart.sy;
       cam.x = panStart.camX - dx / panStart.scale;
       cam.y = panStart.camY + dy / panStart.scale;
       saveToStorage();
-      render();
+      markOverlayDirty();
+      setCanvasCursor();
       return;
     }
 
+    // drag (point/text)
     if (dragging && dragging.pointerId === e.pointerId){
-      const {sx,sy} = clientToScreen(e.clientX,e.clientY);
-      const w = screenToWorld(sx,sy);
+      const w = screenToWorld(sx, sy);
       const obj = getById(dragging.id);
       if (!obj) return;
 
@@ -1705,12 +2148,14 @@
       const ny = w.wy + (dragging.offY || 0);
 
       if (dragging.kind === "point"){
-        if (obj.constraint?.type === "intersection") return;
+        if (obj.constraint?.type === "intersection"){
+          return;
+        }
         if (obj.constraint?.type === "on"){
           const parent = getById(obj.constraint.parentId);
-          const poly = parent ? sampleObject(parent).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)) : null;
-          if (poly && poly.length >= 2){
-            const proj = polylineNearest(poly, {x:nx,y:ny});
+          const poly = parent ? sampleObject(parent, "constraint") : null;
+          if (poly){
+            const proj = polylineProject(poly, {x:nx, y:ny});
             obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
           } else {
             obj.x = nx; obj.y = ny;
@@ -1725,318 +2170,239 @@
       }
 
       saveToStorage();
-      render();
+      markOverlayDirty();
+      setCanvasCursor();
       return;
     }
   });
 
-  sv.addEventListener("pointerdown", (e) => {
+  cv.addEventListener("pointerdown", (e) => {
     cancelFloatingTip();
     if (isEditorOpen()) return;
 
-    // touch tracking for pinch
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
+
+
+    // Touch (mobile): pinch zoom + safe tap
     if (e.pointerType === "touch"){
-      activeTouches.set(e.pointerId, {x:e.clientX, y:e.clientY});
-      try{ sv.setPointerCapture(e.pointerId); } catch {}
+      touchActive.set(e.pointerId, {x:e.clientX, y:e.clientY, startX:e.clientX, startY:e.clientY, moved:false});
+      try { cv.setPointerCapture(e.pointerId); } catch {}
 
-      if (activeTouches.size === 2){
-        const ids = [...activeTouches.keys()];
-        const a = activeTouches.get(ids[0]);
-        const b = activeTouches.get(ids[1]);
-        const cx = (a.x + b.x)/2;
-        const cy = (a.y + b.y)/2;
-        const {sx,sy} = clientToScreen(cx,cy);
-        const anchor = screenToWorld(sx,sy);
-
-        pushState();
-        pinchState = {
-          ids,
-          startDist: Math.hypot(a.x-b.x, a.y-b.y) || 1,
-          startScale: cam.scale,
-          anchor: {wx: anchor.wx, wy: anchor.wy}
-        };
-
-        // cancel other interactions
-        selected = null;
-        dragging = null;
-        isPanning = false;
-        panStart = null;
-
-        saveToStorage();
-        render();
-        try{ e.preventDefault(); } catch {}
+      // if 2 fingers are down => pinch zoom
+      if (touchActive.size === 2){
+        startPinch();
+        e.preventDefault();
         return;
-      } else if (activeTouches.size < 2){
-        pinchState = null;
       }
-    } else {
-      pinchState = null;
+
+      // while pinching, ignore extra touches
+      if (pinchState){
+        e.preventDefault();
+        return;
+      }
+
+      // creation tools: defer to pointerup tap (prevents accidental point creation on pinch)
+      if (tool !== "select"){
+        pendingTap = {pointerId: e.pointerId, toolAtDown: tool};
+        e.preventDefault();
+        return;
+      }
     }
 
-    const {sx,sy} = clientToScreen(e.clientX,e.clientY);
-    const w = screenToWorld(sx,sy);
-
+    // ===== SELECT TOOL =====
     if (tool === "select"){
       const id = hitTest(w.wx,w.wy);
       if (id){
         selected = {id};
         const obj = getById(id);
+
         if (obj?.kind === "point"){
           if (!obj.constraint || obj.constraint.type !== "intersection"){
             pushState();
-            dragging = { id, kind:"point", offX: obj.x - w.wx, offY: obj.y - w.wy, pointerId: e.pointerId };
-            try{ sv.setPointerCapture(e.pointerId); } catch {}
+            dragging = {
+              id, kind:"point",
+              offX: obj.x - w.wx,
+              offY: obj.y - w.wy,
+              pointerId: e.pointerId
+            };
+            try { cv.setPointerCapture(e.pointerId); } catch {}
           }
-        } else if (obj?.kind === "text"){
-          pushState();
-          dragging = { id, kind:"text", offX: obj.x - w.wx, offY: obj.y - w.wy, pointerId: e.pointerId };
-          try{ sv.setPointerCapture(e.pointerId); } catch {}
         } else {
           dragging = null;
         }
+
         isPanning = false;
         panStart = null;
       } else {
+        // pan on empty space
         selected = null;
         dragging = null;
         pushState();
         isPanning = true;
         panStart = { sx, sy, camX: cam.x, camY: cam.y, scale: cam.scale };
-        try{ sv.setPointerCapture(e.pointerId); } catch {}
+        try { cv.setPointerCapture(e.pointerId); } catch {}
       }
+
       saveToStorage();
-      render();
+      markOverlayDirty();
+      setCanvasCursor();
       return;
     }
 
-    if (tool === "point"){
-      // 1) intersection
-      const hit = findNearestIntersectionCandidate(w.wx,w.wy);
-      if (hit){
-        pushState();
-        const p = createIntersectionPoint(hit);
-        selected = {id:p.id};
-        saveToStorage();
-        render();
-        return;
-      }
-      // 2) on-object
-      const id = hitTest(w.wx,w.wy);
-      const obj = id ? getById(id) : null;
-      if (obj && obj.kind !== "point" && obj.kind !== "text"){
-        pushState();
-        const p = createPointOnObject(obj.id, w.wx,w.wy);
-        if (p){
-          selected = {id:p.id};
-          saveToStorage();
-          render();
-          return;
+
+    handleCreateToolsAt(w, e.clientX, e.clientY);
+    return;
+
+  });
+
+  cv.addEventListener("pointerup", (e) => {
+
+    // touch: handle pending tap & pinch end
+    if (e.pointerType === "touch"){
+      const tinfo = touchActive.get(e.pointerId);
+      touchActive.delete(e.pointerId);
+
+      if (pinchState){
+        const [id1,id2] = pinchState.ids;
+        if (!touchActive.has(id1) || !touchActive.has(id2) || touchActive.size < 2){
+          endPinch();
         }
       }
-      // 3) free
-      pushState();
-      const p = ensurePointAt(w.wx,w.wy);
-      selected = {id:p.id};
-      saveToStorage();
-      render();
-      return;
-    }
 
-    if (tool === "segment"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!segP1) segP1 = p.id;
-      else {
-        if (segP1 !== p.id) createSegment(segP1, p.id);
-        segP1 = null;
+      if (pendingTap && pendingTap.pointerId === e.pointerId){
+        const now = performance.now();
+        const moved = tinfo ? !!tinfo.moved : false;
+        const sameTool = (tool === pendingTap.toolAtDown);
+        if (!moved && sameTool && now >= suppressTapUntil && !pinchState){
+          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+          const w = screenToWorld(sx, sy);
+          handleCreateToolsAt(w, e.clientX, e.clientY);
+        }
+        pendingTap = null;
       }
-      selected = null;
-      saveToStorage();
-      render();
-      return;
     }
 
-    if (tool === "line"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!lineP1) lineP1 = p.id;
-      else {
-        if (lineP1 !== p.id) createLine(lineP1, p.id);
-        lineP1 = null;
-      }
-      selected = null;
-      saveToStorage();
-      render();
-      return;
-    }
-
-    if (tool === "circle"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!circleC) circleC = p.id;
-      else {
-        if (circleC !== p.id) createCircle(circleC, p.id);
-        circleC = null;
-      }
-      selected = null;
-      saveToStorage();
-      render();
-      return;
-    }
-
-    if (tool === "parabola"){
-      pushState();
-      if (!parabolaFocus){
-        const p = getOrCreatePointForClick(w.wx,w.wy);
-        parabolaFocus = p.id;
-        saveToStorage();
-        render();
-        return;
-      }
-      const id = hitTest(w.wx,w.wy);
-      const obj = id ? getById(id) : null;
-      if (obj && (obj.kind === "line" || obj.kind === "segment")){
-        const a = getById(obj.aId), b = getById(obj.bId);
-        if (a && b) createParabola(parabolaFocus, a.id, b.id);
-        parabolaFocus = null;
-        parabolaD1 = null;
-        selected = null;
-        saveToStorage();
-        render();
-        return;
-      }
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!parabolaD1) parabolaD1 = p.id;
-      else {
-        if (parabolaD1 !== p.id) createParabola(parabolaFocus, parabolaD1, p.id);
-        parabolaFocus = null;
-        parabolaD1 = null;
-      }
-      selected = null;
-      saveToStorage();
-      render();
-      return;
-    }
-
-    if (tool === "ellipse"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!ellipseF1){ ellipseF1 = p.id; saveToStorage(); render(); return; }
-      if (!ellipseF2){ ellipseF2 = p.id; saveToStorage(); render(); return; }
-      createEllipse(ellipseF1, ellipseF2, p.id);
-      ellipseF1 = null; ellipseF2 = null;
-      selected = null;
-      saveToStorage();
-      render();
-      return;
-    }
-
-    if (tool === "hyperbola"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!hyperF1){ hyperF1 = p.id; saveToStorage(); render(); return; }
-      if (!hyperF2){ hyperF2 = p.id; saveToStorage(); render(); return; }
-      createHyperbola(hyperF1, hyperF2, p.id);
-      hyperF1 = null; hyperF2 = null;
-      selected = null;
-      saveToStorage();
-      render();
-      return;
-    }
-
-    if (tool === "text"){
-      pushState();
-      const tx = createText(w.wx,w.wy, "");
-      selected = {id: tx.id};
-      saveToStorage();
-      render();
-      openTextEditor(tx.id);
-      return;
-    }
-  });
-
-  function endPointer(e){
-    if (e.pointerType === "touch"){
-      activeTouches.delete(e.pointerId);
-      if (activeTouches.size < 2) pinchState = null;
-    }
-    if (dragging && dragging.pointerId === e.pointerId) dragging = null;
     isPanning = false;
     panStart = null;
-    try{ sv.releasePointerCapture(e.pointerId); } catch {}
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+    }
+    setCanvasCursor();
+    try { cv.releasePointerCapture(e.pointerId); } catch {}
     saveToStorage();
-    render();
-  }
+    markOverlayDirty();
+  });
 
-  sv.addEventListener("pointerup", endPointer);
-  sv.addEventListener("pointercancel", endPointer);
-
-  // =========================
-  // Double click: edit
-  // =========================
-  sv.addEventListener("dblclick", (e) => {
+  cv.addEventListener("wheel", (e) => {
+    cancelFloatingTip();
     if (isEditorOpen()) return;
-    const {sx,sy} = clientToScreen(e.clientX,e.clientY);
-    const w = screenToWorld(sx,sy);
+
+    const delta = Math.sign(e.deltaY);
+    const factor = (delta > 0) ? 0.92 : 1.08;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const before = screenToWorld(sx, sy);
+
+    pushState();
+    cam.scale = clamp(cam.scale * factor, SCALE_MIN, SCALE_MAX);
+
+    const after = screenToWorld(sx, sy);
+    cam.x += (before.wx - after.wx);
+    cam.y += (before.wy - after.wy);
+
+    saveToStorage();
+    markOverlayDirty();
+    e.preventDefault();
+  }, {passive:false});
+
+  // 모든 객체 더블클릭: 속성창
+  
+  cv.addEventListener("pointercancel", (e) => {
+    if (e.pointerType === "touch"){
+      touchActive.delete(e.pointerId);
+      if (pendingTap && pendingTap.pointerId === e.pointerId) pendingTap = null;
+
+      if (pinchState){
+        const [id1,id2] = pinchState.ids;
+        if (!touchActive.has(id1) || !touchActive.has(id2) || touchActive.size < 2){
+          endPinch();
+        }
+      }
+    }
+
+    isPanning = false;
+    panStart = null;
+    if (dragging && dragging.pointerId === e.pointerId) dragging = null;
+    setCanvasCursor();
+    try { cv.releasePointerCapture(e.pointerId); } catch {}
+  });
+
+cv.addEventListener("dblclick", (e) => {
+    cancelFloatingTip();
+    if (isEditorOpen()) return;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
     const id = hitTest(w.wx,w.wy);
     if (!id) return;
-    const obj = getById(id);
-    if (!obj) return;
+
     selected = {id};
-    saveToStorage();
-    render();
-    if (obj.kind === "text") openTextEditor(id);
-    else openObjEditor(id);
+    markOverlayDirty();
+    openObjEditor(id, e.clientX, e.clientY);
+    e.preventDefault();
   });
 
-  // =========================
-  // Enter key
-  // =========================
-  document.addEventListener("keydown", (e) => {
+  // 선택 상태에서 Enter: 속성창
+  window.addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
-    if (objEditor.style.display === "block"){
-      e.preventDefault();
-      saveObjEditor();
-      return;
-    }
-    if (textEditor.style.display === "block"){
-      e.preventDefault();
-      saveTextEditor();
-      return;
-    }
-    if (selected?.id){
-      const obj = getById(selected.id);
-      if (!obj) return;
-      e.preventDefault();
-      if (obj.kind === "text") openTextEditor(obj.id);
-      else openObjEditor(obj.id);
-    }
+    if (isEditorOpen()) return;
+    if (tool !== "select") return;
+    if (!selected?.id) return;
+
+    openObjEditor(selected.id, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
+    e.preventDefault();
   });
 
-  // =========================
-  // Init
-  // =========================
-  function bootstrap(){
-    loadFromStorage();
-    // ensure minimal state
-    if (!Array.isArray(objects)) objects = [];
+  overlay.addEventListener("pointerup", (e) => {
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+      isPanning = false;
+      panStart = null;
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+    }
+  }, {passive:true});
 
-    // first render after layout
-    syncUI();
-    requestAnimationFrame(() => {
-      render();
-    });
+  // =========================
+  // init
+  // =========================
+  function loop(){
+    updateDependentPoints();
+
+    const {w,h} = canvasSizeCSS();
+    ctx.clearRect(0,0,w,h);
+    drawGrid();
+    drawAxes();
+    drawObjects();
+    syncOverlay();
+
+    requestAnimationFrame(loop);
   }
 
-  // Resize observer
-  const ro = new ResizeObserver(() => {
-    render();
-  });
-  ro.observe($("work"));
+  resize();
+  loadFromStorage();
+  normalizeAllPointLabels();
+  syncToolUI();
+  pushState();
+  markOverlayDirty();
+  loop();
 
-  bootstrap();
 })();
 </script>
-
 </body>
 </html>
