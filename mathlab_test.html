@@ -1,0 +1,2408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>mathlab</title>
+
+  <!-- KaTeX (LaTeX 렌더링). 오프라인이면 로드 실패할 수 있으나, 그 경우 일반 텍스트로 표시됩니다. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#121826cc;
+      --border:#24314a;
+      --text:#e8eefc;
+      --muted:#aab6d1;
+      --accent:#5aa2ff;
+      --danger:#ff5a7a;
+      --shadow:0 12px 40px rgba(0,0,0,.45);
+      --r:12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial;
+    }
+    html,body{ margin:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--font); overflow:hidden; user-select:none; }
+    #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
+
+    #topbar{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px;
+      background:linear-gradient(180deg, rgba(18,24,38,.95), rgba(18,24,38,.70));
+      border-bottom:1px solid var(--border);
+      backdrop-filter: blur(10px);
+      z-index:10;
+    }
+    .group{
+      display:flex; gap:8px; align-items:center;
+      padding:6px;
+      background:rgba(15,21,34,.55);
+      border:1px solid rgba(36,49,74,.65);
+      border-radius:16px;
+    }
+    .btn{
+      appearance:none;
+      border:1px solid rgba(36,49,74,.9);
+      background:rgba(18,24,38,.65);
+      color:var(--text);
+      padding:9px 10px;
+      border-radius:var(--r);
+      cursor:pointer;
+      font-size:13px;
+      line-height:1;
+      display:inline-flex;
+      align-items:center;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{ background:rgba(24,32,52,.75); border-color:rgba(90,162,255,.6); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.active{
+      border-color: rgba(90,162,255,.9);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.18) inset;
+      background: rgba(90,162,255,.12);
+    }
+
+    .dropdown{ position:relative; }
+    .menu{
+      position:absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      display:none;
+      flex-direction:column;
+      gap:6px;
+      min-width: 132px;
+      padding:8px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      z-index: 30;
+      max-height: 52vh;
+      overflow:auto;
+    }
+    .menu.open{ display:flex; }
+    .menu .btn{ width:100%; justify-content:flex-start; }
+    .menu .btn.active{
+      border-color: rgba(90,162,255,.9);
+      background: rgba(90,162,255,.12);
+    }
+    .btn.danger{ border-color: rgba(255,90,122,.55); }
+    .btn.danger:hover{ border-color: rgba(255,90,122,.9); background: rgba(255,90,122,.12); }
+    .sep{ width:1px; height:26px; background:rgba(36,49,74,.75); margin:0 4px; }
+    #hint{ margin-left:auto; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 44vw; }
+
+    #canvasWrap{ position:relative; flex:1; overflow:hidden; }
+    canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+
+    #overlay{ position:absolute; inset:0; pointer-events:none; z-index:6; }
+    .textItem{
+      position:absolute;
+      pointer-events:auto;
+      white-space:pre-wrap;
+      color:var(--text);
+      font-size:16px;
+      line-height:1.25;
+      padding:4px 6px;
+      border-radius:10px;
+      background: rgba(18,24,38,0);
+      border:1px solid rgba(0,0,0,0);
+      transform: translate(-50%, -50%);
+      max-width: 60vw;
+    }
+    .textItem.selected{
+      background: rgba(90,162,255,.10);
+      border-color: rgba(90,162,255,.50);
+      box-shadow: 0 0 0 2px rgba(90,162,255,.12) inset;
+    }
+    .labelItem{
+      position:absolute;
+      pointer-events:none;
+      transform: translate(-50%, -50%);
+      font-size:13px;
+      color: rgba(232,238,252,.92);
+      background: rgba(18,24,38,.55);
+      border: 1px solid rgba(36,49,74,.7);
+      border-radius:10px;
+      padding:3px 6px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.30);
+      white-space:nowrap;
+    }
+
+    #floatingTip{
+      position:fixed;
+      z-index:50;
+      max-width: 380px;
+      background: rgba(18,24,38,.92);
+      border:1px solid rgba(36,49,74,.9);
+      border-radius: 14px;
+      padding:10px 12px;
+      box-shadow: var(--shadow);
+      display:none;
+      font-size:12px;
+      color: var(--text);
+    }
+    #floatingTip .t{ font-weight:700; margin-bottom:6px; font-size:12px; }
+    #floatingTip .d{ color: var(--muted); line-height:1.35; }
+
+    .panel{
+      position:fixed;
+      z-index:60;
+      width: 340px;
+      background: rgba(18,24,38,.96);
+      border:1px solid rgba(36,49,74,.95);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding:12px;
+      display:none;
+      user-select:text;
+    }
+    .panel h3{ margin:0 0 8px 0; font-size:14px; color: var(--text); }
+    .row{ display:flex; gap:8px; align-items:center; margin:8px 0; }
+    .row label{ width:88px; color: var(--muted); font-size:12px; }
+    .row input, .row textarea{
+      flex:1;
+      background: rgba(15,21,34,.85);
+      border:1px solid rgba(36,49,74,.85);
+      color: var(--text);
+      border-radius: 12px;
+      padding:8px 10px;
+      font-size:12px;
+      outline:none;
+    }
+    .row textarea{ min-height: 80px; resize: vertical; font-family: var(--font); }
+    .actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+    .mini{ font-size:12px; padding:8px 10px; border-radius: 12px; }
+
+    #siteLink{ position:fixed; left:12px; bottom:12px; z-index:20; text-decoration:none; }
+
+    @media (max-width: 920px){
+      #hint{ display:none; }
+      .panel{ width: 90vw; }
+      #topbar{ flex-wrap:wrap; }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="group" id="toolGroup">
+      <button class="btn toolBtn" data-tool="select" id="btnSelect">선택/이동</button>
+
+      <div class="dropdown" id="basicDropdown">
+        <button class="btn" id="btnBasicTools" type="button">도구 ▾</button>
+        <div class="menu" id="basicMenu" role="menu" aria-hidden="true">
+          <button class="btn mBtn" type="button" data-tool="point">점</button>
+          <button class="btn mBtn" type="button" data-tool="segment">선분</button>
+          <button class="btn mBtn" type="button" data-tool="line">직선</button>
+          <button class="btn mBtn" type="button" data-tool="circle">원</button>
+          <button class="btn mBtn" type="button" data-tool="parabola">포물선</button>
+          <button class="btn mBtn" type="button" data-tool="ellipse">타원</button>
+          <button class="btn mBtn" type="button" data-tool="hyperbola">쌍곡선</button>
+        </div>
+      </div>
+
+      <button class="btn toolBtn" data-tool="text" id="btnText">텍스트</button>
+    </div>
+<div class="group">
+      <button class="btn" id="btnUndo">이전(Undo)</button>
+      <button class="btn" id="btnRedo">다음(Redo)</button>
+      <div class="sep"></div>
+      <button class="btn" id="btnLang">KO</button>
+    </div>
+
+    <div id="hint"></div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
+    <div id="overlay"></div>
+  </div>
+</div>
+
+<a id="siteLink" class="btn" href="https://min7014.github.io" target="_blank" rel="noopener">min7014.github.io</a>
+
+<div id="floatingTip">
+  <div class="t" id="tipTitle"></div>
+  <div class="d" id="tipDesc"></div>
+</div>
+
+<div class="panel" id="objEditor">
+  <h3 id="objTitle">객체 속성</h3>
+  <div class="row"><label id="lblKind">종류</label><input id="objKind" readonly /></div>
+  <div class="row"><label>ID</label><input id="objId" readonly /></div>
+  <div class="row"><label id="lblName">이름</label><input id="objName" placeholder="예: A, l1, c1 ..." /></div>
+  <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
+  <div class="row" id="rowX"><label>X</label><input id="objX" /></div>
+  <div class="row" id="rowY"><label>Y</label><input id="objY" /></div>
+  <div class="actions">
+    <button class="btn mini danger" id="btnObjCancel">취소</button>
+    <button class="btn mini" id="btnObjSave">저장</button>
+  </div>
+</div>
+
+<div class="panel" id="textEditor">
+  <h3 id="textTitle">텍스트 편집</h3>
+  <div class="row"><label id="lblText">내용</label><textarea id="textContent" placeholder="텍스트. $...$ 안은 LaTeX로 렌더링됩니다."></textarea></div>
+  <div class="actions">
+    <button class="btn mini danger" id="btnTextCancel">취소</button>
+    <button class="btn mini" id="btnTextSave">저장</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // =========================
+  // 0) "찌꺼기" 자동 정리(버전 변경 시)
+  // =========================
+  const BUILD_ID = "2026-01-19-build-02";
+  const BUILD_KEY = "mathlab_build_id";
+  try{
+    const prev = localStorage.getItem(BUILD_KEY);
+    if (prev !== BUILD_ID){
+      const del = [];
+      for (let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (k.startsWith("mathlab_state_v1_") || k === "mathlab_session_id_v1"){
+          del.push(k);
+        }
+      }
+      for (const k of del) localStorage.removeItem(k);
+      localStorage.setItem(BUILD_KEY, BUILD_ID);
+    }
+  }catch(e){}
+
+  const I18N = {
+    ko: {
+      tools: {
+        select:    { name:"선택/이동", desc:"객체를 선택합니다. 점/텍스트는 드래그로 이동합니다. 빈 공간을 드래그하면 좌표평면이 이동합니다. Enter: 선택 객체 속성창." },
+        point:     { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
+        segment:   { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
+        line:      { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
+        circle:    { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
+        parabola:  { name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
+        ellipse:   { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
+        hyperbola: { name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점으로 쌍곡선 생성. (|PF1-PF2|>0 이어야 함)" },
+        text:      { name:"텍스트", desc:"클릭 위치에 텍스트 생성. $...$ 내부는 LaTeX로 렌더링됩니다. 더블클릭: 내용 편집." },
+      },
+      ui: {
+        hint:"선택: 빈 공간 드래그=평행이동, 점/텍스트 드래그 이동, Enter=속성, 더블클릭=속성, 텍스트 더블클릭=편집(Shift+더블클릭=속성)",
+        objTitle:"객체 속성",
+        kind:"종류", name:"이름", caption:"캡션",
+        textTitle:"텍스트 편집", content:"내용",
+        undo:"이전(Undo)", redo:"다음(Redo)",
+        warnHyperbola:"쌍곡선 생성 실패: 두 초점과 점 선택을 확인해 주세요.",
+      }
+    },
+    en: {
+      tools: {
+        select:    { name:"Select/Move", desc:"Select objects. Drag points/text to move. Drag empty space to pan. Enter opens properties for the selected object." },
+        point:     { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
+        segment:   { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
+        line:      { name:"Line", desc:"Pick/create two points to create a line." },
+        circle:    { name:"Circle", desc:"Center point → point on circle." },
+        parabola:  { name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
+        ellipse:   { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
+        hyperbola: { name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola. (Requires |PF1-PF2|>0)" },
+        text:      { name:"Text", desc:"Click to create text. $...$ is rendered as LaTeX. Double-click edits text." },
+      },
+      ui: {
+        hint:"Select: drag empty space to pan, drag points/text to move, Enter=properties, double-click=properties, text double-click=edit (Shift+double-click=properties)",
+        objTitle:"Object Properties",
+        kind:"Kind", name:"Name", caption:"Caption",
+        textTitle:"Edit Text", content:"Content",
+        undo:"Undo", redo:"Redo",
+        warnHyperbola:"Failed to create hyperbola: check the two foci and the chosen point.",
+      }
+    }
+  };
+
+  let lang = "ko";
+  const t = () => I18N[lang];
+  const $ = (id) => document.getElementById(id);
+  const rndId = () => Math.random().toString(36).slice(2, 10);
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const dist2 = (ax,ay,bx,by) => (ax-bx)*(ax-bx)+(ay-by)*(ay-by);
+  const dist = (ax,ay,bx,by) => Math.hypot(ax-bx, ay-by);
+  const deepClone = (o) => JSON.parse(JSON.stringify(o));
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  function renderMixedLatex(raw){
+    raw = String(raw ?? "");
+    const hasKaTeX = typeof katex !== "undefined" && katex.renderToString;
+    if (!hasKaTeX) return escapeHtml(raw);
+
+    let out = "";
+    let i = 0;
+    while (i < raw.length){
+      const s = raw.indexOf("$", i);
+      if (s === -1){ out += escapeHtml(raw.slice(i)); break; }
+      const e = raw.indexOf("$", s+1);
+      if (e === -1){ out += escapeHtml(raw.slice(i)); break; }
+      out += escapeHtml(raw.slice(i, s));
+      const latex = raw.slice(s+1, e);
+      try{
+        out += katex.renderToString(latex, {throwOnError:false, displayMode:false});
+      }catch(err){
+        out += "<span style='color:rgba(255,90,122,.95)'>" + escapeHtml("$"+latex+"$") + "</span>";
+      }
+      i = e+1;
+    }
+    return out;
+  }
+
+  // ===== per-session separation (탭별 분리) =====
+  const SESSION_KEY = "mathlab_session_id_v1";
+  let sessionId = sessionStorage.getItem(SESSION_KEY);
+  if (!sessionId) {
+    sessionId = "s_" + rndId();
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+  }
+  const STORE_KEY = "mathlab_state_v1_" + sessionId;
+
+  // ===== state =====
+  let objects = [];
+  let tool = "select";
+  let selected = null;
+
+  // interaction
+  let dragging = null; // {id, kind, offX, offY, pointerId}
+  let isPanning = false;
+  let panStart = null; // {sx, sy, camX, camY, scale}
+
+  // tool partial selections
+  let segP1 = null;
+  let lineP1 = null;
+  let circleC = null;
+  let parabolaFocus = null;
+  let parabolaD1 = null;
+  let ellipseF1 = null;
+  let ellipseF2 = null;
+  let hyperbolaF1 = null;
+  let hyperbolaF2 = null;
+
+  const cam = { x:0, y:0, scale:70 };
+  const SCALE_MIN = 10;
+  const SCALE_MAX = 2600; // 약 10배 확대 허용
+
+  let lastMouseClient = { cx: 200, cy: 120 };
+
+  const undoStack = [];
+  const redoStack = [];
+
+  function saveToStorage(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        objects, cam, tool, selected,
+        segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
+      }));
+    }catch(e){}
+  }
+
+  function loadFromStorage(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return false;
+      const st = JSON.parse(raw);
+      objects = st.objects || [];
+      cam.x = st.cam?.x ?? 0;
+      cam.y = st.cam?.y ?? 0;
+      cam.scale = st.cam?.scale ?? 70;
+      tool = st.tool || "select";
+      selected = st.selected || null;
+
+      segP1 = st.segP1 ?? null;
+      lineP1 = st.lineP1 ?? null;
+      circleC = st.circleC ?? null;
+      parabolaFocus = st.parabolaFocus ?? null;
+      parabolaD1 = st.parabolaD1 ?? null;
+      ellipseF1 = st.ellipseF1 ?? null;
+      ellipseF2 = st.ellipseF2 ?? null;
+      hyperbolaF1 = st.hyperbolaF1 ?? null;
+      hyperbolaF2 = st.hyperbolaF2 ?? null;
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function snapshot(){
+    return {
+      objects: deepClone(objects),
+      cam: deepClone(cam),
+      tool,
+      selected: selected ? deepClone(selected) : null,
+      segP1, lineP1, circleC, parabolaFocus, parabolaD1, ellipseF1, ellipseF2, hyperbolaF1, hyperbolaF2
+    };
+  }
+
+  function pushState(){
+    undoStack.push(snapshot());
+    if (undoStack.length > 80) undoStack.shift();
+    redoStack.length = 0;
+    saveToStorage();
+  }
+
+  function applyState(st){
+    objects = deepClone(st.objects || []);
+    cam.x = st.cam?.x ?? 0;
+    cam.y = st.cam?.y ?? 0;
+    cam.scale = st.cam?.scale ?? 70;
+    tool = st.tool || "select";
+    selected = st.selected ? deepClone(st.selected) : null;
+
+    segP1 = st.segP1 ?? null;
+    lineP1 = st.lineP1 ?? null;
+    circleC = st.circleC ?? null;
+    parabolaFocus = st.parabolaFocus ?? null;
+    parabolaD1 = st.parabolaD1 ?? null;
+    ellipseF1 = st.ellipseF1 ?? null;
+    ellipseF2 = st.ellipseF2 ?? null;
+    hyperbolaF1 = st.hyperbolaF1 ?? null;
+    hyperbolaF2 = st.hyperbolaF2 ?? null;
+
+    syncToolUI();
+    markOverlayDirty();
+    saveToStorage();
+  }
+
+  function undo(){
+    if (!undoStack.length) return;
+    const cur = snapshot();
+    redoStack.push(cur);
+    const prev = undoStack.pop();
+    applyState(prev);
+  }
+  function redo(){
+    if (!redoStack.length) return;
+    const cur = snapshot();
+    undoStack.push(cur);
+    const next = redoStack.pop();
+    applyState(next);
+  }
+
+  // =========================
+  // Name uniqueness (STEAL MODE) + 캡션은 절대 변경하지 않음
+  // =========================
+  function getById(id){ return objects.find(o => o.id === id) || null; }
+
+  function getUsedNames(exceptId=null){
+    const s = new Set();
+    for (const o of objects){
+      if (exceptId && o.id === exceptId) continue;
+      const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
+      if (nm) s.add(nm);
+    }
+    return s;
+  }
+
+  function splitBaseAndIndex(name){
+    const s = String(name || "").trim();
+    let m = s.match(/^(.+)_\{(\d+)\}$/);
+    if (m) return {base: m[1], idx: parseInt(m[2],10)};
+    m = s.match(/^(.+)_([0-9]+)$/);
+    if (m) return {base: m[1], idx: parseInt(m[2],10)};
+    return {base: s, idx: null};
+  }
+
+  function nextIndexedName(base, usedSet){
+    let k = 1;
+    while (true){
+      const cand = `${base}_{${k}}`;
+      if (!usedSet.has(cand)) return cand;
+      k++;
+      if (k > 9999) return `${base}_{${Date.now()%100000}}`;
+    }
+  }
+
+  // ✅ 이름 중복 시: "기존 객체"의 이름만 A_{n}으로 변경(캡션은 그대로)
+  // ✅ 대상 객체는 원하는 이름을 유지(steal)
+  function assignNameSteal(targetId, desiredRaw){
+    const desired = String(desiredRaw || "").trim();
+    const target = getById(targetId);
+    if (!target) return;
+
+    if (!desired){
+      target.name = "";
+      target.nameAuto = false;
+      return;
+    }
+
+    const used = getUsedNames(null);
+    const conflicts = objects.filter(o => o.id !== targetId && (o.name||"").trim() === desired);
+
+    if (conflicts.length){
+      const {base} = splitBaseAndIndex(desired);
+      for (const c of conflicts){
+        const newName = nextIndexedName(base, used);
+        c.name = newName;
+        c.nameAuto = false;
+        used.add(newName);
+        // 캡션은 그대로 유지
+      }
+    }
+    target.name = desired;
+    target.nameAuto = false;
+  }
+
+  // =========================
+  // Auto point labels (A,B,C... / caption = $\mathrm{A}$ ...)
+  // =========================
+  const ALPH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  function labelToIndex(name){
+    const s = String(name || "").trim();
+    let m = s.match(/^([A-Z])$/);
+    if (m) return (m[1].charCodeAt(0) - 65);
+    m = s.match(/^([A-Z])_\{(\d+)\}$/);
+    if (m){
+      const r = (m[1].charCodeAt(0) - 65);
+      const q = parseInt(m[2],10);
+      if (!Number.isFinite(q) || q < 1) return null;
+      return q*26 + r;
+    }
+    m = s.match(/^([A-Z])_(\d+)$/);
+    if (m){
+      const r = (m[1].charCodeAt(0) - 65);
+      const q = parseInt(m[2],10);
+      if (!Number.isFinite(q) || q < 1) return null;
+      return q*26 + r;
+    }
+    return null;
+  }
+
+  function indexToLabel(i){
+    const r = i % 26;
+    const q = Math.floor(i / 26);
+    if (q === 0) return ALPH[r];
+    return `${ALPH[r]}_{${q}}`;
+  }
+
+  function nextPointLabel(){
+    const usedNames = getUsedNames(null);
+    const usedIdx = new Set();
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const nm = (o.name && String(o.name).trim()) ? String(o.name).trim() : "";
+      const idx = labelToIndex(nm);
+      if (idx !== null) usedIdx.add(idx);
+    }
+    let i = 0;
+    while (true){
+      const cand = indexToLabel(i);
+      if (!usedIdx.has(i) && !usedNames.has(cand)) return cand;
+      i++;
+      if (i > 5000) return `P_{${Date.now()%10000}}`;
+    }
+  }
+
+  function buildCaptionForLabel(label){
+    const s = String(label || "").trim();
+    return `$\\mathrm{${s}}$`;
+  }
+
+  function applyAutoPointLabel(p){
+    if (!p || p.kind !== "point") return;
+    const hasName = !!(p.name && String(p.name).trim());
+    const hasCap  = !!(p.caption && String(p.caption).trim());
+
+    if (!hasName){
+      const label = nextPointLabel();
+      p.name = label;
+      p.nameAuto = true;
+      if (!hasCap){
+        p.caption = buildCaptionForLabel(label);
+        p.captionAuto = true;
+      }
+      return;
+    }
+    if (!hasCap){
+      p.caption = buildCaptionForLabel(String(p.name).trim());
+      p.captionAuto = true;
+    }
+  }
+
+  function normalizeAllPointLabels(){
+    for (const o of objects){
+      if (o.kind === "point") applyAutoPointLabel(o);
+    }
+  }
+
+  // =========================
+  // Canvas & coords (정확도 개선)
+  // =========================
+  const cv = $("cv");
+  const ctx = cv.getContext("2d");
+  const overlay = $("overlay");
+
+  function canvasRect(){ return cv.getBoundingClientRect(); }
+  function clientToCanvas(clientX, clientY){
+    const r = canvasRect();
+    return { sx: clientX - r.left, sy: clientY - r.top };
+  }
+  function canvasSizeCSS(){
+    const r = canvasRect();
+    return { w: r.width, h: r.height };
+  }
+
+  function resize(){
+    const r = canvasRect();
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    cv.width  = Math.floor(r.width * dpr);
+    cv.height = Math.floor(r.height * dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    markOverlayDirty();
+  }
+  window.addEventListener("resize", resize);
+
+  function worldToScreen(wx, wy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      sx: (wx - cam.x) * cam.scale + w/2,
+      sy: h/2 - (wy - cam.y) * cam.scale
+    };
+  }
+  function screenToWorld(sx, sy){
+    const {w,h} = canvasSizeCSS();
+    return {
+      wx: (sx - w/2) / cam.scale + cam.x,
+      wy: (h/2 - sy) / cam.scale + cam.y
+    };
+  }
+  function worldTol(){ return 10 / cam.scale; }
+
+  // =========================
+  // Geometry sampling & intersections (polyline approximation)
+  // =========================
+  const isFinitePt = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+  function segmentIntersection(a,b,c,d){
+    const r = {x: b.x-a.x, y: b.y-a.y};
+    const s = {x: d.x-c.x, y: d.y-c.y};
+    const denom = r.x*s.y - r.y*s.x;
+    if (Math.abs(denom) < 1e-12) return null;
+    const uNumer = (c.x-a.x)*r.y - (c.y-a.y)*r.x;
+    const tNumer = (c.x-a.x)*s.y - (c.y-a.y)*s.x;
+    const t = tNumer/denom;
+    const u = uNumer/denom;
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1){
+      return {x: a.x + t*r.x, y: a.y + t*r.y};
+    }
+    return null;
+  }
+
+  function polylineProject(poly, pt){
+    if (!poly || poly.length < 2) return {x:pt.x, y:pt.y, t:0};
+
+    // build segments skipping NaN breaks
+    const segs = [];
+    let total = 0;
+    for (let i=0;i<poly.length-1;i++){
+      const A = poly[i], B = poly[i+1];
+      if (!isFinitePt(A) || !isFinitePt(B)) { segs.push(null); continue; }
+      const L = dist(A.x,A.y, B.x,B.y);
+      const seg = {A, B, L, acc: total};
+      segs.push(seg);
+      total += L;
+    }
+
+    if (total < 1e-12) return {x:pt.x, y:pt.y, t:0};
+
+    let best = {d: Infinity, x: poly[0].x, y: poly[0].y, t:0};
+
+    for (let i=0;i<segs.length;i++){
+      const seg = segs[i];
+      if (!seg) continue;
+      const A = seg.A, B = seg.B;
+      const vx = B.x - A.x, vy = B.y - A.y;
+      const vv = vx*vx + vy*vy;
+      let u = 0;
+      if (vv > 1e-12){
+        u = ((pt.x - A.x)*vx + (pt.y - A.y)*vy) / vv;
+        u = clamp(u, 0, 1);
+      }
+      const px = A.x + u*vx;
+      const py = A.y + u*vy;
+      const d = dist2(px,py, pt.x,pt.y);
+      if (d < best.d){
+        best = {d, x:px, y:py, t: (seg.acc + u*seg.L)/total};
+      }
+    }
+    return {x:best.x, y:best.y, t:best.t};
+  }
+
+  function polylineIntersections(polyA, polyB){
+    const out = [];
+    if (!polyA || !polyB || polyA.length<2 || polyB.length<2) return out;
+    for (let i=0;i<polyA.length-1;i++){
+      const a = polyA[i], b = polyA[i+1];
+      if (!isFinitePt(a) || !isFinitePt(b)) continue;
+      for (let j=0;j<polyB.length-1;j++){
+        const c = polyB[j], d = polyB[j+1];
+        if (!isFinitePt(c) || !isFinitePt(d)) continue;
+        const p = segmentIntersection(a,b,c,d);
+        if (p) out.push(p);
+      }
+    }
+    return out;
+  }
+
+  function getViewportWorldBounds(){
+    const {w,h} = canvasSizeCSS();
+    const a = screenToWorld(0,0);
+    const b = screenToWorld(w,h);
+    return {
+      xmin: Math.min(a.wx, b.wx),
+      xmax: Math.max(a.wx, b.wx),
+      ymin: Math.min(a.wy, b.wy),
+      ymax: Math.max(a.wy, b.wy)
+    };
+  }
+
+  function getLineEqFromTwoPoints(p1, p2){
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    let nx = dy, ny = -dx;
+    const len = Math.hypot(nx, ny);
+    if (len < 1e-12) return null;
+    nx /= len; ny /= len;
+    const d = nx*p1.x + ny*p1.y;
+    return {nx, ny, d};
+  }
+
+  function acosh(x){
+    // x >= 1
+    return Math.log(x + Math.sqrt(x*x - 1));
+  }
+
+  function samplingParams(mode){
+    // stepPx: 화면 픽셀 기준 목표 간격(작을수록 더 정밀)
+    if (mode === "render") return {stepPx: 0.45, minN: 800, maxN: 60000};
+    if (mode === "intersect") return {stepPx: 1.25, minN: 500, maxN: 14000};
+    // hit / constraint
+    return {stepPx: 2.0, minN: 240, maxN: 8000};
+  }
+
+  function measureWorldLen(poly){
+    let len = 0;
+    let prev = null;
+    for (let i=0;i<poly.length;i++){
+      const p = poly[i];
+      if (!isFinitePt(p)) { prev = null; continue; }
+      if (prev){
+        len += dist(prev.x,prev.y, p.x,p.y);
+      }
+      prev = p;
+    }
+    return len;
+  }
+
+  function dynN(lenPx, mode, minOverride=null, maxOverride=null){
+    const sp = samplingParams(mode);
+    const minN = (minOverride ?? sp.minN);
+    const maxN = (maxOverride ?? sp.maxN);
+    const N = Math.floor(Math.max(0, lenPx) / sp.stepPx);
+    return Math.max(minN, Math.min(maxN, N));
+  }
+
+  function sampleObject(obj, mode="hit"){
+    const b = getViewportWorldBounds();
+    const margin = 1.35;
+    const xmin = b.xmin*margin, xmax = b.xmax*margin;
+    const ymin = b.ymin*margin, ymax = b.ymax*margin;
+
+    if (obj.kind === "segment"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      return [{x:A.x,y:A.y},{x:B.x,y:B.y}];
+    }
+
+    if (obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (!A || !B) return null;
+      const dx = B.x-A.x, dy = B.y-A.y;
+      const L = Math.hypot(dx,dy);
+      if (L < 1e-12) return null;
+      const ux = dx/L, uy = dy/L;
+      const diag = Math.hypot(xmax-xmin, ymax-ymin);
+      const tlen = diag*2.0;
+      return [
+        {x: A.x - ux*tlen, y: A.y - uy*tlen},
+        {x: A.x + ux*tlen, y: A.y + uy*tlen},
+      ];
+    }
+
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId), P = getById(obj.pId);
+      if (!C || !P) return null;
+      const r = dist(C.x,C.y, P.x,P.y);
+      if (r < 1e-12) return null;
+      const lenPx = (2*Math.PI*r) * cam.scale;
+      const N = dynN(lenPx, mode, 240, (mode==="render"?60000:14000));
+      const pts = [];
+      for (let i=0;i<=N;i++){
+        const ang = (i/N)*Math.PI*2;
+        pts.push({x:C.x + r*Math.cos(ang), y:C.y + r*Math.sin(ang)});
+      }
+      return pts;
+    }
+
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+      const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+      const a = sum/2;
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (a < 1e-10 || a < c + 1e-10) return null;
+      const b0 = Math.sqrt(Math.max(0, a*a - c*c));
+
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+
+      // Ramanujan perimeter approximation
+      const h = Math.pow((a-b0),2) / Math.pow((a+b0),2);
+      const per = Math.PI*(a+b0)*(1 + (3*h)/(10 + Math.sqrt(4-3*h)));
+      const lenPx = per * cam.scale;
+      const N = dynN(lenPx, mode, 260, (mode==="render"?60000:14000));
+
+      const pts = [];
+      for (let i=0;i<=N;i++){
+        const th = (i/N)*Math.PI*2;
+        const ex = a*Math.cos(th);
+        const ey = b0*Math.sin(th);
+        const wx = cx + ex*ca - ey*sa;
+        const wy = cy + ex*sa + ey*ca;
+        pts.push({x:wx,y:wy});
+      }
+      return pts;
+    }
+
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id), P = getById(obj.pId);
+      if (!F1 || !F2 || !P) return null;
+
+      const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+      const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+      const ca = Math.cos(ang), sa = Math.sin(ang);
+
+      const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+      if (c < 1e-9) return null;
+      const diff = Math.abs(dist(P.x,P.y, F1.x,F1.y) - dist(P.x,P.y, F2.x,F2.y));
+      const a = diff/2;
+      if (a < 1e-6 || a >= c - 1e-6) return null;
+      const b0 = Math.sqrt(Math.max(0, c*c - a*a));
+
+      function toLocal(x,y){
+        const dx = x - cx, dy = y - cy;
+        return { x: dx*ca + dy*sa, y: -dx*sa + dy*ca };
+      }
+      const corners = [
+        toLocal(xmin,ymin), toLocal(xmin,ymax),
+        toLocal(xmax,ymin), toLocal(xmax,ymax)
+      ];
+      let maxAbsX = 0;
+      for (const p of corners) maxAbsX = Math.max(maxAbsX, Math.abs(p.x));
+      let xMax = Math.max(a*1.05, maxAbsX*1.8 + a);
+
+      const T = acosh(xMax / a);
+
+      function build(N){
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const tt = -T + (2*T)*i/N;
+          const x = a*Math.cosh(tt);
+          const y = b0*Math.sinh(tt);
+          pts.push({x: cx + x*ca - y*sa, y: cy + x*sa + y*ca});
+        }
+        pts.push({x:NaN, y:NaN});
+        for (let i=0;i<=N;i++){
+          const tt = -T + (2*T)*i/N;
+          const x = -a*Math.cosh(tt);
+          const y = b0*Math.sinh(tt);
+          pts.push({x: cx + x*ca - y*sa, y: cy + x*sa + y*ca});
+        }
+        return pts;
+      }
+
+      // coarse length estimate
+      const coarse = build(100);
+      const lenPx = measureWorldLen(coarse) * cam.scale;
+      const N = dynN(lenPx, mode, 700, (mode==="render"?60000:16000));
+      return build(N);
+    }
+
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      const p1 = getById(obj.p1Id), p2 = getById(obj.p2Id);
+      if (!F || !p1 || !p2) return null;
+      const L = getLineEqFromTwoPoints(p1,p2);
+      if (!L) return null;
+
+      const nx = L.nx, ny = L.ny, d = L.d;
+      const ux = -ny, uy = nx;
+      const Ox = nx*d, Oy = ny*d;
+
+      const fx = ux*(F.x - Ox) + uy*(F.y - Oy);
+      const fy = nx*(F.x - Ox) + ny*(F.y - Oy);
+      if (Math.abs(fy) < 1e-6) return null;
+
+      const span = Math.max(xmax-xmin, ymax-ymin) * 1.8;
+      const xMin = fx - span;
+      const xMax = fx + span;
+
+      function build(N){
+        const pts = [];
+        for (let i=0;i<=N;i++){
+          const x = xMin + (i/N)*(xMax-xMin);
+          const y = (((x - fx)*(x - fx)) + fy*fy) / (2*fy);
+          pts.push({x: Ox + ux*x + nx*y, y: Oy + uy*x + ny*y});
+        }
+        return pts;
+      }
+
+      const coarse = build(120);
+      const lenPx = measureWorldLen(coarse) * cam.scale;
+      const N = dynN(lenPx, mode, 900, (mode==="render"?60000:16000));
+      const pts = build(N);
+      return pts.length >= 2 ? pts : null;
+    }
+
+    return null;
+  }
+
+  function updateDependentPoints(){
+    for (const o of objects){
+      if (o.kind !== "point" || !o.constraint) continue;
+      const c = o.constraint;
+
+      if (c.type === "on"){
+        const parent = getById(c.parentId);
+        if (!parent) continue;
+        const poly = sampleObject(parent, "constraint");
+        if (!poly) continue;
+        const proj = polylineProject(poly, {x:o.x,y:o.y});
+        o.x = proj.x; o.y = proj.y; c.t = proj.t;
+      }
+
+      if (c.type === "intersection"){
+        const A = getById(c.aId), B = getById(c.bId);
+        if (!A || !B) continue;
+        const pA = sampleObject(A, "intersect");
+        const pB = sampleObject(B, "intersect");
+        if (!pA || !pB) continue;
+
+        const ints = polylineIntersections(pA, pB);
+        if (!ints.length) continue;
+
+        const ref = {x:o.x ?? c.seed?.x ?? 0, y:o.y ?? c.seed?.y ?? 0};
+        let best = ints[0], bestD = dist2(ints[0].x,ints[0].y, ref.x,ref.y);
+        for (let i=1;i<ints.length;i++){
+          const dd = dist2(ints[i].x,ints[i].y, ref.x,ref.y);
+          if (dd < bestD){ bestD = dd; best = ints[i]; }
+        }
+        o.x = best.x; o.y = best.y;
+      }
+    }
+  }
+
+  // =========================
+  // Hit testing
+  // =========================
+  function hitTest(wx, wy){
+    const tol = worldTol();
+
+    // points first
+    let bestP = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist(o.x,o.y, wx,wy);
+      if (d <= tol && (!bestP || d < bestP.d)) bestP = {id:o.id, d};
+    }
+    if (bestP) return bestP.id;
+
+    // other drawable objects
+    let bestO = null;
+    for (const o of objects){
+      if (o.kind==="point" || o.kind==="text") continue;
+      const poly = sampleObject(o, "hit");
+      if (!poly) continue;
+      const proj = polylineProject(poly, {x:wx,y:wy});
+      const d = dist(proj.x,proj.y, wx,wy);
+      if (d <= tol*1.2 && (!bestO || d < bestO.d)) bestO = {id:o.id, d};
+    }
+    return bestO ? bestO.id : null;
+  }
+
+  function findNearestIntersectionCandidate(wx, wy){
+    const tol = worldTol()*1.25;
+    let best = null;
+
+    // ✅ 미래 객체까지 고려: point/text 제외 전부 대상으로
+    const candidates = objects.filter(o => o.kind !== "point" && o.kind !== "text");
+    for (let i=0;i<candidates.length;i++){
+      for (let j=i+1;j<candidates.length;j++){
+        const A = candidates[i], B = candidates[j];
+        const pA = sampleObject(A, "intersect"), pB = sampleObject(B, "intersect");
+        if (!pA || !pB) continue;
+        const ints = polylineIntersections(pA, pB);
+        for (const p of ints){
+          const d = dist(p.x,p.y, wx,wy);
+          if (d <= tol && (!best || d < best.d)){
+            best = {aId:A.id, bId:B.id, x:p.x, y:p.y, d};
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  // =========================
+  // Object creation helpers
+  // =========================
+  function ensurePointAt(wx, wy){
+    const id = "p_" + rndId();
+    const p = { id, kind:"point", x: wx, y: wy, name:"", caption:"", constraint: null, nameAuto:true, captionAuto:true };
+    applyAutoPointLabel(p);
+    objects.push(p);
+    markOverlayDirty();
+    return p;
+  }
+
+  function getOrCreatePointForClick(wx, wy){
+    const tol = worldTol();
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist2(o.x,o.y, wx,wy);
+      if (d <= tol*tol && (!best || d < best.d)) best = {p:o, d};
+    }
+    if (best){
+      applyAutoPointLabel(best.p);
+      return best.p;
+    }
+    return ensurePointAt(wx,wy);
+  }
+
+  function createIntersectionPoint(hit){
+    const id = "p_" + rndId();
+    const p = {
+      id, kind:"point",
+      x: hit.x, y: hit.y,
+      name:"", caption:"",
+      constraint: {type:"intersection", aId: hit.aId, bId: hit.bId, seed:{x:hit.x,y:hit.y}},
+      nameAuto:true, captionAuto:true
+    };
+    applyAutoPointLabel(p);
+    objects.push(p);
+    markOverlayDirty();
+    return p;
+  }
+
+  function createPointOnObject(parentId, wx, wy){
+    const parent = getById(parentId);
+    if (!parent) return null;
+    const poly = sampleObject(parent, "constraint");
+    if (!poly) return null;
+    const proj = polylineProject(poly, {x:wx,y:wy});
+    const p = ensurePointAt(proj.x, proj.y);
+    p.constraint = {type:"on", parentId, t: proj.t};
+    markOverlayDirty();
+    return p;
+  }
+
+  function createSegment(aId, bId){
+    const id = "s_" + rndId();
+    objects.push({id, kind:"segment", aId, bId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createLine(aId, bId){
+    const id = "l_" + rndId();
+    objects.push({id, kind:"line", aId, bId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createCircle(cId, pId){
+    const id = "c_" + rndId();
+    objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createParabola(fId, p1Id, p2Id){
+    const id = "pa_" + rndId();
+    objects.push({id, kind:"parabola", fId, p1Id, p2Id, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createEllipse(f1Id, f2Id, pId){
+    const id = "e_" + rndId();
+    objects.push({id, kind:"ellipse", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createHyperbola(f1Id, f2Id, pId){
+    const id = "h_" + rndId();
+    objects.push({id, kind:"hyperbola", f1Id, f2Id, pId, name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createText(wx, wy, content){
+    const id = "t_" + rndId();
+    objects.push({id, kind:"text", x:wx, y:wy, content: content ?? (lang==="ko" ? "텍스트" : "Text"), name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+
+  // =========================
+  // Tooltip (버튼 클릭 후 1초 정지 시만 표시)
+  // =========================
+  const floatingTip = $("floatingTip");
+  const tipTitle = $("tipTitle");
+  const tipDesc  = $("tipDesc");
+  let tipTimer = null;
+  let tipArmed = false;
+
+  function cancelFloatingTip(){
+    tipArmed = false;
+    if (tipTimer){ clearTimeout(tipTimer); tipTimer = null; }
+    floatingTip.style.display = "none";
+  }
+
+  function armTipForButton(btnEl, toolKey){
+    cancelFloatingTip();
+    tipArmed = true;
+    const rect = btnEl.getBoundingClientRect();
+    const x = rect.right + 8;
+    const y = rect.top;
+
+    tipTimer = setTimeout(() => {
+      if (!tipArmed) return;
+      const info = t().tools[toolKey];
+      tipTitle.textContent = info.name;
+      tipDesc.textContent  = info.desc;
+      floatingTip.style.left = x + "px";
+      floatingTip.style.top  = y + "px";
+      floatingTip.style.display = "block";
+    }, 1000);
+  }
+
+  ["pointerdown","pointermove","wheel","keydown","touchstart"].forEach(ev => {
+    window.addEventListener(ev, () => { if (tipArmed) cancelFloatingTip(); }, {passive:true});
+  });
+
+  // =========================
+  // Editors (속성/텍스트)
+  // =========================
+  const objEditor = $("objEditor");
+  const objKind = $("objKind");
+  const objId = $("objId");
+  const objName = $("objName");
+  const objCaption = $("objCaption");
+  const rowX = $("rowX");
+  const rowY = $("rowY");
+  const objX = $("objX");
+  const objY = $("objY");
+  let editingObjId = null;
+
+  function openObjEditor(id, clientX, clientY){
+    const obj = getById(id);
+    if (!obj) return;
+
+    editingObjId = obj.id;
+    $("objTitle").textContent = t().ui.objTitle;
+    $("lblKind").textContent = t().ui.kind;
+    $("lblName").textContent = t().ui.name;
+    $("lblCaption").textContent = t().ui.caption;
+
+    objKind.value = obj.kind;
+    objId.value = obj.id;
+    objName.value = obj.name || "";
+    objCaption.value = obj.caption || "";
+
+    const showXY = (obj.kind === "point" || obj.kind === "text");
+    rowX.style.display = showXY ? "flex" : "none";
+    rowY.style.display = showXY ? "flex" : "none";
+    if (showXY){
+      objX.value = (obj.x ?? 0);
+      objY.value = (obj.y ?? 0);
+    }
+
+    const pad = 10;
+    const w = 340;
+    const h = 320;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    objEditor.style.left = x + "px";
+    objEditor.style.top  = y + "px";
+    objEditor.style.display = "block";
+    setTimeout(() => objName.focus(), 0);
+  }
+
+  function closeObjEditor(){
+    objEditor.style.display = "none";
+    editingObjId = null;
+  }
+
+  $("btnObjCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeObjEditor(); });
+  $("btnObjSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!editingObjId) return;
+    const obj = getById(editingObjId);
+    if (!obj) { closeObjEditor(); return; }
+
+    pushState();
+
+    // 이름 저장: STEAL MODE (캡션은 건드리지 않음)
+    assignNameSteal(obj.id, (objName.value || "").trim());
+
+    // 캡션은 사용자 입력 그대로
+    obj.caption = objCaption.value || "";
+
+    if (obj.kind === "point" || obj.kind === "text"){
+      const x = parseFloat(objX.value);
+      const y = parseFloat(objY.value);
+      if (Number.isFinite(x)) obj.x = x;
+      if (Number.isFinite(y)) obj.y = y;
+    }
+
+    closeObjEditor();
+    saveToStorage();
+    markOverlayDirty();
+  });
+
+  const textEditor = $("textEditor");
+  const textContent = $("textContent");
+  let editingTextId = null;
+
+  function openTextEditorFor(id, clientX, clientY){
+    const obj = getById(id);
+    if (!obj || obj.kind !== "text") return;
+
+    editingTextId = id;
+    $("textTitle").textContent = t().ui.textTitle;
+    $("lblText").textContent = t().ui.content;
+    textContent.value = obj.content || "";
+
+    const pad = 10;
+    const w = 340;
+    const h = 240;
+    const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
+    const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
+    textEditor.style.left = x + "px";
+    textEditor.style.top  = y + "px";
+    textEditor.style.display = "block";
+    setTimeout(() => textContent.focus(), 0);
+  }
+
+  function closeTextEditor(){
+    textEditor.style.display = "none";
+    editingTextId = null;
+  }
+
+  $("btnTextCancel").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeTextEditor(); });
+  $("btnTextSave").addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!editingTextId) return;
+    const obj = getById(editingTextId);
+    if (!obj) { closeTextEditor(); return; }
+
+    pushState();
+    obj.content = textContent.value || "";
+    closeTextEditor();
+    saveToStorage();
+    markOverlayDirty();
+  });
+
+  // ✅ 편집창 바깥 클릭 시 자동 닫힘
+  document.addEventListener("pointerdown", (e) => {
+    const target = e.target;
+    if (objEditor.style.display === "block" && !objEditor.contains(target)) closeObjEditor();
+    if (textEditor.style.display === "block" && !textEditor.contains(target)) closeTextEditor();
+  }, true);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape"){
+      if (objEditor.style.display === "block") closeObjEditor();
+      if (textEditor.style.display === "block") closeTextEditor();
+    }
+  });
+
+  // =========================
+  // Overlay (text + labels)
+  // =========================
+  let overlayDirty = true;
+  function markOverlayDirty(){ overlayDirty = true; }
+
+  function getObjectAnchor(obj){
+    if (!obj) return {x:0,y:0};
+    if (obj.kind === "point") return {x:obj.x, y:obj.y};
+    if (obj.kind === "text")  return {x:obj.x, y:obj.y};
+    if (obj.kind === "segment" || obj.kind === "line"){
+      const A = getById(obj.aId), B = getById(obj.bId);
+      if (A && B) return {x:(A.x+B.x)/2, y:(A.y+B.y)/2};
+    }
+    if (obj.kind === "circle"){
+      const C = getById(obj.cId);
+      if (C) return {x:C.x, y:C.y};
+    }
+    if (obj.kind === "parabola"){
+      const F = getById(obj.fId);
+      if (F) return {x:F.x, y:F.y};
+    }
+    if (obj.kind === "ellipse"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
+    if (obj.kind === "hyperbola"){
+      const F1 = getById(obj.f1Id), F2 = getById(obj.f2Id);
+      if (F1 && F2) return {x:(F1.x+F2.x)/2, y:(F1.y+F2.y)/2};
+    }
+    return {x:0,y:0};
+  }
+
+  // ✅ 라벨 오프셋(픽셀): 기존 대비 절반(추가 반영) → 4px 수준
+  function labelOffsetPx(kind){
+    if (kind === "point")   return {dx: 4, dy: -4};
+    if (kind === "text")    return {dx: 3, dy: -4};
+    if (kind === "segment") return {dx: 0, dy: -4};
+    if (kind === "line")    return {dx: 0, dy: -4};
+    if (kind === "circle")  return {dx: 3, dy: -4};
+    if (kind === "parabola")return {dx: 3, dy: -4};
+    if (kind === "ellipse") return {dx: 3, dy: -4};
+    if (kind === "hyperbola") return {dx: 3, dy: -4};
+    return {dx: 3, dy: -4};
+  }
+
+  function renderNamePretty(name){
+    const s = String(name||"").trim();
+    if (!s) return "";
+    return renderMixedLatex(`$\\mathrm{${s}}$`);
+  }
+
+  // ✅ 캡션이 있으면 기본은 캡션, 선택 시 이름 표시
+  function buildLabelHtml(obj){
+    const name = (obj.name && obj.name.trim()) ? obj.name.trim() : "";
+    const cap  = (obj.caption && obj.caption.trim()) ? obj.caption.trim() : "";
+    const isSel = (selected?.id === obj.id);
+
+    if (name && cap){
+      if (isSel) return renderNamePretty(name);
+      return renderMixedLatex(cap);
+    }
+    if (cap) return renderMixedLatex(cap);
+    if (name) return renderNamePretty(name);
+    return "";
+  }
+
+  function syncOverlay(){
+    if (!overlayDirty) return;
+    overlayDirty = false;
+
+    const existingTextEls = new Map([...overlay.querySelectorAll(".textItem")].map(el => [el.dataset.id, el]));
+    const existingLabelEls = new Map([...overlay.querySelectorAll(".labelItem")].map(el => [el.dataset.id, el]));
+
+    // text items
+    const texts = objects.filter(o => o.kind === "text");
+    for (const o of texts){
+      let el = existingTextEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "textItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
+
+        el.addEventListener("pointerdown", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (tool !== "select") return;
+
+          const obj = getById(o.id);
+          if (!obj) return;
+
+          selected = {id:o.id};
+          pushState();
+
+          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+          const w = screenToWorld(sx, sy);
+          dragging = {
+            id:o.id, kind:"text",
+            offX: obj.x - w.wx,
+            offY: obj.y - w.wy,
+            pointerId: e.pointerId
+          };
+          try { el.setPointerCapture(e.pointerId); } catch {}
+          markOverlayDirty();
+          saveToStorage();
+          setCanvasCursor();
+        });
+
+        // Select tool에서도 텍스트 더블클릭 편집
+        el.addEventListener("dblclick", (e) => {
+          cancelFloatingTip();
+          e.stopPropagation();
+          e.preventDefault();
+          if (textEditor.style.display === "block" || objEditor.style.display === "block") return;
+
+          if (tool === "select" && (e.shiftKey || e.altKey)){
+            openObjEditor(o.id, e.clientX, e.clientY);
+          } else {
+            openTextEditorFor(o.id, e.clientX, e.clientY);
+          }
+        });
+      }
+
+      const s = worldToScreen(o.x,o.y);
+      el.style.left = s.sx + "px";
+      el.style.top  = s.sy + "px";
+      el.innerHTML = renderMixedLatex(o.content || "");
+      el.classList.toggle("selected", selected?.id === o.id);
+
+      existingTextEls.delete(o.id);
+    }
+    for (const el of existingTextEls.values()) el.remove();
+
+    // labels
+    const labelTargets = objects.filter(o =>
+      (o.name && o.name.trim()) || (o.caption && o.caption.trim())
+    );
+
+    for (const o of labelTargets){
+      let el = existingLabelEls.get(o.id);
+      if (!el){
+        el = document.createElement("div");
+        el.className = "labelItem";
+        el.dataset.id = o.id;
+        overlay.appendChild(el);
+      }
+
+      const a = getObjectAnchor(o);
+      const s = worldToScreen(a.x,a.y);
+      const off = labelOffsetPx(o.kind);
+
+      el.style.left = (s.sx + off.dx) + "px";
+      el.style.top  = (s.sy + off.dy) + "px";
+      el.innerHTML = buildLabelHtml(o);
+
+      existingLabelEls.delete(o.id);
+    }
+    for (const el of existingLabelEls.values()) el.remove();
+  }
+
+  // =========================
+  // Drawing
+  // =========================
+  function niceStep(target){
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const x = target / pow;
+    if (x < 1.5) return 1*pow;
+    if (x < 3.5) return 2*pow;
+    if (x < 7.5) return 5*pow;
+    return 10*pow;
+  }
+
+  function drawGrid(){
+    const bounds = getViewportWorldBounds();
+    const step = niceStep(40 / cam.scale);
+
+    const xmin = Math.floor(bounds.xmin/step)*step;
+    const xmax = Math.ceil(bounds.xmax/step)*step;
+    const ymin = Math.floor(bounds.ymin/step)*step;
+    const ymax = Math.ceil(bounds.ymax/step)*step;
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(36,49,74,.35)";
+
+    for (let x=xmin; x<=xmax; x+=step){
+      const s1 = worldToScreen(x, ymin);
+      const s2 = worldToScreen(x, ymax);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    for (let y=ymin; y<=ymax; y+=step){
+      const s1 = worldToScreen(xmin, y);
+      const s2 = worldToScreen(xmax, y);
+      ctx.beginPath(); ctx.moveTo(s1.sx, s1.sy); ctx.lineTo(s2.sx, s2.sy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAxes(){
+    const {w,h} = canvasSizeCSS();
+    const origin = worldToScreen(0,0);
+
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(170,182,209,.45)";
+    ctx.fillStyle = "rgba(170,182,209,.75)";
+
+    ctx.beginPath(); ctx.moveTo(0, origin.sy); ctx.lineTo(w, origin.sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(origin.sx, 0); ctx.lineTo(origin.sx, h); ctx.stroke();
+
+    const ah = 8;
+    ctx.beginPath(); ctx.moveTo(w-ah, origin.sy-ah/2); ctx.lineTo(w, origin.sy); ctx.lineTo(w-ah, origin.sy+ah/2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(ah, origin.sy-ah/2); ctx.lineTo(0, origin.sy); ctx.lineTo(ah, origin.sy+ah/2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, ah); ctx.lineTo(origin.sx, 0); ctx.lineTo(origin.sx+ah/2, ah); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(origin.sx-ah/2, h-ah); ctx.lineTo(origin.sx, h); ctx.lineTo(origin.sx+ah/2, h-ah); ctx.fill();
+
+    ctx.font = "12px " + getComputedStyle(document.body).fontFamily;
+    ctx.fillStyle = "rgba(232,238,252,.75)";
+    ctx.fillText("0", origin.sx + 6, origin.sy - 6);
+
+    ctx.restore();
+  }
+
+  function drawPolyline(poly){
+    if (!poly || poly.length < 2) return;
+    ctx.beginPath();
+    let started = false;
+    for (let i=0;i<poly.length;i++){
+      const p = poly[i];
+      if (!isFinitePt(p)) { started = false; continue; }
+      const s = worldToScreen(p.x, p.y);
+      if (!started){
+        ctx.moveTo(s.sx, s.sy);
+        started = true;
+      } else {
+        ctx.lineTo(s.sx, s.sy);
+      }
+    }
+    ctx.stroke();
+  }
+
+  function drawObjects(){
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]); // ✅ 모든 도형 기본 실선
+    ctx.lineJoin = "round";
+    ctx.lineCap  = "round";
+
+    // segments/lines/curves
+    for (const o of objects){
+      if (o.kind === "segment"){
+        const A = getById(o.aId), B = getById(o.bId);
+        if (!A || !B) continue;
+        const a = worldToScreen(A.x,A.y);
+        const b = worldToScreen(B.x,B.y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.72)";
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "line"){
+        const poly = sampleObject(o, "render");
+        if (!poly) continue;
+        const a = worldToScreen(poly[0].x,poly[0].y);
+        const b = worldToScreen(poly[1].x,poly[1].y);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.55)";
+        ctx.beginPath(); ctx.moveTo(a.sx,a.sy); ctx.lineTo(b.sx,b.sy); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "circle"){
+        const C = getById(o.cId), P = getById(o.pId);
+        if (!C || !P) continue;
+        const r = dist(C.x,C.y, P.x,P.y);
+        if (r < 1e-12) continue;
+        const c = worldToScreen(C.x, C.y);
+        const rPx = r * cam.scale;
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        ctx.beginPath(); ctx.arc(c.sx, c.sy, rPx, 0, Math.PI*2); ctx.stroke();
+        continue;
+      }
+      if (o.kind === "ellipse"){
+        const F1 = getById(o.f1Id), F2 = getById(o.f2Id), P = getById(o.pId);
+        if (!F1 || !F2 || !P) continue;
+        const sum = dist(F1.x,F1.y,P.x,P.y) + dist(F2.x,F2.y,P.x,P.y);
+        const a = sum/2;
+        const c0 = dist(F1.x,F1.y,F2.x,F2.y)/2;
+        if (a < 1e-10 || a < c0 + 1e-10) continue;
+        const b0 = Math.sqrt(Math.max(0, a*a - c0*c0));
+        const cx = (F1.x+F2.x)/2, cy = (F1.y+F2.y)/2;
+        const ang = Math.atan2(F2.y-F1.y, F2.x-F1.x);
+        const center = worldToScreen(cx, cy);
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        ctx.beginPath();
+        // screen y-axis is inverted, so rotation sign flips
+        ctx.ellipse(center.sx, center.sy, a*cam.scale, b0*cam.scale, -ang, 0, Math.PI*2);
+        ctx.stroke();
+        continue;
+      }
+      if (o.kind === "parabola" || o.kind === "hyperbola"){
+        const poly = sampleObject(o, "render");
+        if (!poly) continue;
+        ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
+        drawPolyline(poly);
+        continue;
+      }
+    }
+
+    // points
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const p = worldToScreen(o.x,o.y);
+      const r = (selected?.id===o.id) ? 6 : 5;
+      ctx.fillStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.9)";
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, r, 0, Math.PI*2); ctx.fill();
+
+      if (o.constraint){
+        ctx.strokeStyle = "rgba(55,214,138,.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.sx, p.sy, r+2, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 2;
+      }
+    }
+
+    ctx.restore();
+  }
+
+  // =========================
+  // UI
+  // =========================
+
+  const btnSelect = $("btnSelect");
+  const btnText   = $("btnText");
+  const btnBasicTools = $("btnBasicTools");
+  const basicMenu = $("basicMenu");
+
+  const integratedTools = new Set(["point","segment","line","circle","parabola","ellipse","hyperbola"]);
+  const toolButtons = [btnSelect, btnText].filter(Boolean);
+  const menuButtons = basicMenu ? [...basicMenu.querySelectorAll(".mBtn")] : [];
+
+  let hintTimer = null;
+  function setHint(text){
+    $("hint").textContent = text;
+  }
+  function flashHint(msg, ms=2200){
+    if (hintTimer) clearTimeout(hintTimer);
+    setHint(msg);
+    hintTimer = setTimeout(() => {
+      hintTimer = null;
+      setHint(t().ui.hint);
+    }, ms);
+  }
+
+  function closeBasicMenu(){
+    if (!basicMenu) return;
+    basicMenu.classList.remove("open");
+    basicMenu.setAttribute("aria-hidden","true");
+  }
+  function toggleBasicMenu(){
+    if (!basicMenu) return;
+    const open = basicMenu.classList.contains("open");
+    if (open){
+      closeBasicMenu();
+    } else {
+      basicMenu.classList.add("open");
+      basicMenu.setAttribute("aria-hidden","false");
+    }
+  }
+
+  // close menu when clicking outside
+  document.addEventListener("pointerdown", (e) => {
+    if (!basicMenu || !basicMenu.classList.contains("open")) return;
+    const target = e.target;
+    if (target === btnBasicTools) return;
+    if (basicMenu.contains(target)) return;
+    closeBasicMenu();
+  }, {capture:true});
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeBasicMenu();
+  });
+
+  if (btnBasicTools){
+    btnBasicTools.addEventListener("click", (e) => {
+      cancelFloatingTip();
+      e.stopPropagation();
+      toggleBasicMenu();
+    });
+  }
+
+  function setCanvasCursor(){
+    if (tool === "select"){
+      if (isPanning || dragging) cv.style.cursor = "grabbing";
+      else cv.style.cursor = "grab";
+    } else {
+      cv.style.cursor = "crosshair";
+    }
+  }
+
+  function resetToolProgress(){
+    segP1 = null; lineP1 = null; circleC = null;
+    parabolaFocus = null; parabolaD1 = null;
+    ellipseF1 = null; ellipseF2 = null;
+    hyperbolaF1 = null; hyperbolaF2 = null;
+  }
+
+  function setToolAndReset(key, tipAnchorBtn){
+    tool = key;
+    selected = null;
+    dragging = null;
+    isPanning = false;
+    panStart = null;
+    resetToolProgress();
+    syncToolUI();
+    markOverlayDirty();
+    if (tipAnchorBtn) armTipForButton(tipAnchorBtn, key);
+    saveToStorage();
+  }
+
+  function syncToolUI(){
+    // select/text buttons
+    if (btnSelect){
+      btnSelect.classList.toggle("active", tool === "select");
+      btnSelect.textContent = t().tools.select.name;
+    }
+    if (btnText){
+      btnText.classList.toggle("active", tool === "text");
+      btnText.textContent = t().tools.text.name;
+    }
+
+    // dropdown label
+    if (btnBasicTools){
+      const baseLabel = (lang === "ko") ? "도구" : "Tools";
+      btnBasicTools.textContent = (integratedTools.has(tool) ? t().tools[tool].name : baseLabel) + " ▾";
+      btnBasicTools.classList.toggle("active", integratedTools.has(tool));
+    }
+
+    // menu items
+    for (const b of menuButtons){
+      const key = b.dataset.tool;
+      b.textContent = t().tools[key].name;
+      b.classList.toggle("active", key === tool);
+    }
+
+    $("btnUndo").textContent = t().ui.undo;
+    $("btnRedo").textContent = t().ui.redo;
+    $("btnLang").textContent = (lang === "ko") ? "KO" : "EN";
+    if (!hintTimer) setHint(t().ui.hint);
+    setCanvasCursor();
+  }
+
+  toolButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      closeBasicMenu();
+      cancelFloatingTip();
+      const key = btn.dataset.tool;
+      setToolAndReset(key, btn);
+    });
+  });
+
+  menuButtons.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      closeBasicMenu();
+      cancelFloatingTip();
+      const key = btn.dataset.tool;
+      setToolAndReset(key, btnBasicTools || btn);
+    });
+  });
+
+  $("btnUndo").addEventListener("click", () => { cancelFloatingTip(); closeBasicMenu(); undo(); });
+  $("btnRedo").addEventListener("click", () => { cancelFloatingTip(); closeBasicMenu(); redo(); });
+
+  $("btnLang").addEventListener("click", () => {
+    cancelFloatingTip();
+    closeBasicMenu();
+    lang = (lang === "ko") ? "en" : "ko";
+    syncToolUI();
+    markOverlayDirty();
+  });
+
+
+  // =========================
+  // Canvas events
+  // =========================
+  function isEditorOpen(){
+    return objEditor.style.display === "block" || textEditor.style.display === "block";
+  }
+
+  // =========================
+  // Touch: pinch zoom & multi-touch safe tap
+  // - 두 손가락 핀치: 벌어지면 확대, 모이면 축소
+  // - 두 손가락이 동시에 닿을 때는 점/도형 생성(탭)을 실행하지 않음
+  // =========================
+  const touchActive = new Map(); // pointerId -> {x,y,startX,startY,moved}
+  let pinchState = null;         // {ids:[id1,id2], startDist, startScale, anchor:{wx,wy}}
+  let pendingTap = null;         // {pointerId, toolAtDown}
+  let suppressTapUntil = 0;
+  const TAP_MOVE_PX = 8;
+
+  function startPinch(){
+    if (touchActive.size !== 2) return false;
+    const ids = [...touchActive.keys()];
+    const a = touchActive.get(ids[0]);
+    const b = touchActive.get(ids[1]);
+    if (!a || !b) return false;
+
+    const cx = (a.x + b.x) / 2;
+    const cy = (a.y + b.y) / 2;
+    const {sx,sy} = clientToCanvas(cx, cy);
+    const anchor = screenToWorld(sx, sy);
+
+    pushState();
+    pinchState = {
+      ids,
+      startDist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      startScale: cam.scale,
+      anchor: { wx: anchor.wx, wy: anchor.wy },
+    };
+
+    pendingTap = null;
+    suppressTapUntil = performance.now() + 250;
+
+    // cancel other interactions while pinching
+    dragging = null;
+    isPanning = false;
+    panStart = null;
+
+    setCanvasCursor();
+    saveToStorage();
+    markOverlayDirty();
+    return true;
+  }
+
+  function updatePinch(){
+    if (!pinchState) return false;
+    const [id1,id2] = pinchState.ids;
+    const a = touchActive.get(id1);
+    const b = touchActive.get(id2);
+    if (!a || !b) return false;
+
+    const cx = (a.x + b.x) / 2;
+    const cy = (a.y + b.y) / 2;
+    const distNow = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const ratio = distNow / (pinchState.startDist || distNow);
+    cam.scale = clamp(pinchState.startScale * ratio, SCALE_MIN, SCALE_MAX);
+
+    // keep anchor under pinch center
+    const {sx,sy} = clientToCanvas(cx, cy);
+    const {w,h} = canvasSizeCSS();
+    cam.x = pinchState.anchor.wx - (sx - w/2) / cam.scale;
+    cam.y = pinchState.anchor.wy - (h/2 - sy) / cam.scale;
+
+    saveToStorage();
+    markOverlayDirty();
+    setCanvasCursor();
+    return true;
+  }
+
+  function endPinch(){
+    pinchState = null;
+    suppressTapUntil = performance.now() + 180;
+  }
+
+  function handleCreateToolsAt(w, clientX, clientY){
+    // ===== POINT TOOL =====
+    if (tool === "point"){
+      // 1) intersection first
+      const hit = findNearestIntersectionCandidate(w.wx, w.wy);
+      if (hit){
+        pushState();
+        const p = createIntersectionPoint(hit);
+        selected = {id:p.id};
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // 2) on-object point
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && obj.kind !== "point" && obj.kind !== "text"){
+        pushState();
+        const p = createPointOnObject(obj.id, w.wx, w.wy);
+        if (p){
+          selected = {id:p.id};
+          saveToStorage();
+          markOverlayDirty();
+          return;
+        }
+      }
+
+      // 3) free point
+      pushState();
+      const p = ensurePointAt(w.wx,w.wy);
+      selected = {id:p.id};
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== SEGMENT TOOL =====
+    if (tool === "segment"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!segP1){
+        segP1 = p.id;
+      } else {
+        if (segP1 !== p.id) createSegment(segP1, p.id);
+        segP1 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== LINE TOOL =====
+    if (tool === "line"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!lineP1){
+        lineP1 = p.id;
+      } else {
+        if (lineP1 !== p.id) createLine(lineP1, p.id);
+        lineP1 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== CIRCLE TOOL =====
+    if (tool === "circle"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!circleC){
+        circleC = p.id;
+      } else {
+        if (circleC !== p.id) createCircle(circleC, p.id);
+        circleC = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== PARABOLA TOOL =====
+    if (tool === "parabola"){
+      pushState();
+
+      if (!parabolaFocus){
+        const p = getOrCreatePointForClick(w.wx,w.wy);
+        parabolaFocus = p.id;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // prefer clicking existing line/segment as directrix
+      const id = hitTest(w.wx,w.wy);
+      const obj = id ? getById(id) : null;
+      if (obj && (obj.kind === "line" || obj.kind === "segment")){
+        const p1 = getById(obj.aId);
+        const p2 = getById(obj.bId);
+        if (p1 && p2 && parabolaFocus){
+          createParabola(parabolaFocus, p1.id, p2.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+        selected = null;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
+
+      // else define directrix by two points
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!parabolaD1){
+        parabolaD1 = p.id;
+      } else {
+        if (parabolaD1 !== p.id && parabolaFocus){
+          createParabola(parabolaFocus, parabolaD1, p.id);
+        }
+        parabolaFocus = null;
+        parabolaD1 = null;
+      }
+
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== ELLIPSE TOOL =====
+    if (tool === "ellipse"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!ellipseF1){
+        ellipseF1 = p.id;
+      } else if (!ellipseF2){
+        ellipseF2 = p.id;
+        if (ellipseF2 === ellipseF1) ellipseF2 = null;
+      } else {
+        if (ellipseF1 && ellipseF2 && p.id !== ellipseF1 && p.id !== ellipseF2){
+          createEllipse(ellipseF1, ellipseF2, p.id);
+        }
+        ellipseF1 = null;
+        ellipseF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== HYPERBOLA TOOL =====
+    if (tool === "hyperbola"){
+      pushState();
+      const p = getOrCreatePointForClick(w.wx,w.wy);
+      if (!hyperbolaF1){
+        hyperbolaF1 = p.id;
+      } else if (!hyperbolaF2){
+        hyperbolaF2 = p.id;
+        if (hyperbolaF2 === hyperbolaF1) hyperbolaF2 = null;
+      } else {
+        // validate before create
+        const F1 = getById(hyperbolaF1);
+        const F2 = getById(hyperbolaF2);
+        const P  = getById(p.id);
+        if (F1 && F2 && P){
+          const c = dist(F1.x,F1.y,F2.x,F2.y)/2;
+          const a = Math.abs(dist(P.x,P.y,F1.x,F1.y) - dist(P.x,P.y,F2.x,F2.y))/2;
+          if (a > 1e-6 && a < c - 1e-6){
+            createHyperbola(hyperbolaF1, hyperbolaF2, p.id);
+          } else {
+            flashHint(t().ui.warnHyperbola);
+          }
+        }
+        hyperbolaF1 = null;
+        hyperbolaF2 = null;
+      }
+      selected = null;
+      saveToStorage();
+      markOverlayDirty();
+      return;
+    }
+
+    // ===== TEXT TOOL =====
+    if (tool === "text"){
+      pushState();
+      const id = createText(w.wx, w.wy, (lang==="ko" ? "텍스트" : "Text") + "\n$y=x^2$");
+      selected = {id};
+      saveToStorage();
+      markOverlayDirty();
+      openTextEditorFor(id, clientX, clientY);
+      return;
+    }
+  }
+
+
+  cv.addEventListener("pointermove", (e) => {
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+
+    // touch tracking / pinch
+    if (e.pointerType === "touch"){
+      const tinfo = touchActive.get(e.pointerId);
+      if (tinfo){
+        const dx0 = e.clientX - tinfo.startX;
+        const dy0 = e.clientY - tinfo.startY;
+        const moved = tinfo.moved || (dx0*dx0 + dy0*dy0 > TAP_MOVE_PX*TAP_MOVE_PX);
+        touchActive.set(e.pointerId, { ...tinfo, x:e.clientX, y:e.clientY, moved });
+        if (pendingTap && pendingTap.pointerId === e.pointerId && moved) pendingTap = null;
+      }
+
+      if (pinchState){
+        if (updatePinch()){
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+
+    // pan
+    if (isPanning && panStart){
+      const dx = sx - panStart.sx;
+      const dy = sy - panStart.sy;
+      cam.x = panStart.camX - dx / panStart.scale;
+      cam.y = panStart.camY + dy / panStart.scale;
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+      return;
+    }
+
+    // drag (point/text)
+    if (dragging && dragging.pointerId === e.pointerId){
+      const w = screenToWorld(sx, sy);
+      const obj = getById(dragging.id);
+      if (!obj) return;
+
+      const nx = w.wx + (dragging.offX || 0);
+      const ny = w.wy + (dragging.offY || 0);
+
+      if (dragging.kind === "point"){
+        if (obj.constraint?.type === "intersection"){
+          return;
+        }
+        if (obj.constraint?.type === "on"){
+          const parent = getById(obj.constraint.parentId);
+          const poly = parent ? sampleObject(parent, "constraint") : null;
+          if (poly){
+            const proj = polylineProject(poly, {x:nx, y:ny});
+            obj.x = proj.x; obj.y = proj.y; obj.constraint.t = proj.t;
+          } else {
+            obj.x = nx; obj.y = ny;
+          }
+        } else {
+          obj.x = nx; obj.y = ny;
+        }
+      }
+
+      if (dragging.kind === "text"){
+        obj.x = nx; obj.y = ny;
+      }
+
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+      return;
+    }
+  });
+
+  cv.addEventListener("pointerdown", (e) => {
+    cancelFloatingTip();
+    if (isEditorOpen()) return;
+
+    lastMouseClient.cx = e.clientX;
+    lastMouseClient.cy = e.clientY;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
+
+
+    // Touch (mobile): pinch zoom + safe tap
+    if (e.pointerType === "touch"){
+      touchActive.set(e.pointerId, {x:e.clientX, y:e.clientY, startX:e.clientX, startY:e.clientY, moved:false});
+      try { cv.setPointerCapture(e.pointerId); } catch {}
+
+      // if 2 fingers are down => pinch zoom
+      if (touchActive.size === 2){
+        startPinch();
+        e.preventDefault();
+        return;
+      }
+
+      // while pinching, ignore extra touches
+      if (pinchState){
+        e.preventDefault();
+        return;
+      }
+
+      // creation tools: defer to pointerup tap (prevents accidental point creation on pinch)
+      if (tool !== "select"){
+        pendingTap = {pointerId: e.pointerId, toolAtDown: tool};
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // ===== SELECT TOOL =====
+    if (tool === "select"){
+      const id = hitTest(w.wx,w.wy);
+      if (id){
+        selected = {id};
+        const obj = getById(id);
+
+        if (obj?.kind === "point"){
+          if (!obj.constraint || obj.constraint.type !== "intersection"){
+            pushState();
+            dragging = {
+              id, kind:"point",
+              offX: obj.x - w.wx,
+              offY: obj.y - w.wy,
+              pointerId: e.pointerId
+            };
+            try { cv.setPointerCapture(e.pointerId); } catch {}
+          }
+        } else {
+          dragging = null;
+        }
+
+        isPanning = false;
+        panStart = null;
+      } else {
+        // pan on empty space
+        selected = null;
+        dragging = null;
+        pushState();
+        isPanning = true;
+        panStart = { sx, sy, camX: cam.x, camY: cam.y, scale: cam.scale };
+        try { cv.setPointerCapture(e.pointerId); } catch {}
+      }
+
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+      return;
+    }
+
+
+    handleCreateToolsAt(w, e.clientX, e.clientY);
+    return;
+
+  });
+
+  cv.addEventListener("pointerup", (e) => {
+
+    // touch: handle pending tap & pinch end
+    if (e.pointerType === "touch"){
+      const tinfo = touchActive.get(e.pointerId);
+      touchActive.delete(e.pointerId);
+
+      if (pinchState){
+        const [id1,id2] = pinchState.ids;
+        if (!touchActive.has(id1) || !touchActive.has(id2) || touchActive.size < 2){
+          endPinch();
+        }
+      }
+
+      if (pendingTap && pendingTap.pointerId === e.pointerId){
+        const now = performance.now();
+        const moved = tinfo ? !!tinfo.moved : false;
+        const sameTool = (tool === pendingTap.toolAtDown);
+        if (!moved && sameTool && now >= suppressTapUntil && !pinchState){
+          const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+          const w = screenToWorld(sx, sy);
+          handleCreateToolsAt(w, e.clientX, e.clientY);
+        }
+        pendingTap = null;
+      }
+    }
+
+    isPanning = false;
+    panStart = null;
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+    }
+    setCanvasCursor();
+    try { cv.releasePointerCapture(e.pointerId); } catch {}
+    saveToStorage();
+    markOverlayDirty();
+  });
+
+  cv.addEventListener("wheel", (e) => {
+    cancelFloatingTip();
+    if (isEditorOpen()) return;
+
+    const delta = Math.sign(e.deltaY);
+    const factor = (delta > 0) ? 0.92 : 1.08;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const before = screenToWorld(sx, sy);
+
+    pushState();
+    cam.scale = clamp(cam.scale * factor, SCALE_MIN, SCALE_MAX);
+
+    const after = screenToWorld(sx, sy);
+    cam.x += (before.wx - after.wx);
+    cam.y += (before.wy - after.wy);
+
+    saveToStorage();
+    markOverlayDirty();
+    e.preventDefault();
+  }, {passive:false});
+
+  // 모든 객체 더블클릭: 속성창
+  
+  cv.addEventListener("pointercancel", (e) => {
+    if (e.pointerType === "touch"){
+      touchActive.delete(e.pointerId);
+      if (pendingTap && pendingTap.pointerId === e.pointerId) pendingTap = null;
+
+      if (pinchState){
+        const [id1,id2] = pinchState.ids;
+        if (!touchActive.has(id1) || !touchActive.has(id2) || touchActive.size < 2){
+          endPinch();
+        }
+      }
+    }
+
+    isPanning = false;
+    panStart = null;
+    if (dragging && dragging.pointerId === e.pointerId) dragging = null;
+    setCanvasCursor();
+    try { cv.releasePointerCapture(e.pointerId); } catch {}
+  });
+
+cv.addEventListener("dblclick", (e) => {
+    cancelFloatingTip();
+    if (isEditorOpen()) return;
+
+    const {sx,sy} = clientToCanvas(e.clientX, e.clientY);
+    const w = screenToWorld(sx, sy);
+    const id = hitTest(w.wx,w.wy);
+    if (!id) return;
+
+    selected = {id};
+    markOverlayDirty();
+    openObjEditor(id, e.clientX, e.clientY);
+    e.preventDefault();
+  });
+
+  // 선택 상태에서 Enter: 속성창
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (isEditorOpen()) return;
+    if (tool !== "select") return;
+    if (!selected?.id) return;
+
+    openObjEditor(selected.id, lastMouseClient.cx ?? 200, lastMouseClient.cy ?? 120);
+    e.preventDefault();
+  });
+
+  overlay.addEventListener("pointerup", (e) => {
+    if (dragging && dragging.pointerId === e.pointerId){
+      dragging = null;
+      isPanning = false;
+      panStart = null;
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+    }
+  }, {passive:true});
+
+  // =========================
+  // init
+  // =========================
+  function loop(){
+    updateDependentPoints();
+
+    const {w,h} = canvasSizeCSS();
+    ctx.clearRect(0,0,w,h);
+    drawGrid();
+    drawAxes();
+    drawObjects();
+    syncOverlay();
+
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  loadFromStorage();
+  normalizeAllPointLabels();
+  syncToolUI();
+  pushState();
+  markOverlayDirty();
+  loop();
+
+})();
+</script>
+</body>
+</html>
