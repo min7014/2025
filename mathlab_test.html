@@ -236,6 +236,7 @@
   <div class="row"><label id="lblCaption">캡션</label><textarea id="objCaption" placeholder="예: $\\mathrm{A}$ 또는 $y=x^2$"></textarea></div>
   <div class="row" id="rowX"><label>X</label><input id="objX" /></div>
   <div class="row" id="rowY"><label>Y</label><input id="objY" /></div>
+  <div class="row" id="rowR"><label>R</label><input id="objR" placeholder="반지름" /></div>
   <div class="actions">
     <button class="btn mini danger" id="btnObjCancel">취소</button>
     <button class="btn mini" id="btnObjSave">저장</button>
@@ -283,7 +284,7 @@
         point:     { name:"점", desc:"클릭으로 점 생성. 도형 위 클릭이면 도형 위 종속점 생성. 교점 근처 클릭이면 교점 생성." },
         segment:   { name:"선분", desc:"첫 점 선택/생성 → 둘째 점 선택/생성: 선분 생성. 이후 자동 초기화되어 (3,4), (5,6)… 방식." },
         line:      { name:"직선", desc:"두 점 선택/생성으로 직선 생성." },
-        circle:    { name:"원", desc:"중심 점 → 원 위 점 선택/생성으로 원 생성." },
+        circle:    { name:"원", desc:"점 선택 또는 화면 클릭이 중심, 드래그로 반지름을 정해 원 생성." },
         parabola:  { name:"포물선", desc:"초점 점 선택/생성 → 준선 지정(직선/선분 선택 또는 두 점으로 직선)으로 포물선 생성." },
         ellipse:   { name:"타원", desc:"초점1 → 초점2 → 타원 위 점으로 타원 생성." },
         hyperbola: { name:"쌍곡선", desc:"초점1 → 초점2 → 쌍곡선 위 점으로 쌍곡선 생성. (|PF1-PF2|>0 이어야 함)" },
@@ -296,6 +297,7 @@
         textTitle:"텍스트 편집", content:"내용",
         undo:"이전(Undo)", redo:"다음(Redo)",
         warnHyperbola:"쌍곡선 생성 실패: 두 초점과 점 선택을 확인해 주세요.",
+        circleDragHint:"원 도구: 중심을 찍고(점/빈곳) 누른 채로 드래그하여 반지름을 정해 주세요.",
       }
     },
     en: {
@@ -304,7 +306,7 @@
         point:     { name:"Point", desc:"Click to create a point. Click on an object to create a constrained point. Click near intersections to create an intersection point." },
         segment:   { name:"Segment", desc:"Pick/create first point → second point to create a segment, then resets (pairs: 1-2, 3-4, ...)." },
         line:      { name:"Line", desc:"Pick/create two points to create a line." },
-        circle:    { name:"Circle", desc:"Center point → point on circle." },
+        circle:    { name:"Circle", desc:"Pick center (point or anywhere), drag to set radius." },
         parabola:  { name:"Parabola", desc:"Focus point → choose directrix (line/segment) or define by two points." },
         ellipse:   { name:"Ellipse", desc:"Focus1 → Focus2 → a point on the ellipse." },
         hyperbola: { name:"Hyperbola", desc:"Focus1 → Focus2 → a point on the hyperbola. (Requires |PF1-PF2|>0)" },
@@ -317,6 +319,7 @@
         textTitle:"Edit Text", content:"Content",
         undo:"Undo", redo:"Redo",
         warnHyperbola:"Failed to create hyperbola: check the two foci and the chosen point.",
+        circleDragHint:"Circle tool: press and drag from the center to set the radius.",
       }
     }
   };
@@ -389,6 +392,10 @@
   let ellipseF2 = null;
   let hyperbolaF1 = null;
   let hyperbolaF2 = null;
+
+  // circle drag creation
+  let circleDraft = null;        // {pointerId, cId, createdCenter, r}
+  let pendingCircleTouch = null; // {pointerId, startWx, startWy}
 
   const cam = { x:0, y:0, scale:70 };
   const SCALE_MIN = 10;
@@ -842,9 +849,14 @@
     }
 
     if (obj.kind === "circle"){
-      const C = getById(obj.cId), P = getById(obj.pId);
-      if (!C || !P) return null;
-      const r = dist(C.x,C.y, P.x,P.y);
+      const C = getById(obj.cId);
+      if (!C) return null;
+      let r = (Number.isFinite(obj.r) && obj.r > 0) ? obj.r : null;
+      if (r == null){
+        const P = obj.pId ? getById(obj.pId) : null;
+        if (!P) return null;
+        r = dist(C.x,C.y, P.x,P.y);
+      }
       if (r < 1e-12) return null;
       const lenPx = (2*Math.PI*r) * cam.scale;
       const N = dynN(lenPx, mode, 240, (mode==="render"?60000:14000));
@@ -1093,6 +1105,55 @@
     return ensurePointAt(wx,wy);
   }
 
+  function findNearestPoint(wx, wy, tol){
+    const t = tol ?? worldTol();
+    let best = null;
+    for (const o of objects){
+      if (o.kind !== "point") continue;
+      const d = dist2(o.x,o.y, wx,wy);
+      if (d <= t*t && (!best || d < best.d)) best = {p:o, d};
+    }
+    if (best){
+      applyAutoPointLabel(best.p);
+      return best.p;
+    }
+    return null;
+  }
+
+  function getOrCreatePointForClickFlag(wx, wy){
+    const p = findNearestPoint(wx,wy);
+    if (p) return {p, created:false};
+    const np = ensurePointAt(wx,wy);
+    return {p:np, created:true};
+  }
+
+  function isPointReferenced(pid){
+    for (const o of objects){
+      if (o.kind === "segment" || o.kind === "line"){
+        if (o.aId === pid || o.bId === pid) return true;
+      }
+      if (o.kind === "circle"){
+        if (o.cId === pid || o.pId === pid) return true;
+      }
+      if (o.kind === "parabola"){
+        if (o.fId === pid || o.p1Id === pid || o.p2Id === pid) return true;
+      }
+      if (o.kind === "ellipse"){
+        if (o.f1Id === pid || o.f2Id === pid || o.pId === pid) return true;
+      }
+      if (o.kind === "hyperbola"){
+        if (o.f1Id === pid || o.f2Id === pid || o.pId === pid) return true;
+      }
+      if (o.kind === "point"){
+        const c = o.constraint;
+        if (c?.type === "on" && c.parentId === pid) return true;
+        if (c?.type === "intersection" && (c.aId === pid || c.bId === pid)) return true;
+      }
+    }
+    return false;
+  }
+
+
   function createIntersectionPoint(hit){
     const id = "p_" + rndId();
     const p = {
@@ -1132,9 +1193,19 @@
     markOverlayDirty();
     return id;
   }
+
   function createCircle(cId, pId){
     const id = "c_" + rndId();
-    objects.push({id, kind:"circle", cId, pId, name:"", caption:""});
+    const C = getById(cId);
+    const P = pId ? getById(pId) : null;
+    const r = (C && P) ? dist(C.x,C.y,P.x,P.y) : null;
+    objects.push({id, kind:"circle", cId, pId: (pId||null), r: (Number.isFinite(r)?r:null), name:"", caption:""});
+    markOverlayDirty();
+    return id;
+  }
+  function createCircleByRadius(cId, r){
+    const id = "c_" + rndId();
+    objects.push({id, kind:"circle", cId, pId:null, r: Math.abs(r), name:"", caption:""});
     markOverlayDirty();
     return id;
   }
@@ -1210,8 +1281,10 @@
   const objCaption = $("objCaption");
   const rowX = $("rowX");
   const rowY = $("rowY");
+  const rowR = $("rowR");
   const objX = $("objX");
   const objY = $("objY");
+  const objR = $("objR");
   let editingObjId = null;
 
   function openObjEditor(id, clientX, clientY){
@@ -1228,7 +1301,6 @@
     objId.value = obj.id;
     objName.value = obj.name || "";
     objCaption.value = obj.caption || "";
-
     const showXY = (obj.kind === "point" || obj.kind === "text");
     rowX.style.display = showXY ? "flex" : "none";
     rowY.style.display = showXY ? "flex" : "none";
@@ -1237,9 +1309,21 @@
       objY.value = (obj.y ?? 0);
     }
 
-    const pad = 10;
+    const showR = (obj.kind === "circle");
+    rowR.style.display = showR ? "flex" : "none";
+    if (showR){
+      let r = null;
+      if (Number.isFinite(obj.r) && obj.r > 0) r = obj.r;
+      else {
+        const C = getById(obj.cId);
+        const P = obj.pId ? getById(obj.pId) : null;
+        if (C && P) r = dist(C.x,C.y,P.x,P.y);
+      }
+      objR.value = (r ?? "");
+    }
+const pad = 10;
     const w = 340;
-    const h = 320;
+    const h = 360;
     const x = clamp(clientX + 12, pad, window.innerWidth - w - pad);
     const y = clamp(clientY + 12, pad, window.innerHeight - h - pad);
     objEditor.style.left = x + "px";
@@ -1273,6 +1357,15 @@
       const y = parseFloat(objY.value);
       if (Number.isFinite(x)) obj.x = x;
       if (Number.isFinite(y)) obj.y = y;
+    }
+
+    if (obj.kind === "circle"){
+      const r = parseFloat(objR.value);
+      if (Number.isFinite(r) && r > 0){
+        obj.r = r;
+        // radius edit => detach from point-on-circle definition (if any)
+        obj.pId = null;
+      }
     }
 
     closeObjEditor();
@@ -1608,9 +1701,14 @@
         continue;
       }
       if (o.kind === "circle"){
-        const C = getById(o.cId), P = getById(o.pId);
-        if (!C || !P) continue;
-        const r = dist(C.x,C.y, P.x,P.y);
+        const C = getById(o.cId);
+        if (!C) continue;
+        let r = (Number.isFinite(o.r) && o.r > 0) ? o.r : null;
+        if (r == null){
+          const P = o.pId ? getById(o.pId) : null;
+          if (!P) continue;
+          r = dist(C.x,C.y, P.x,P.y);
+        }
         if (r < 1e-12) continue;
         const c = worldToScreen(C.x, C.y);
         const rPx = r * cam.scale;
@@ -1642,6 +1740,17 @@
         ctx.strokeStyle = (selected?.id===o.id) ? "rgba(90,162,255,.95)" : "rgba(232,238,252,.62)";
         drawPolyline(poly);
         continue;
+      }
+    }
+
+    // draft circle preview
+    if (circleDraft){
+      const C = getById(circleDraft.cId);
+      const r = circleDraft.r;
+      if (C && Number.isFinite(r) && r > 1e-9){
+        const c = worldToScreen(C.x, C.y);
+        ctx.strokeStyle = "rgba(232,238,252,.35)";
+        ctx.beginPath(); ctx.arc(c.sx, c.sy, r * cam.scale, 0, Math.PI*2); ctx.stroke();
       }
     }
 
@@ -1741,6 +1850,7 @@
     parabolaFocus = null; parabolaD1 = null;
     ellipseF1 = null; ellipseF2 = null;
     hyperbolaF1 = null; hyperbolaF2 = null;
+    circleDraft = null; pendingCircleTouch = null;
   }
 
   function setToolAndReset(key, tipAnchorBtn){
@@ -1850,6 +1960,8 @@
     const anchor = screenToWorld(sx, sy);
 
     pushState();
+    circleDraft = null;
+    pendingCircleTouch = null;
     pinchState = {
       ids,
       startDist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
@@ -1969,24 +2081,13 @@
       markOverlayDirty();
       return;
     }
-
     // ===== CIRCLE TOOL =====
+    // 원은 "중심 지정 후 드래그"로 생성됩니다. (pointerdown → move → up)
     if (tool === "circle"){
-      pushState();
-      const p = getOrCreatePointForClick(w.wx,w.wy);
-      if (!circleC){
-        circleC = p.id;
-      } else {
-        if (circleC !== p.id) createCircle(circleC, p.id);
-        circleC = null;
-      }
-      selected = null;
-      saveToStorage();
-      markOverlayDirty();
+      flashHint(t().ui.circleDragHint);
       return;
     }
-
-    // ===== PARABOLA TOOL =====
+// ===== PARABOLA TOOL =====
     if (tool === "parabola"){
       pushState();
 
@@ -2126,6 +2227,35 @@
     }
 
 
+    // circle drag update
+    if (tool === "circle"){
+      // touch: commit center only after it is clearly a 1-finger drag
+      if (e.pointerType === "touch" && pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId && !circleDraft){
+        const info = touchActive.get(e.pointerId);
+        if (info && info.moved && touchActive.size === 1 && !pinchState){
+          pushState();
+          const got = getOrCreatePointForClickFlag(pendingCircleTouch.startWx, pendingCircleTouch.startWy);
+          selected = null;
+          circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0 };
+          pendingCircleTouch = null;
+          try { cv.setPointerCapture(e.pointerId); } catch {}
+        }
+      }
+
+      if (circleDraft && circleDraft.pointerId === e.pointerId){
+        const C = getById(circleDraft.cId);
+        if (C){
+          const ww = screenToWorld(sx, sy);
+          circleDraft.r = dist(C.x, C.y, ww.wx, ww.wy);
+          markOverlayDirty();
+          setCanvasCursor();
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+
     // pan
     if (isPanning && panStart){
       const dx = sx - panStart.sx;
@@ -2205,6 +2335,20 @@
         return;
       }
 
+      // circle tool: drag to set radius (avoid creating points on 2-finger touches)
+      if (tool === "circle"){
+        pendingCircleTouch = {pointerId:e.pointerId, startWx:w.wx, startWy:w.wy};
+        e.preventDefault();
+        return;
+      }
+
+      // circle tool: drag to set radius (avoid creating points on 2-finger touches)
+      if (tool === "circle"){
+        pendingCircleTouch = {pointerId: e.pointerId, startWx: w.wx, startWy: w.wy};
+        e.preventDefault();
+        return;
+      }
+
       // creation tools: defer to pointerup tap (prevents accidental point creation on pinch)
       if (tool !== "select"){
         pendingTap = {pointerId: e.pointerId, toolAtDown: tool};
@@ -2254,12 +2398,48 @@
     }
 
 
+    if (tool === "circle"){
+      // mouse/pen: start drag circle creation
+      pushState();
+      const got = getOrCreatePointForClickFlag(w.wx, w.wy);
+      selected = null;
+      circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0 };
+      try { cv.setPointerCapture(e.pointerId); } catch {}
+      e.preventDefault();
+      markOverlayDirty();
+      saveToStorage();
+      return;
+    }
+
     handleCreateToolsAt(w, e.clientX, e.clientY);
     return;
 
   });
 
   cv.addEventListener("pointerup", (e) => {
+
+    // circle drag finalize (mouse/pen)
+    if (e.pointerType !== "touch" && circleDraft && circleDraft.pointerId === e.pointerId){
+      const centerId = circleDraft.cId;
+      const created = circleDraft.createdCenter;
+      const r = circleDraft.r;
+      circleDraft = null;
+
+      const C = getById(centerId);
+      if (C && Number.isFinite(r) && r > 1e-6){
+        createCircleByRadius(centerId, r);
+      } else {
+        if (created && C && !isPointReferenced(centerId)){
+          const idx = objects.findIndex(o => o.id === centerId);
+          if (idx >= 0) objects.splice(idx,1);
+        }
+      }
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+      e.preventDefault();
+      return;
+    }
 
     // touch: handle pending tap & pinch end
     if (e.pointerType === "touch"){
@@ -2271,6 +2451,34 @@
         if (!touchActive.has(id1) || !touchActive.has(id2) || touchActive.size < 2){
           endPinch();
         }
+      }
+
+      // circle drag finalize (touch)
+      if (circleDraft && circleDraft.pointerId === e.pointerId){
+        const centerId = circleDraft.cId;
+        const created = circleDraft.createdCenter;
+        const r = circleDraft.r;
+        circleDraft = null;
+        pendingCircleTouch = null;
+
+        const C = getById(centerId);
+        if (C && Number.isFinite(r) && r > 1e-6){
+          createCircleByRadius(centerId, r);
+        } else {
+          if (created && C && !isPointReferenced(centerId)){
+            const idx = objects.findIndex(o => o.id === centerId);
+            if (idx >= 0) objects.splice(idx,1);
+          }
+        }
+        saveToStorage();
+        markOverlayDirty();
+        setCanvasCursor();
+        e.preventDefault();
+        return;
+      }
+
+      if (pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId){
+        pendingCircleTouch = null;
       }
 
       if (pendingTap && pendingTap.pointerId === e.pointerId){
@@ -2322,6 +2530,13 @@
   // 모든 객체 더블클릭: 속성창
   
   cv.addEventListener("pointercancel", (e) => {
+    if (circleDraft && circleDraft.pointerId === e.pointerId){
+      circleDraft = null;
+      saveToStorage();
+      markOverlayDirty();
+      setCanvasCursor();
+    }
+    if (pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId) pendingCircleTouch = null;
     if (e.pointerType === "touch"){
       touchActive.delete(e.pointerId);
       if (pendingTap && pendingTap.pointerId === e.pointerId) pendingTap = null;
