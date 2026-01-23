@@ -2082,10 +2082,24 @@ const pad = 10;
       return;
     }
     // ===== CIRCLE TOOL =====
-    // 원은 "중심 지정 후 드래그"로 생성됩니다. (pointerdown → move → up)
+    // 1) 두 번 클릭/탭: 중심 → 원 위의 점
+    // 2) 드래그: 중심 지정 후 드래그로 반지름 결정 (pointerdown/move/up에서 처리)
     if (tool === "circle"){
-      flashHint(t().ui.circleDragHint);
-      return;
+      pushState();
+      if (!circleC){
+        const c = getOrCreatePointForClick(w.wx, w.wy);
+        circleC = c.id;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      } else {
+        const p = getOrCreatePointForClick(w.wx, w.wy);
+        createCircle(circleC, p.id);
+        circleC = null;
+        saveToStorage();
+        markOverlayDirty();
+        return;
+      }
     }
 // ===== PARABOLA TOOL =====
     if (tool === "parabola"){
@@ -2227,36 +2241,38 @@ const pad = 10;
     }
 
 
-    // circle drag update
-    if (tool === "circle"){
-      // touch: commit center only after it is clearly a 1-finger drag
-      if (e.pointerType === "touch" && pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId && !circleDraft){
-        const info = touchActive.get(e.pointerId);
-        if (info && info.moved && touchActive.size === 1 && !pinchState){
-          pushState();
-          const got = getOrCreatePointForClickFlag(pendingCircleTouch.startWx, pendingCircleTouch.startWy);
-          selected = null;
-          circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0 };
-          pendingCircleTouch = null;
-          try { cv.setPointerCapture(e.pointerId); } catch {}
-        }
-      }
-
-      if (circleDraft && circleDraft.pointerId === e.pointerId){
-        const C = getById(circleDraft.cId);
-        if (C){
-          const ww = screenToWorld(sx, sy);
-          circleDraft.r = dist(C.x, C.y, ww.wx, ww.wy);
-          markOverlayDirty();
-          setCanvasCursor();
-          e.preventDefault();
-          return;
-        }
+    // circle draft update (drag radius)
+    // touch stage1: create center only after it is clearly a 1-finger drag (prevents accidental point creation on pinch)
+    if (e.pointerType === "touch" && pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId && !circleDraft){
+      const info = touchActive.get(e.pointerId);
+      if (info && info.moved && touchActive.size === 1 && !pinchState){
+        pushState();
+        const got = getOrCreatePointForClickFlag(pendingCircleTouch.startWx, pendingCircleTouch.startWy);
+        selected = null;
+        circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0, moved:true, startX: info.startX, startY: info.startY };
+        pendingCircleTouch = null;
+        try { cv.setPointerCapture(e.pointerId); } catch {}
       }
     }
 
-
-    // pan
+    if (circleDraft && circleDraft.pointerId === e.pointerId){
+      const C = getById(circleDraft.cId);
+      if (C){
+        const ww = screenToWorld(sx, sy);
+        circleDraft.r = dist(C.x, C.y, ww.wx, ww.wy);
+        const dx = e.clientX - (circleDraft.startX ?? e.clientX);
+        const dy = e.clientY - (circleDraft.startY ?? e.clientY);
+        const movedPx2 = dx*dx + dy*dy;
+        if (movedPx2 > 36 || (Number.isFinite(circleDraft.r) && circleDraft.r * cam.scale > 6)){
+          circleDraft.moved = true;
+        }
+        markOverlayDirty();
+        setCanvasCursor();
+        e.preventDefault();
+        return;
+      }
+    }
+// pan
     if (isPanning && panStart){
       const dx = sx - panStart.sx;
       const dy = sy - panStart.sy;
@@ -2335,16 +2351,9 @@ const pad = 10;
         return;
       }
 
-      // circle tool: drag to set radius (avoid creating points on 2-finger touches)
-      if (tool === "circle"){
+      // circle tool (touch): stage1 drag/tap sets center only when NOT already waiting for 2nd point
+      if (tool === "circle" && !circleC){
         pendingCircleTouch = {pointerId:e.pointerId, startWx:w.wx, startWy:w.wy};
-        e.preventDefault();
-        return;
-      }
-
-      // circle tool: drag to set radius (avoid creating points on 2-finger touches)
-      if (tool === "circle"){
-        pendingCircleTouch = {pointerId: e.pointerId, startWx: w.wx, startWy: w.wy};
         e.preventDefault();
         return;
       }
@@ -2399,11 +2408,17 @@ const pad = 10;
 
 
     if (tool === "circle"){
-      // mouse/pen: start drag circle creation
+      // mouse/pen: if waiting for 2nd point, treat this as the 2nd click
+      if (circleC){
+        handleCreateToolsAt(w, e.clientX, e.clientY);
+        e.preventDefault();
+        return;
+      }
+      // otherwise: start drag-or-click (drag => radius, click => center stage)
       pushState();
       const got = getOrCreatePointForClickFlag(w.wx, w.wy);
       selected = null;
-      circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0 };
+      circleDraft = { pointerId: e.pointerId, cId: got.p.id, createdCenter: got.created, r: 0, moved:false, startX:e.clientX, startY:e.clientY };
       try { cv.setPointerCapture(e.pointerId); } catch {}
       e.preventDefault();
       markOverlayDirty();
@@ -2418,22 +2433,22 @@ const pad = 10;
 
   cv.addEventListener("pointerup", (e) => {
 
-    // circle drag finalize (mouse/pen)
+    // circle drag/click finalize (mouse/pen)
     if (e.pointerType !== "touch" && circleDraft && circleDraft.pointerId === e.pointerId){
       const centerId = circleDraft.cId;
-      const created = circleDraft.createdCenter;
       const r = circleDraft.r;
+      const moved = !!circleDraft.moved || (Number.isFinite(r) && r * cam.scale > 6);
       circleDraft = null;
 
       const C = getById(centerId);
-      if (C && Number.isFinite(r) && r > 1e-6){
+      if (moved && C && Number.isFinite(r) && r > 1e-6){
         createCircleByRadius(centerId, r);
+        circleC = null;
       } else {
-        if (created && C && !isPointReferenced(centerId)){
-          const idx = objects.findIndex(o => o.id === centerId);
-          if (idx >= 0) objects.splice(idx,1);
-        }
+        // click mode stage1: keep center point and wait for second click
+        circleC = centerId;
       }
+
       saveToStorage();
       markOverlayDirty();
       setCanvasCursor();
@@ -2453,22 +2468,21 @@ const pad = 10;
         }
       }
 
-      // circle drag finalize (touch)
+      // circle drag/click finalize (touch)
       if (circleDraft && circleDraft.pointerId === e.pointerId){
         const centerId = circleDraft.cId;
-        const created = circleDraft.createdCenter;
         const r = circleDraft.r;
+        const moved = !!circleDraft.moved || (Number.isFinite(r) && r * cam.scale > 6);
         circleDraft = null;
         pendingCircleTouch = null;
 
         const C = getById(centerId);
-        if (C && Number.isFinite(r) && r > 1e-6){
+        if (moved && C && Number.isFinite(r) && r > 1e-6){
           createCircleByRadius(centerId, r);
+          circleC = null;
         } else {
-          if (created && C && !isPointReferenced(centerId)){
-            const idx = objects.findIndex(o => o.id === centerId);
-            if (idx >= 0) objects.splice(idx,1);
-          }
+          // click mode stage1
+          circleC = centerId;
         }
         saveToStorage();
         markOverlayDirty();
@@ -2478,6 +2492,18 @@ const pad = 10;
       }
 
       if (pendingCircleTouch && pendingCircleTouch.pointerId === e.pointerId){
+        const movedTap = tinfo ? !!tinfo.moved : false;
+        if (!movedTap && !pinchState && performance.now() >= suppressTapUntil){
+          pushState();
+          const got = getOrCreatePointForClickFlag(pendingCircleTouch.startWx, pendingCircleTouch.startWy);
+          circleC = got.p.id;
+          pendingCircleTouch = null;
+          saveToStorage();
+          markOverlayDirty();
+          setCanvasCursor();
+          e.preventDefault();
+          return;
+        }
         pendingCircleTouch = null;
       }
 
