@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MathLab</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --p: #2c3e50;
+            --a: #3498db;
+            --bg: #f8f9fa;
+            --bord: #ddd;
+            --sel: #3498db;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #app {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .label {
+            position: absolute;
+            font-size: 14px;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 3px white;
+            color: #222;
+        }
+
+        /* Toolbar */
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .btn {
+            padding: 0 10px;
+            min-width: 44px;
+            height: 44px;
+            background: white;
+            white-space: nowrap;
+            border: 1px solid var(--bord);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .btn:active {
+            background: #eee;
+        }
+
+        .btn.active {
+            border-color: var(--a);
+            color: var(--a);
+            background: #eef9ff;
+        }
+
+        /* Group */
+        #grp-wrap {
+            position: relative;
+            display: flex;
+        }
+
+        #grp-list {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            min-width: 100%;
+            width: max-content;
+            background: white;
+            border: 1px solid var(--a);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 200;
+            overflow: hidden;
+            flex-direction: column;
+        }
+
+        #grp-list .btn {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            border-bottom: 1px solid #eee;
+            width: 100%;
+            height: 44px;
+        }
+
+        #grp-list.open {
+            display: flex;
+        }
+
+        /* Tooltip */
+        #tip {
+            position: absolute;
+            left: 110%;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            pointer-events: none;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover #tip.show {
+            opacity: 1;
+        }
+
+        #props {
+            position: absolute;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            pointer-events: auto;
+            width: 220px;
+            z-index: 500;
+            top: 60px;
+            left: 10px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        input[type=text] {
+            width: 80px;
+            padding: 2px;
+            text-align: right;
+        }
+
+        #tr {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        #link {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            font-size: 11px;
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        #link a {
+            color: #888;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        #ver {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            font-size: 11px;
+            color: #888;
+            z-index: 50;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <canvas id="c"></canvas>
+        <div id="ui"></div>
+
+        <div id="toolbar">
+            <div class="btn" id="b-sel" title="Select">↖</div>
+            <div id="grp-wrap">
+                <div class="btn" id="b-grp">●<div id="tip">Point</div>
+                </div>
+                <div id="grp-list"></div>
+            </div>
+            <div class="btn" id="b-txt">T</div>
+            <div style="width:10px"></div>
+            <div class="btn" id="b-undo">↩</div>
+            <div class="btn" id="b-redo">↪</div>
+        </div>
+
+        <div id="tr">
+            <div class="btn" id="b-lang" style="font-size:12px; font-weight:bold;">KO</div>
+        </div>
+        <div id="props"></div>
+        <div id="link"><a href="https://min7014.github.io" target="_blank">min7014.github.io</a></div>
+        <div id="ver">v1.3</div>
+    </div>
+
+    <script>
+        // --- CONSTANTS ---
+        const C = { SNAP: 12, HIT: 10, PT_R: 4, GRD: '#e0e0e0', AXS: '#888', SEL: '#3498db' };
+        const TOOLS = {
+            sel: { i: '↖', n: { KO: '선택', EN: 'Select' } },
+            pt: { i: '●', n: { KO: '점', EN: 'Point' } },
+            seg: { i: '╱', n: { KO: '선분', EN: 'Segment' } },
+            ln: { i: '↔', n: { KO: '직선', EN: 'Line' } },
+            cir: { i: '○', n: { KO: '원', EN: 'Circle' } },
+            par: { i: '∪', n: { KO: '포물선', EN: 'Parabola' } },
+            ell: { i: '⬭', n: { KO: '타원', EN: 'Ellipse' } },
+            hyp: { i: ')(', n: { KO: '쌍곡선', EN: 'Hyperbola' } },
+            txt: { i: 'T', n: { KO: '텍스트', EN: 'Text' } }
+        };
+        const G_TOOLS = ['pt', 'seg', 'ln', 'cir', 'par', 'ell', 'hyp'];
+
+        // --- STATE ---
+        let S = {
+            objs: [],
+            view: { x: 0, y: 0, s: 1 },
+            mode: 'pt',
+            curr: 'sel',
+            lang: 'KO',
+
+            p: { x: 0, y: 0, down: false },
+            pointers: new Map(),
+            lastDist: 0,
+
+            // Double Click
+            lastTime: 0,
+            lastPos: { x: 0, y: 0 },
+
+            action: 'IDLE',
+
+            selIds: [],
+            hovId: null,
+            snap: null,
+
+            step: 0,
+            pts: [],
+            tmp: null,
+            idC: 0
+        };
+
+        // --- MATH ---
+        const M = {
+            dist: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
+            line: (p1, p2) => ({ a: p1.y - p2.y, b: p2.x - p1.x, c: -(p1.y - p2.y) * p1.x - (p2.x - p1.x) * p1.y }),
+
+            closest: (p, a, b) => {
+                const ab = { x: b.x - a.x, y: b.y - a.y }, ap = { x: p.x - a.x, y: p.y - a.y };
+                let t = (ap.x * ab.x + ap.y * ab.y) / (ab.x * ab.x + ab.y * ab.y || 1);
+                t = Math.max(0, Math.min(1, t));
+                return { x: a.x + t * ab.x, y: a.y + t * ab.y };
+            },
+
+            projLine: (p, l) => {
+                const d = l.a * l.a + l.b * l.b;
+                return { x: (l.b * (l.b * p.x - l.a * p.y) - l.a * l.c) / d, y: (l.a * (l.a * p.y - l.b * p.x) - l.b * l.c) / d };
+            },
+
+            intLines: (l1, l2) => {
+                const d = l1.a * l2.b - l2.a * l1.b;
+                if (Math.abs(d) < 1e-9) return null;
+                return { x: (l1.b * l2.c - l2.b * l1.c) / d, y: (l2.a * l1.c - l1.a * l2.c) / d };
+            },
+
+            intLineCir: (l, c) => {
+                const d = Math.abs(l.a * c.x + l.b * c.y + l.c) / Math.hypot(l.a, l.b);
+                if (d > c.r + 1e-9) return [];
+                const l2 = { a: -l.b, b: l.a, c: l.b * c.x - l.a * c.y };
+                const p = M.intLines(l, l2);
+                const dist = Math.sqrt(Math.max(0, c.r * c.r - d * d));
+                const ang = Math.atan2(l.b, l.a) + Math.PI / 2;
+                const dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+                return [{ x: p.x + dx, y: p.y + dy }, { x: p.x - dx, y: p.y - dy }];
+            },
+
+            intCirCir: (c1, c2) => {
+                const d = M.dist(c1, c2);
+                if (d > c1.r + c2.r || d < Math.abs(c1.r - c2.r) || d === 0) return [];
+                const a = (c1.r * c1.r - c2.r * c2.r + d * d) / (2 * d);
+                const h = Math.sqrt(Math.max(0, c1.r * c1.r - a * a));
+                const x2 = c1.x + a * (c2.x - c1.x) / d;
+                const y2 = c1.y + a * (c2.y - c1.y) / d;
+                return [
+                    { x: x2 + h * (c2.y - c1.y) / d, y: y2 - h * (c2.x - c1.x) / d },
+                    { x: x2 - h * (c2.y - c1.y) / d, y: y2 + h * (c2.x - c1.x) / d }
+                ];
+            },
+
+            getGeo: (o) => {
+                if (o.type === 'pt') return null;
+                if (o.type === 'ln' || o.type === 'seg') {
+                    const p1 = getObj(o.p1), p2 = getObj(o.p2);
+                    if (!p1 || !p2) return null;
+                    return { type: 'line', ...M.line(p1, p2) };
+                }
+                if (o.type === 'cir') {
+                    const c = getObj(o.c); if (!c) return null;
+                    let r = o.mode === '2pt' ? M.dist(c, getObj(o.p2)) : o.r;
+                    return { type: 'circle', x: c.x, y: c.y, r };
+                }
+                return null;
+            },
+
+            closestOnPath: (p, o) => {
+                if (o.type === 'seg') {
+                    const p1 = getObj(o.p1), p2 = getObj(o.p2);
+                    if (!p1 || !p2) return p;
+                    return M.closest(p, p1, p2);
+                }
+                if (o.type === 'ln') {
+                    const p1 = getObj(o.p1), p2 = getObj(o.p2);
+                    if (!p1 || !p2) return p;
+                    const l = M.line(p1, p2);
+                    return M.projLine(p, l);
+                }
+                if (o.type === 'cir') {
+                    const c = getObj(o.c);
+                    if (!c) return p;
+                    let r = o.mode === '2pt' ? M.dist(c, getObj(o.p2)) : o.r;
+                    const d = M.dist(p, c);
+                    if (d < 1e-9) return { x: c.x + r, y: c.y };
+                    return { x: c.x + (p.x - c.x) * r / d, y: c.y + (p.y - c.y) * r / d };
+                }
+                if (o.type === 'par') {
+                    const f = getObj(o.p1), d1 = getObj(o.p2), d2 = getObj(o.p3);
+                    if (!f || !d1 || !d2) return p;
+                    const l = M.line(d1, d2);
+                    const num = l.a * f.x + l.b * f.y + l.c;
+                    const den = l.a * l.a + l.b * l.b;
+                    const proj = { x: f.x - l.a * num / den, y: f.y - l.b * num / den };
+                    const V = { x: (f.x + proj.x) / 2, y: (f.y + proj.y) / 2 };
+                    const axis = { x: f.x - proj.x, y: f.y - proj.y };
+                    const ang = Math.atan2(axis.y, axis.x);
+                    const param = Math.hypot(axis.x, axis.y) / 2; // p
+
+                    const cos = Math.cos(-ang), sin = Math.sin(-ang);
+                    const tx = (p.x - V.x) * cos - (p.y - V.y) * sin;
+                    const ty = (p.x - V.x) * sin + (p.y - V.y) * cos;
+
+                    // Minimize dist to (t^2/4p, t)
+                    // D'(t) = t^3/4p^2 - tx*t/p + 2t - 2ty = 0 (scaled by 2?)
+                    // f(t) = t^3/(4*p*p) + t*(2 - tx/p) - 2*ty
+                    // f'(t) = 3*t^2/(4*p*p) + (2 - tx/p)
+
+                    let t = ty;
+                    for (let i = 0; i < 5; i++) {
+                        const fVal = t * t * t / (4 * param * param) + t * (2 - tx / param) - 2 * ty;
+                        const fDer = 3 * t * t / (4 * param * param) + (2 - tx / param);
+                        t -= fVal / (fDer || 1);
+                    }
+
+                    const ex = t * t / (4 * param);
+                    const ey = t;
+                    const rcos = Math.cos(ang), rsin = Math.sin(ang);
+                    return { x: V.x + ex * rcos - ey * rsin, y: V.y + ex * rsin + ey * rcos };
+                }
+                if (o.type === 'ell' || o.type === 'hyp') {
+                    const f1 = getObj(o.p1), f2 = getObj(o.p2), pOn = getObj(o.p3);
+                    if (!f1 || !f2 || !pOn) return p;
+                    const c = M.dist(f1, f2) / 2;
+                    let a, b;
+                    if (o.type === 'ell') {
+                        a = (M.dist(pOn, f1) + M.dist(pOn, f2)) / 2;
+                        if (a <= c) return p;
+                        b = Math.sqrt(a * a - c * c);
+                    } else {
+                        a = Math.abs(M.dist(pOn, f1) - M.dist(pOn, f2)) / 2;
+                        if (a >= c || a === 0) return p;
+                        b = Math.sqrt(c * c - a * a);
+                    }
+
+                    const V = { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 };
+                    const ang = Math.atan2(f2.y - f1.y, f2.x - f1.x);
+
+                    const cos = Math.cos(-ang), sin = Math.sin(-ang);
+                    const tx = (p.x - V.x) * cos - (p.y - V.y) * sin;
+                    const ty = (p.x - V.x) * sin + (p.y - V.y) * cos;
+
+                    const A = a, B = b;
+
+                    // Simple numeric optimization
+                    if (o.type === 'ell') {
+                        let t = Math.atan2(ty / B, tx / A);
+                        for (let i = 0; i < 5; i++) {
+                            const ex = A * Math.cos(t), ey = B * Math.sin(t);
+                            const dx = -A * Math.sin(t), dy = B * Math.cos(t);
+                            const rx = ex - tx, ry = ey - ty;
+                            const f = rx * dx + ry * dy; // dot(r, d)
+                            const f_ = dx * dx + rx * (-ex) + dy * dy + ry * (-ey);
+                            t -= f / f_;
+                        }
+                        const ex = A * Math.cos(t), ey = B * Math.sin(t);
+                        // Transform back
+                        const rcos = Math.cos(ang), rsin = Math.sin(ang);
+                        return { x: V.x + ex * rcos - ey * rsin, y: V.y + ex * rsin + ey * rcos };
+                    } else {
+                        // hyp: x = A cosh t, y = B sinh t
+                        // Determine branch
+                        const sgn = tx > 0 ? 1 : -1;
+                        let t = Math.asinh(ty / B);
+                        for (let i = 0; i < 5; i++) {
+                            const ch = Math.cosh(t), sh = Math.sinh(t);
+                            const ex = sgn * A * ch, ey = B * sh;
+                            const dx = sgn * A * sh, dy = B * ch;
+                            const rx = ex - tx, ry = ey - ty;
+                            const f = rx * dx + ry * dy;
+                            const f_ = dx * dx + rx * (sgn * A * ch) + dy * dy + ry * (B * sh);
+                            t -= f / f_;
+                        }
+                        const ch = Math.cosh(t), sh = Math.sinh(t);
+                        const ex = sgn * A * ch, ey = B * sh;
+                        const rcos = Math.cos(ang), rsin = Math.sin(ang);
+                        return { x: V.x + ex * rcos - ey * rsin, y: V.y + ex * rsin + ey * rcos };
+                    }
+                }
+                return p;
+            }
+        };
+
+        const cvs = document.getElementById('c');
+        const ctx = cvs.getContext('2d');
+
+        function init() {
+            window.addEventListener('resize', onResize);
+            onResize();
+            cvs.addEventListener('pointerdown', onDown);
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+            cvs.addEventListener('pointercancel', onUp);
+            cvs.addEventListener('wheel', onWheel, { passive: false });
+            cvs.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+            setupUI();
+            loop();
+        }
+
+        function onResize() {
+            cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+            render();
+        }
+
+        function loop() {
+            // Update order matters: update parents first, then children? 
+            // Better: just loop. dependency cycle is user's fault. 
+            // In a real app we'd sort by dependency depth.
+            S.objs.forEach(o => updateObj(o));
+            render();
+            updateTitle();
+            requestAnimationFrame(loop);
+        }
+
+        function updateTitle() {
+            const d = new Date();
+            document.title = `mathlab (${d.toLocaleDateString()} ${d.toLocaleTimeString()})`;
+        }
+
+        function w2s(x, y) { return { x: cvs.width / 2 + x * S.view.s + S.view.x, y: cvs.height / 2 - y * S.view.s + S.view.y }; }
+        function s2w(x, y) { return { x: (x - cvs.width / 2 - S.view.x) / S.view.s, y: -(y - cvs.height / 2 - S.view.y) / S.view.s }; }
+        function getObj(id) { return S.objs.find(o => o.id === id); }
+
+        function updateObj(o) {
+            let exists = true;
+
+            // Visibility Propagation (Parents)
+            if (o.type !== 'pt') {
+                const ids = [];
+                if (o.p1) ids.push(o.p1); if (o.p2) ids.push(o.p2); if (o.p3) ids.push(o.p3); if (o.c) ids.push(o.c);
+                for (let id of ids) {
+                    const p = getObj(id);
+                    if (p && !p.vis) { exists = false; break; }
+                }
+            }
+
+            if (exists && o.type === 'pt') {
+                if (o.def === 'onPath') {
+                    const path = getObj(o.parents[0]);
+                    if (path) {
+                        if (!path.vis) { exists = false; }
+                        else {
+                            Object.assign(o, M.closestOnPath({ x: o.x, y: o.y }, path));
+                        }
+                    } else { exists = false; }
+                }
+                else if (o.def === 'int') {
+                    const p1 = getObj(o.parents[0]), p2 = getObj(o.parents[1]);
+                    if (!p1 || !p2 || !p1.vis || !p2.vis) { exists = false; }
+                    else {
+                        const g1 = M.getGeo(p1), g2 = M.getGeo(p2);
+                        if (g1 && g2) {
+                            let pts = [];
+                            if (g1.type === 'line' && g2.type === 'line') { const p = M.intLines(g1, g2); if (p) pts = [p]; }
+                            else if (g1.type === 'line' && g2.type === 'circle') pts = M.intLineCir(g1, g2);
+                            else if (g1.type === 'circle' && g2.type === 'line') pts = M.intLineCir(g2, g1);
+                            else if (g1.type === 'circle' && g2.type === 'circle') pts = M.intCirCir(g1, g2);
+
+                            // Filter points for Segments
+                            pts = pts.filter(pt => {
+                                if (p1.type === 'seg') {
+                                    const s1 = getObj(p1.p1), s2 = getObj(p1.p2);
+                                    if (!isPtOnSeg(pt, s1, s2)) return false;
+                                }
+                                if (p2.type === 'seg') {
+                                    const s1 = getObj(p2.p1), s2 = getObj(p2.p2);
+                                    if (!isPtOnSeg(pt, s1, s2)) return false;
+                                }
+                                return true;
+                            });
+
+                            if (pts.length) {
+                                let best = pts[0], minD = M.dist(o, pts[0]);
+                                for (let i = 1; i < pts.length; i++) {
+                                    const d = M.dist(o, pts[i]);
+                                    if (d < minD) { minD = d; best = pts[i]; }
+                                }
+                                o.x = best.x; o.y = best.y;
+                            } else { exists = false; }
+                        } else { exists = false; }
+                    }
+                }
+            }
+
+            o.vis = exists && (o.hidden !== true);
+        }
+
+        function onDown(e) {
+            const now = Date.now();
+            const isDbl = (now - S.lastTime < 300) && (Math.hypot(e.clientX - S.lastPos.x, e.clientY - S.lastPos.y) < 10);
+            S.lastTime = now; S.lastPos = { x: e.clientX, y: e.clientY };
+
+            if (isDbl) { showProps(e); return; }
+
+            document.getElementById('props').style.display = 'none';
+
+            S.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            S.p.down = true; S.p.x = e.clientX; S.p.y = e.clientY;
+
+            if (S.pointers.size === 2) {
+                const ptrs = [...S.pointers.values()];
+                S.lastDist = Math.hypot(ptrs[0].x - ptrs[1].x, ptrs[0].y - ptrs[1].y);
+                S.action = 'PINCH'; return;
+            }
+            if (e.pointerType === 'touch' && !e.isPrimary) return;
+
+            const w = s2w(e.clientX, e.clientY);
+            const hit = findHit(w);
+
+            if (S.curr === 'sel') {
+                if (hit) {
+                    S.action = 'DRAG'; S.hovId = hit.id;
+                    if (!S.selIds.includes(hit.id)) S.selIds = [hit.id];
+                } else {
+                    S.action = 'PAN'; S.dragStart = { ...S.view }; S.selIds = [];
+                }
+            } else {
+                S.action = 'CREATE';
+                calcSnap(w);
+                const pos = S.snap ? { x: S.snap.x, y: S.snap.y } : w;
+                if (S.curr === 'pt') S.tmp = { type: 'pt', x: pos.x, y: pos.y, col: C.SEL };
+                else if (S.step === 0) S.tmp = { type: 'pt', x: pos.x, y: pos.y, col: C.SEL };
+            }
+        }
+
+        function showProps(e) {
+            const w = s2w(e.clientX, e.clientY);
+            const hit = findHit(w);
+            if (hit) {
+                const p = document.getElementById('props');
+                p.style.display = 'block'; p.innerHTML = '';
+                const addRow = (lbl, val, cb, type = 'text') => {
+                    const r = document.createElement('div'); r.className = 'row';
+                    const i = document.createElement('input');
+                    i.type = type;
+                    if (type === 'checkbox') i.checked = val; else i.value = val;
+                    i.onchange = e => cb(type === 'checkbox' ? e.target.checked : e.target.value);
+                    r.innerHTML = `<div>${lbl}</div>`; r.appendChild(i); p.appendChild(r);
+                };
+                addRow('Name', hit.name, v => renameObj(hit, v)); // Editing 'name' triggers rename
+                addRow('Caption', hit.cap, v => hit.cap = v); // Manual caption override
+                addRow('Show', (hit.hidden !== true), v => { hit.hidden = !v; }, 'checkbox');
+                if (hit.type === 'cir' && hit.mode !== '2pt') addRow('Radius', hit.r, v => hit.r = parseFloat(v) || hit.r);
+            }
+        }
+
+        function renameObj(obj, newName) {
+            if (!newName || obj.name === newName) return;
+            // Collision Check
+            const collision = S.objs.find(o => o.name === newName && o !== obj);
+            if (collision) {
+                // Resolve collision: Rename victim (collision) to A_{n}
+                let n = 1;
+                let altName = `${newName}_{${n}}`;
+                while (S.objs.find(o => o.name === altName)) {
+                    n++; altName = `${newName}_{${n}}`;
+                }
+                collision.name = altName;
+                // Note: collision.cap remains as "$\mathrm{A}$" (user req)
+            }
+
+            obj.name = newName;
+            // If not manual override (simple check: does cap match old name pattern?)
+            // Simpler: Just update cap to match new name in LaTeX format
+            obj.cap = `$\\mathrm{${newName}}$`;
+        }
+
+        function onMove(e) {
+            S.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (S.action === 'PINCH' && S.pointers.size === 2) {
+                const ptrs = [...S.pointers.values()];
+                const dist = Math.hypot(ptrs[0].x - ptrs[1].x, ptrs[0].y - ptrs[1].y);
+                const scale = dist / S.lastDist;
+                if (scale && S.lastDist) S.view.s *= scale;
+                S.lastDist = dist; return;
+            }
+
+            const w = s2w(e.clientX, e.clientY);
+
+            if (S.action === 'PAN') {
+                const dx = e.clientX - S.p.x; const dy = e.clientY - S.p.y;
+                S.view.x = S.dragStart.x + dx; S.view.y = S.dragStart.y + dy;
+            } else if (S.action === 'DRAG' && S.selIds.length) {
+                const obj = getObj(S.selIds[0]);
+                if (obj) {
+                    if (obj.type === 'pt' && obj.def === 'free') { obj.x = w.x; obj.y = w.y; }
+                    else if (obj.type === 'pt' && obj.def === 'onPath') { obj.x = w.x; obj.y = w.y; updateObj(obj); }
+                }
+            } else if (S.curr === 'sel') {
+                // Idle hover check for Selection Mode
+                const hit = findHit(w);
+                S.hovId = hit ? hit.id : null;
+            } else {
+                calcSnap(w);
+                const pos = S.snap ? { x: S.snap.x, y: S.snap.y } : w;
+                if (S.tmp) { S.tmp.x = pos.x; S.tmp.y = pos.y; }
+            }
+        }
+
+        function calcSnap(p) {
+            S.snap = null; S.hovId = null;
+            const hitPt = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, p) < C.HIT / S.view.s);
+            if (hitPt) { S.snap = { type: 'pt', x: hitPt.x, y: hitPt.y, id: hitPt.id }; S.hovId = hitPt.id; return; }
+
+            const hits = S.objs.filter(o => o.type !== 'pt' && o.vis && checkHitObj(o, p, C.HIT * 1.5));
+            if (hits.length >= 2) {
+                const g1 = M.getGeo(hits[0]), g2 = M.getGeo(hits[1]);
+                if (g1 && g2) {
+                    let pts = [];
+                    if (g1.type === 'line' && g2.type === 'line') { const p = M.intLines(g1, g2); if (p) pts = [p]; }
+                    else if (g1.type === 'line' && g2.type === 'circle') pts = M.intLineCir(g1, g2);
+                    else if (g1.type === 'circle' && g2.type === 'line') pts = M.intLineCir(g2, g1);
+
+                    let best = null, minD = C.HIT / S.view.s;
+                    pts.forEach(pt => { const d = M.dist(p, pt); if (d < minD) { minD = d; best = pt; } });
+                    if (best) { S.snap = { type: 'int', x: best.x, y: best.y, parents: [hits[0].id, hits[1].id] }; return; }
+                }
+            }
+
+            if (hits.length === 1) {
+                const o = hits[0];
+                const pt = M.closestOnPath(p, o);
+                S.snap = { type: 'on', x: pt.x, y: pt.y, parents: [o.id] }; S.hovId = o.id;
+            }
+        }
+
+        function onUp(e) {
+            S.pointers.delete(e.pointerId);
+            if (S.action === 'PINCH' && S.pointers.size === 0) { S.action = 'IDLE'; return; }
+
+            if (S.action === 'CREATE') {
+                const w = s2w(e.clientX, e.clientY);
+                const pos = S.snap ? { x: S.snap.x, y: S.snap.y } : w;
+                const parents = S.snap ? (S.snap.parents || []) : [];
+                const def = S.snap ? (S.snap.type === 'int' ? 'int' : (S.snap.type === 'on' ? 'onPath' : 'free')) : 'free';
+                const hitId = (S.snap && S.snap.type === 'pt') ? S.snap.id : null;
+
+                if (S.curr === 'pt') {
+                    if (!hitId) createObj('pt', { x: pos.x, y: pos.y, def, parents });
+                    S.tmp = null;
+                } else {
+                    const pId = hitId || createObj('pt', { x: pos.x, y: pos.y, def, parents }).id;
+                    S.pts.push(pId);
+                    checkToolComplete();
+                }
+            }
+            S.action = 'IDLE'; S.p.down = false;
+        }
+
+        function checkToolComplete() {
+            const k = S.curr; const n = S.pts.length;
+            if ((k === 'seg' || k === 'ln' || k === 'cir') && n === 2) {
+                createObj(k, { p1: S.pts[0], p2: S.pts[1], mode: (k === 'cir' ? '2pt' : null), c: (k === 'cir' ? S.pts[0] : null) });
+                S.pts = [];
+            } else if ((k === 'par' || k === 'ell' || k === 'hyp') && n === 3) {
+                createObj(k, { p1: S.pts[0], p2: S.pts[1], p3: S.pts[2] });
+                S.pts = [];
+            }
+        }
+
+        function createObj(type, data) {
+            const id = (S.idC++).toString();
+            const name = nextName();
+            const o = {
+                id, type, ...data,
+                name,
+                cap: `$\\mathrm{${name}}$`, // Default LaTeX caption
+                vis: true, col: 'black',
+                parents: data.parents || []
+            };
+            S.objs.push(o);
+            updateObj(o);
+            return o;
+        }
+
+        function nextName() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const c = S.objs.filter(o => o.type === 'pt').length;
+            return chars[c % 26] + (Math.floor(c / 26) || '');
+        }
+
+        function findHit(p) {
+            const hitPt = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, p) < C.HIT / S.view.s);
+            if (hitPt) return hitPt;
+            return S.objs.find(o => o.type !== 'pt' && o.vis && checkHitObj(o, p));
+        }
+
+        function checkHitObj(o, p, tol) {
+            if (o.type === 'pt') return M.dist(o, p) < (tol || C.HIT) / S.view.s;
+            const pt = M.closestOnPath(p, o);
+            return M.dist(p, pt) < (tol || C.HIT) / S.view.s;
+        }
+
+        function distToSeg(p, a, b) {
+            const ab = { x: b.x - a.x, y: b.y - a.y }, ap = { x: p.x - a.x, y: p.y - a.y };
+            let t = (ap.x * ab.x + ap.y * ab.y) / (ab.x * ab.x + ab.y * ab.y || 1);
+            t = Math.max(0, Math.min(1, t));
+            return M.dist(p, { x: a.x + t * ab.x, y: a.y + t * ab.y });
+        }
+
+        function isPtOnSeg(p, a, b) {
+            const dist = M.dist(a, b);
+            if (dist === 0) return false;
+            const d1 = M.dist(p, a), d2 = M.dist(p, b);
+            return Math.abs(d1 + d2 - dist) < 0.1; // Tolerance
+        }
+
+        function onWheel(e) { e.preventDefault(); S.view.s *= Math.exp(-e.deltaY * 0.001); }
+
+        // UI
+        function setupUI() {
+            document.getElementById('b-sel').onclick = () => setTool('sel');
+            document.getElementById('b-txt').onclick = () => setTool('txt');
+
+            // Initial Button Text
+            document.getElementById('b-sel').innerText = TOOLS.sel.n[S.lang];
+            document.getElementById('b-txt').innerText = TOOLS.txt.n[S.lang];
+
+            const gMain = document.getElementById('b-grp');
+            const gList = document.getElementById('grp-list');
+            let timer;
+
+            // Set initial group button text
+            gMain.innerHTML = TOOLS[S.mode].n[S.lang];
+
+            gMain.onclick = (e) => {
+                gList.classList.toggle('open'); clearTimeout(timer);
+                if (gList.classList.contains('open')) timer = setTimeout(() => document.getElementById('tip').classList.add('show'), 1000);
+            };
+            gList.innerHTML = '';
+            G_TOOLS.forEach(k => {
+                const b = document.createElement('div'); b.className = 'btn';
+                b.innerHTML = TOOLS[k].n[S.lang];
+                b.onclick = (e) => {
+                    e.stopPropagation(); S.mode = k; setTool(k);
+                    gMain.innerHTML = TOOLS[k].n[S.lang]; // Update Group Button Text
+                    gList.classList.remove('open'); document.getElementById('tip').classList.remove('show');
+                };
+                gList.appendChild(b);
+            });
+        }
+
+        function setTool(t) {
+            S.curr = t; S.pts = []; S.step = 0; S.tmp = null;
+            document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+            if (t === 'sel') document.getElementById('b-sel').classList.add('active');
+            else if (t === 'txt') document.getElementById('b-txt').classList.add('active');
+            else document.getElementById('b-grp').classList.add('active');
+        }
+
+        // DRAW
+        function render() {
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            const st = getStep(S.view.s);
+            ctx.beginPath(); ctx.strokeStyle = C.GRD; ctx.lineWidth = 1;
+            const tl = s2w(0, 0), br = s2w(cvs.width, cvs.height);
+            const sx = Math.floor(tl.x / st) * st, ex = Math.ceil(br.x / st) * st;
+            const sy = Math.floor(br.y / st) * st, ey = Math.ceil(tl.y / st) * st;
+            for (let x = sx; x <= ex; x += st) { const p = w2s(x, 0); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, cvs.height); }
+            for (let y = sy; y <= ey; y += st) { const p = w2s(0, y); ctx.moveTo(0, p.y); ctx.lineTo(cvs.width, p.y); }
+            ctx.stroke();
+
+            const o = w2s(0, 0);
+
+            ctx.beginPath(); ctx.strokeStyle = C.AXS; ctx.lineWidth = 2;
+            ctx.moveTo(o.x, 0); ctx.lineTo(o.x, cvs.height);
+            ctx.moveTo(0, o.y); ctx.lineTo(cvs.width, o.y);
+            ctx.stroke();
+
+            // Arrows & Labels
+            ctx.fillStyle = C.AXS; ctx.font = '14px sans-serif';
+            if (o.y >= 0 && o.y <= cvs.height) {
+                // X Axis Arrow
+                ctx.beginPath(); ctx.moveTo(cvs.width, o.y);
+                ctx.lineTo(cvs.width - 10, o.y - 5); ctx.lineTo(cvs.width - 10, o.y + 5); ctx.fill();
+            }
+            if (o.x >= 0 && o.x <= cvs.width) {
+                // Y Axis Arrow
+                ctx.beginPath(); ctx.moveTo(o.x, 0);
+                ctx.lineTo(o.x - 5, 10); ctx.lineTo(o.x + 5, 10); ctx.fill();
+            }
+            ctx.font = '12px sans-serif'; ctx.fillText('O', o.x - 15, o.y + 15);
+
+            S.objs.forEach(o => {
+                if (!o.vis && S.hovId !== o.id && !S.selIds.includes(o.id)) return;
+                ctx.save(); if (!o.vis) ctx.setLineDash([5, 5]);
+                drawObj(o); ctx.restore();
+            });
+            if (S.tmp) { ctx.save(); ctx.globalAlpha = 0.5; drawObj(S.tmp); ctx.restore(); }
+            updateLabels();
+        }
+
+        function drawObj(o) {
+            const sel = S.selIds.includes(o.id);
+            const hov = S.hovId === o.id;
+            const col = sel ? C.SEL : (o.col || 'black');
+            ctx.lineWidth = (sel || hov) ? (sel ? 3 : 4) : 2;
+            ctx.strokeStyle = col; ctx.fillStyle = col;
+
+            if (o.type === 'pt') {
+                const p = w2s(o.x, o.y);
+                ctx.beginPath(); ctx.arc(p.x, p.y, C.PT_R, 0, Math.PI * 2); ctx.fill();
+                if (S.hovId === o.id) { ctx.beginPath(); ctx.arc(p.x, p.y, C.PT_R + 4, 0, Math.PI * 2); ctx.stroke(); }
+            } else if (o.type === 'seg') {
+                const p1 = getObj(o.p1), p2 = getObj(o.p2);
+                if (p1 && p2) { const s1 = w2s(p1.x, p1.y), s2 = w2s(p2.x, p2.y); ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); }
+            } else if (o.type === 'ln') {
+                const p1 = getObj(o.p1), p2 = getObj(o.p2);
+                if (p1 && p2) {
+                    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+                    const len = Math.hypot(dx, dy);
+                    if (len > 1e-9) {
+                        const s1 = w2s(p1.x - dx / len * 10000, p1.y - dy / len * 10000);
+                        const s2 = w2s(p1.x + dx / len * 10000, p1.y + dy / len * 10000);
+                        ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke();
+                    }
+                }
+            } else if (o.type === 'cir') {
+                const c = getObj(o.c);
+                if (c) {
+                    let r = o.r;
+                    if (o.mode === '2pt') r = M.dist(c, getObj(o.p2));
+                    const sc = w2s(c.x, c.y);
+                    ctx.beginPath(); ctx.arc(sc.x, sc.y, r * S.view.s, 0, Math.PI * 2); ctx.stroke();
+                }
+            } else if (o.type === 'par') {
+                drawParabola(o);
+            } else if (o.type === 'ell') {
+                drawEllipse(o);
+            } else if (o.type === 'hyp') {
+                drawHyperbola(o);
+            }
+        }
+
+        function drawParabola(o) {
+            const f = getObj(o.p1), d1 = getObj(o.p2), d2 = getObj(o.p3);
+            if (!f || !d1 || !d2) return;
+            const l = M.line(d1, d2);
+            const num = l.a * f.x + l.b * f.y + l.c;
+            const den = l.a * l.a + l.b * l.b;
+            const proj = { x: f.x - l.a * num / den, y: f.y - l.b * num / den };
+            const V = { x: (f.x + proj.x) / 2, y: (f.y + proj.y) / 2 };
+            const axis = { x: f.x - proj.x, y: f.y - proj.y };
+            const p = Math.hypot(axis.x, axis.y) / 2;
+            if (p < 1e-5) return;
+            const ang = Math.atan2(axis.y, axis.x);
+            ctx.save();
+            const sV = w2s(V.x, V.y);
+            ctx.translate(sV.x, sV.y);
+            ctx.rotate(-ang);
+            ctx.beginPath();
+            const sc = S.view.s;
+            // Dynamic bounds based on view scale
+            // Viewport diagonal approximation in world units
+            const limit = Math.max(cvs.width, cvs.height) / sc * 2 + 1000;
+            const step = Math.max(1, limit / 200);
+
+            let first = true;
+            for (let t = -limit; t <= limit; t += step) {
+                const lx = t * t / (4 * p);
+                const ly = t;
+                if (first) { ctx.moveTo(lx * sc, ly * sc); first = false; }
+                else ctx.lineTo(lx * sc, ly * sc);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawEllipse(o) {
+            const f1 = getObj(o.p1), f2 = getObj(o.p2), p = getObj(o.p3);
+            if (!f1 || !f2 || !p) return;
+            const a = (M.dist(p, f1) + M.dist(p, f2)) / 2;
+            const c = M.dist(f1, f2) / 2;
+            if (a <= c) return;
+            const b = Math.sqrt(a * a - c * c);
+            const cent = { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 };
+            const ang = Math.atan2(f2.y - f1.y, f2.x - f1.x);
+            const scC = w2s(cent.x, cent.y);
+            ctx.beginPath();
+            ctx.ellipse(scC.x, scC.y, a * S.view.s, b * S.view.s, -ang, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        function drawHyperbola(o) {
+            const f1 = getObj(o.p1), f2 = getObj(o.p2), p = getObj(o.p3);
+            if (!f1 || !f2 || !p) return;
+            const a = Math.abs(M.dist(p, f1) - M.dist(p, f2)) / 2;
+            const c = M.dist(f1, f2) / 2;
+            if (a >= c || a === 0) return;
+            const b = Math.sqrt(c * c - a * a);
+            const cent = { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 };
+            const ang = Math.atan2(f2.y - f1.y, f2.x - f1.x);
+            const sc = S.view.s;
+            const scC = w2s(cent.x, cent.y);
+            ctx.save();
+            ctx.translate(scC.x, scC.y);
+            ctx.rotate(-ang);
+            ctx.beginPath();
+            for (let sign of [-1, 1]) {
+                let first = true;
+                for (let t = -3; t <= 3; t += 0.1) {
+                    const lx = sign * a * Math.cosh(t);
+                    const ly = b * Math.sinh(t);
+                    if (first) { ctx.moveTo(lx * sc, ly * sc); first = false; }
+                    else ctx.lineTo(lx * sc, ly * sc);
+                }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function updateLabels() {
+            const div = document.getElementById('ui');
+            div.innerHTML = '';
+
+            // Fixed Pixel Offset Logic
+            // Using C.PT_R + 8 as base offset
+            const off = C.PT_R + 8;
+
+            S.objs.forEach(o => {
+                if (!o.vis) return;
+                let p = { x: o.x, y: o.y };
+                if (o.type !== 'pt') { const c = getCenter(o); if (!c) return; p = c; }
+
+                const s = w2s(p.x, p.y);
+
+                // Culling
+                if (s.x < -50 || s.x > cvs.width + 50 || s.y < -50 || s.y > cvs.height + 50) return;
+
+                const el = document.createElement('div');
+                el.className = 'label';
+                // Apply fixed pixel offset
+                el.style.left = (s.x + off) + 'px';
+                el.style.top = (s.y + off) + 'px';
+
+                // Show Name if selected, otherwise Caption
+                const txt = S.selIds.includes(o.id) ? o.name : o.cap;
+
+                // Check for LaTeX delimiters $...$
+                if (window.katex && txt.startsWith('$') && txt.endsWith('$')) {
+                    try {
+                        katex.render(txt.slice(1, -1), el, { throwOnError: false });
+                    } catch (e) {
+                        el.innerText = txt;
+                    }
+                } else {
+                    el.innerText = txt;
+                    // Fallback for mixed content
+                    if (window.katex && (txt.includes('\\') || txt.includes('{'))) {
+                        try { katex.render(txt, el, { throwOnError: false }); } catch (e) { }
+                    }
+                }
+
+                div.appendChild(el);
+            });
+
+            // Axis Labels (Latex)
+            const o = w2s(0, 0);
+            if (o.y >= 0 && o.y <= cvs.height) {
+                const xL = document.createElement('div');
+                xL.className = 'label'; xL.style.left = (cvs.width - 20) + 'px'; xL.style.top = (o.y + 10) + 'px';
+                xL.innerHTML = '$x$';
+                if (window.katex) katex.render('x', xL, { throwOnError: false });
+                div.appendChild(xL);
+            }
+            if (o.x >= 0 && o.x <= cvs.width) {
+                const yL = document.createElement('div');
+                yL.className = 'label'; yL.style.left = (o.x + 10) + 'px'; yL.style.top = '5px';
+                yL.innerHTML = '$y$';
+                if (window.katex) katex.render('y', yL, { throwOnError: false });
+                div.appendChild(yL);
+            }
+        }
+
+        function getCenter(o) {
+            if (o.type === 'seg' || o.type === 'ln') { const p1 = getObj(o.p1), p2 = getObj(o.p2); return p1 && p2 ? { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } : null; }
+            if (o.type === 'cir') return getObj(o.c);
+            return null;
+        }
+
+        function getStep(s) {
+            let raw = 50 / s, p = Math.floor(Math.log10(raw)), b = Math.pow(10, p);
+            return raw / b > 5 ? b * 5 : (raw / b > 2 ? b * 2 : b);
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>
