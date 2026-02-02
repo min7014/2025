@@ -194,6 +194,32 @@
             display: flex;
         }
 
+        #learn-list div.row {
+            display: flex;
+            background: #eee;
+            padding: 2px;
+            border-radius: 6px;
+            margin: 4px;
+        }
+
+        #b-learn-type-l,
+        #b-learn-type-p {
+            border: none;
+            box-shadow: none;
+            border-radius: 4px;
+            flex: 1;
+            height: 30px;
+            font-size: 11px;
+            background: transparent;
+        }
+
+        #b-learn-type-l.active,
+        #b-learn-type-p.active {
+            background: white;
+            color: var(--a);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
         .expand-list {
             display: none;
             position: absolute;
@@ -342,6 +368,10 @@
             <div class="expand-wrap" id="learn-wrap">
                 <div class="btn" id="b-learn" style="font-size:12px; font-weight:bold;">학습모드</div>
                 <div id="learn-list" class="expand-list">
+                    <div class="row" style="padding: 5px; border-bottom: 1px solid var(--bord); background: #fdfdfd;">
+                        <div class="btn" id="b-learn-type-l" style="flex:1; height:32px; font-size:12px;">학습</div>
+                        <div class="btn" id="b-learn-type-p" style="flex:1; height:32px; font-size:12px;">문제</div>
+                    </div>
                     <div class="btn" id="b-learn-pt">점찍기 연습</div>
                     <div class="btn" id="b-learn-ln">직선 그리기 연습</div>
                     <div class="btn" id="b-learn-cir">원 그리기 연습</div>
@@ -431,9 +461,141 @@
             learnStartId: 0,
             learnUserStartId: 0,
             learnHiddenObjs: [],
+            learnType: 'learn', // 'learn' or 'prob'
             hist: [],
             hIdx: -1
         };
+
+        // --- ANALYTICS ---
+        const Analytics = {
+            url: 'https://script.google.com/macros/s/AKfycbxl-8dLMWcRxByl8Y18udmsm22wSqra-EQ5xFmg4ufKmQ9Wf5m6q_HJY4r2Bw-kEFYFVw/exec', // Replace with your Apps Script URL
+            sessionId: null,
+            sessionStart: null,
+            toolUsage: {},
+            learningSessions: [],
+            currentLearningSession: null,
+
+            init() {
+                this.sessionId = this.generateSessionId();
+                this.sessionStart = new Date();
+
+                // Send data when page unloads
+                window.addEventListener('beforeunload', () => this.sendSessionEnd());
+            },
+
+            generateSessionId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            },
+
+            trackToolUsage(toolType) {
+                if (!this.toolUsage[toolType]) {
+                    this.toolUsage[toolType] = 0;
+                }
+                this.toolUsage[toolType]++;
+            },
+
+            startLearningSession(practiceType) {
+                this.currentLearningSession = {
+                    practiceType,
+                    startTime: new Date(),
+                    attempts: 0,
+                    successes: 0,
+                    failures: 0,
+                    hintsUsed: 0,
+                    maxStreak: 0,
+                    completed: false
+                };
+            },
+
+            trackLearningAttempt(success, hintUsed) {
+                if (!this.currentLearningSession) return;
+
+                this.currentLearningSession.attempts++;
+                if (success) {
+                    this.currentLearningSession.successes++;
+                } else {
+                    this.currentLearningSession.failures++;
+                }
+                if (hintUsed) {
+                    this.currentLearningSession.hintsUsed++;
+                }
+
+                // Track max streak
+                if (S.learnStreak > this.currentLearningSession.maxStreak) {
+                    this.currentLearningSession.maxStreak = S.learnStreak;
+                }
+            },
+
+            endLearningSession(completed) {
+                if (!this.currentLearningSession) return;
+
+                this.currentLearningSession.completed = completed;
+                this.currentLearningSession.endTime = new Date();
+                this.currentLearningSession.duration =
+                    this.currentLearningSession.endTime - this.currentLearningSession.startTime;
+
+                this.learningSessions.push({ ...this.currentLearningSession });
+
+                // Send learning session data
+                this.sendEvent('learning_session', this.currentLearningSession);
+
+                this.currentLearningSession = null;
+            },
+
+            sendSessionEnd() {
+                const sessionEnd = new Date();
+                const duration = sessionEnd - this.sessionStart;
+
+                const data = {
+                    duration,
+                    toolUsage: this.toolUsage,
+                    totalLearningSessions: this.learningSessions.length,
+                    objectsCreated: S.idC
+                };
+
+                this.sendEvent('session_end', data);
+            },
+
+            trackEvent(eventType, eventData) {
+                this.sendEvent(eventType, eventData);
+            },
+
+            sendEvent(eventType, eventData) {
+                if (this.url === 'https://script.google.com/macros/s/AKfycbxl-8dLMWcRxByl8Y18udmsm22wSqra-EQ5xFmg4ufKmQ9Wf5m6q_HJY4r2Bw-kEFYFVw/exec'.replace('YOUR_GOOGLE_APPS_SCRIPT_URL_HERE', '')) {
+                    // This is just a safety check if the user accidentally reverts it
+                    if (this.url.includes('YOUR_GOOGLE_APPS_SCRIPT_URL_HERE')) {
+                        console.log('[Analytics] URL not configured. Event:', eventType, eventData);
+                        return;
+                    }
+                }
+
+                const payload = {
+                    sessionId: this.sessionId,
+                    timestamp: new Date().toISOString(),
+                    eventType,
+                    eventData: {
+                        ...eventData,
+                        learnType: S.learnType,
+                        lang: S.lang
+                    }
+                };
+
+                const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(this.url, blob);
+                } else {
+                    fetch(this.url, {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                        headers: { 'Content-Type': 'text/plain' },
+                        mode: 'no-cors' // Use no-cors for GAS if necessary, though it prevents seeing the response
+                    }).catch(err => console.error('[Analytics] Error:', err));
+                }
+            }
+        };
+
+        Analytics.init();
 
         // --- MATH ---
         const M = {
@@ -864,6 +1026,7 @@
             S.hIdx--;
             const state = JSON.parse(S.hist[S.hIdx]);
             S.objs = state.objs; S.idC = state.idC;
+            Analytics.trackToolUsage('undo');
             render();
         }
 
@@ -872,6 +1035,7 @@
             S.hIdx++;
             const state = JSON.parse(S.hist[S.hIdx]);
             S.objs = state.objs; S.idC = state.idC;
+            Analytics.trackToolUsage('redo');
             render();
         }
 
@@ -1479,6 +1643,19 @@
             const bLearnTypeP = document.getElementById('b-learn-type-p');
             const msg = document.getElementById('learn-msg');
 
+            if (bLearnTypeL) bLearnTypeL.onclick = (e) => {
+                e.stopPropagation();
+                S.learnType = 'learn';
+                Analytics.trackEvent('change_learn_type', { type: 'learn' });
+                updateToggles();
+            };
+            if (bLearnTypeP) bLearnTypeP.onclick = (e) => {
+                e.stopPropagation();
+                S.learnType = 'prob';
+                Analytics.trackEvent('change_learn_type', { type: 'prob' });
+                updateToggles();
+            };
+
             const updateToggles = () => {
                 bGrid.classList.toggle('active', S.showGrid);
                 bAxes.classList.toggle('active', S.showAxes);
@@ -1536,6 +1713,9 @@
                     const obj = getObj(id);
                     if (obj) obj.vis = false;
                 });
+
+                // Start analytics tracking
+                Analytics.startLearningSession(mode);
 
                 regenPractice();
                 updateToggles();
@@ -1670,6 +1850,10 @@
 
             window.finishLearn = (success) => {
                 const msg = document.getElementById('learn-msg');
+
+                // Track analytics
+                Analytics.trackLearningAttempt(success, S.learnShowHint);
+
                 if (success) {
                     if (!S.learnShowHint) {
                         S.learnStreak++;
@@ -1680,6 +1864,10 @@
                     if (S.learnStreak >= 3) {
                         msg.innerText = S.lang === 'KO' ? '참 잘했습니다! 연습을 완료했습니다.' : 'Great job! Practice completed.';
                         msg.style.background = '#27ae60';
+
+                        // End analytics session
+                        Analytics.endLearningSession(true);
+
                         setTimeout(() => {
                             S.objs = S.objs.filter(o => parseInt(o.id) < S.learnStartId);
                             S.idC = S.learnStartId;
@@ -1745,6 +1933,9 @@
             if (t === 'sel') document.getElementById('b-sel').classList.add('active');
             else if (t === 'txt') document.getElementById('b-txt').classList.add('active');
             else document.getElementById('b-grp').classList.add('active');
+
+            // Track tool usage
+            if (t !== 'sel') Analytics.trackToolUsage(t);
         }
 
         // DRAW
