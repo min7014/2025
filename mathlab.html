@@ -152,6 +152,12 @@
             background: #eef9ff;
         }
 
+        .btn.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: default;
+        }
+
         .btn.prob-mode {
             border-color: #e67e22;
             /* Orange for Problem */
@@ -194,31 +200,7 @@
             display: flex;
         }
 
-        #learn-list div.row {
-            display: flex;
-            background: #eee;
-            padding: 2px;
-            border-radius: 6px;
-            margin: 4px;
-        }
 
-        #b-learn-type-l,
-        #b-learn-type-p {
-            border: none;
-            box-shadow: none;
-            border-radius: 4px;
-            flex: 1;
-            height: 30px;
-            font-size: 11px;
-            background: transparent;
-        }
-
-        #b-learn-type-l.active,
-        #b-learn-type-p.active {
-            background: white;
-            color: var(--a);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
 
         .expand-list {
             display: none;
@@ -376,17 +358,13 @@
             <div class="expand-wrap" id="learn-wrap">
                 <div class="btn" id="b-learn" style="font-size:12px; font-weight:bold;">학습모드</div>
                 <div id="learn-list" class="expand-list">
-                    <div class="row" style="padding: 5px; border-bottom: 1px solid var(--bord); background: #fdfdfd;">
-                        <div class="btn" id="b-learn-type-l" style="flex:1; height:32px; font-size:12px;">학습</div>
-                        <div class="btn" id="b-learn-type-p" style="flex:1; height:32px; font-size:12px;">문제</div>
-                    </div>
-                    <div class="btn" id="b-learn-pt">점찍기 연습</div>
-                    <div class="btn" id="b-learn-ln">직선 그리기 연습</div>
-                    <div class="btn" id="b-learn-cir">원 그리기 연습</div>
-                    <div class="btn" id="b-learn-par-ln">평행선 작도 연습</div>
-                    <div class="btn" id="b-learn-perp-ln">수선 작도 연습</div>
-                    <div class="btn" id="b-learn-mid">중점 찾기 연습</div>
-                    <div class="btn" id="b-learn-bis">각의 이등분선 연습</div>
+                    <div class="btn" id="b-learn-pt">점 찍기</div>
+                    <div class="btn" id="b-learn-ln">일차함수 그래프 그리기</div>
+                    <div class="btn" id="b-learn-cir">원의 그래프 그리기</div>
+                    <div class="btn disabled" id="b-learn-par-ln">평행선</div>
+                    <div class="btn disabled" id="b-learn-perp-ln">수선</div>
+                    <div class="btn disabled" id="b-learn-mid">중점</div>
+                    <div class="btn disabled" id="b-learn-bis">각의 이등분선</div>
                 </div>
             </div>
             <div class="btn" id="b-lang" style="font-size:12px; font-weight:bold;">KO</div>
@@ -419,15 +397,13 @@
             eq: { n: { KO: '식의 형태', EN: 'Equation Form' } },
             eq_name: { n: { KO: '이름만', EN: 'Name Only' } },
             learn: { n: { KO: '학습모드', EN: 'Learning Mode' } },
-            learn_pt: { n: { KO: '점찍기 연습', EN: 'Point Practice' } },
-            learn_ln: { n: { KO: '직선 그리기 연습', EN: 'Line Practice' } },
-            learn_cir: { n: { KO: '원 그리기 연습', EN: 'Circle Practice' } },
-            learn_par_ln: { n: { KO: '평행선 연습', EN: 'Parallel Practice' } },
-            learn_perp_ln: { n: { KO: '수선 연습', EN: 'Perpendicular Practice' } },
-            learn_mid: { n: { KO: '중점 연습', EN: 'Midpoint Practice' } },
-            learn_bis: { n: { KO: '각의 이등분선 연습', EN: 'Angle Bisector Practice' } },
-            learn_type_l: { n: { KO: '학습 (답 표시)', EN: 'Learn (Show Answer)' } },
-            learn_type_p: { n: { KO: '문제 (답 미표시)', EN: 'Problem (Hide Answer)' } }
+            learn_pt: { n: { KO: '점 찍기', EN: 'Point Practice' } },
+            learn_ln: { n: { KO: '일차함수 그래프 그리기', EN: 'Linear Function Practice' } },
+            learn_cir: { n: { KO: '원의 그래프 그리기', EN: 'Circle Practice' } },
+            learn_par_ln: { n: { KO: '평행선', EN: 'Parallel Practice' } },
+            learn_perp_ln: { n: { KO: '수선', EN: 'Perpendicular Practice' } },
+            learn_mid: { n: { KO: '중점', EN: 'Midpoint Practice' } },
+            learn_bis: { n: { KO: '각의 이등분선', EN: 'Angle Bisector Practice' } }
         };
         const G_TOOLS = ['pt', 'seg', 'ln', 'cir', 'par', 'ell', 'hyp', 'par_ln', 'perp_ln', 'mid', 'bis'];
 
@@ -469,7 +445,8 @@
             learnStartId: 0,
             learnUserStartId: 0,
             learnHiddenObjs: [],
-            learnType: 'learn', // 'learn' or 'prob'
+            learnWaitingForNext: false,
+
             hist: [],
             hIdx: -1
         };
@@ -707,6 +684,23 @@
                         }
                         return res;
                     } else if (mode === 'gen') return M.formatGeneral(g);
+                } else if (o.type === 'par_ln' || o.type === 'perp_ln') {
+                    const g = M.getGeo(o);
+                    if (!g) return "";
+                    if (mode === 'slope') {
+                        if (Math.abs(g.b) < 1e-9) return `x = ${fmt(-g.c / g.a)}`;
+                        const m = -g.a / g.b, n = -g.c / g.b;
+                        const ms = fmt(m), ns = fmt(n);
+                        let res = "y = ";
+                        if (ms === "0") res += ns;
+                        else {
+                            if (ms === "1") res += "x";
+                            else if (ms === "-1") res += "-x";
+                            else res += ms + "x";
+                            if (Math.abs(n) > 1e-9) res += (n > 0 ? " + " : " - ") + fmt(Math.abs(n));
+                        }
+                        return res;
+                    } else if (mode === 'gen') return M.formatGeneral(g);
                 } else if (o.type === 'bis') {
                     const g = M.getGeo(o);
                     if (!g) return "";
@@ -739,9 +733,8 @@
                     if (o.l) lObj = getObj(o.l);
                     else if (o.p2 && o.p3) lObj = { type: 'ln', p1: o.p2, p2: o.p3 };
                     if (!f || !lObj) return null;
-                    const d1 = getObj(lObj.p1), d2 = getObj(lObj.p2);
-                    if (!d1 || !d2) return null;
-                    const l = M.line(d1, d2);
+                    const l = M.getGeo(lObj);
+                    if (!l || l.type !== 'line') return null;
                     const a = l.a, b = l.b, c = l.c, a2b2 = a * a + b * b;
                     return {
                         A: b * b, B: -2 * a * b, C: a * a,
@@ -836,13 +829,140 @@
                     const v = { x: (p3.x - p2.x) / d2, y: (p3.y - p2.y) / d2 };
                     const w = { x: u.x + v.x, y: u.y + v.y };
                     const len = Math.hypot(w.x, w.y);
-                    if (len < 1e-9) { // Collinear, bisector is perpendicular
-                        return { type: 'line', a: u.x, b: u.y, c: -(u.x * p2.x + u.y * p2.y) };
+                    if (len < 1e-9) {
+                        // 180 degrees case: bisector is perpendicular to the line
+                        return { type: 'line', a: -u.x, b: -u.y, c: u.x * p2.x + u.y * p2.y };
                     }
                     const dir = { x: w.x / len, y: w.y / len };
                     return { type: 'line', a: -dir.y, b: dir.x, c: dir.y * p2.x - dir.x * p2.y };
                 }
+                if (['par', 'ell', 'hyp'].includes(o.type)) {
+                    const coeffs = M.getConicCoeffs(o);
+                    return coeffs ? { type: 'conic', ...coeffs, obj: o } : null;
+                }
                 return null;
+            },
+
+            intConicLine: (c, l) => {
+                const results = [];
+                // Substitute line into conic
+                // if b != 0: y = (-ax-c)/b
+                // else: x = -c/a
+                if (Math.abs(l.b) > 1e-9) {
+                    const a_ = -l.a / l.b, b_ = -l.c / l.b;
+                    // A*x^2 + B*x*(a_*x + b_) + C*(a_*x + b_)^2 + D*x + E*(a_*x + b_) + F = 0
+                    const A = c.A + c.B * a_ + c.C * a_ * a_;
+                    const B = c.B * b_ + 2 * c.C * a_ * b_ + c.D + c.E * a_;
+                    const C = c.C * b_ * b_ + c.E * b_ + c.F;
+                    const det = B * B - 4 * A * C;
+                    if (det >= 0) {
+                        const s = Math.sqrt(det);
+                        const x1 = (-B + s) / (2 * A), x2 = (-B - s) / (2 * A);
+                        results.push({ x: x1, y: a_ * x1 + b_ }, { x: x2, y: a_ * x2 + b_ });
+                    }
+                } else if (Math.abs(l.a) > 1e-9) {
+                    const x = -l.c / l.a;
+                    // A*x^2 + B*x*y + C*y^2 + D*x + E*y + F = 0
+                    const A = c.C;
+                    const B = c.B * x + c.E;
+                    const C = c.A * x * x + c.D * x + c.F;
+                    const det = B * B - 4 * A * C;
+                    if (det >= 0) {
+                        const s = Math.sqrt(det);
+                        const y1 = (-B + s) / (2 * A), y2 = (-B - s) / (2 * A);
+                        results.push({ x: x, y: y1 }, { x: x, y: y2 });
+                    }
+                }
+                return results;
+            },
+
+            getConicValue: (c, p) => {
+                return c.A * p.x * p.x + c.B * p.x * p.y + c.C * p.y * p.y + c.D * p.x + c.E * p.y + c.F;
+            },
+
+            getConicSamples: (o) => {
+                const pts = [];
+                if (o.type === 'par') {
+                    const f = getObj(o.p1); let lObj = o.l ? getObj(o.l) : { type: 'ln', p1: o.p2, p2: o.p3 };
+                    const d1 = getObj(lObj.p1), d2 = getObj(lObj.p2); if (!f || !d1 || !d2) return [];
+                    const l = M.line(d1, d2);
+                    const num = l.a * f.x + l.b * f.y + l.c, den = l.a * l.a + l.b * l.b;
+                    const proj = { x: f.x - l.a * num / den, y: f.y - l.b * num / den };
+                    const V = { x: (f.x + proj.x) / 2, y: (f.y + proj.y) / 2 };
+                    const axis = { x: f.x - proj.x, y: f.y - proj.y }, p = Math.hypot(axis.x, axis.y) / 2;
+                    const ang = Math.atan2(axis.y, axis.x);
+                    const cos = Math.cos(ang), sin = Math.sin(ang);
+                    const limit = 200 / (S.view.s / 50 + 0.1); // Adaptive limit
+                    for (let t = -limit; t <= limit; t += limit / 100) {
+                        const lx = t * t / (4 * p), ly = t;
+                        pts.push({ x: V.x + lx * cos - ly * sin, y: V.y + lx * sin + ly * cos });
+                    }
+                } else if (o.type === 'ell' || o.type === 'hyp') {
+                    const f1 = getObj(o.p1), f2 = getObj(o.p2), pOn = getObj(o.p3);
+                    if (!f1 || !f2 || !pOn) return [];
+                    const dist1 = M.dist(pOn, f1), dist2 = M.dist(pOn, f2);
+                    const a = o.type === 'ell' ? (dist1 + dist2) / 2 : Math.abs(dist1 - dist2) / 2;
+                    const cd = M.dist(f1, f2) / 2;
+                    const cent = { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 };
+                    const ang = Math.atan2(f2.y - f1.y, f2.x - f1.x);
+                    const cos = Math.cos(ang), sin = Math.sin(ang);
+                    if (o.type === 'ell') {
+                        if (a <= cd) return [];
+                        const b = Math.sqrt(a * a - cd * cd);
+                        for (let t = 0; t < Math.PI * 2; t += 0.1) {
+                            const lx = a * Math.cos(t), ly = b * Math.sin(t);
+                            pts.push({ x: cent.x + lx * cos - ly * sin, y: cent.y + lx * sin + ly * cos });
+                        }
+                    } else {
+                        if (a >= cd || a === 0) return [];
+                        const b = Math.sqrt(cd * cd - a * a);
+                        for (let sign of [-1, 1]) {
+                            for (let t = -3; t <= 3; t += 0.1) {
+                                const lx = sign * a * Math.cosh(t), ly = b * Math.sinh(t);
+                                pts.push({ x: cent.x + lx * cos - ly * sin, y: cent.y + lx * sin + ly * cos });
+                            }
+                        }
+                    }
+                }
+                return pts;
+            },
+
+            getConicGrad: (c, p) => ({
+                x: 2 * c.A * p.x + c.B * p.y + c.D,
+                y: c.B * p.x + 2 * c.C * p.y + c.E
+            }),
+
+            intConics: (g1, g2) => {
+                const results = [];
+                const samples = M.getConicSamples(g1.obj);
+                if (samples.length < 2) return [];
+                let prevV = M.getConicValue(g2, samples[0]);
+                for (let i = 1; i < samples.length; i++) {
+                    const currV = M.getConicValue(g2, samples[i]);
+                    if (prevV * currV < 0) {
+                        const t = Math.abs(prevV) / (Math.abs(prevV) + Math.abs(currV));
+                        let curr = {
+                            x: samples[i - 1].x + (samples[i].x - samples[i - 1].x) * t,
+                            y: samples[i - 1].y + (samples[i].y - samples[i - 1].y) * t
+                        };
+                        // Newton-Raphson refinement
+                        for (let iter = 0; iter < 8; iter++) {
+                            const f1 = M.getConicValue(g1, curr), f2 = M.getConicValue(g2, curr);
+                            const gr1 = M.getConicGrad(g1, curr), gr2 = M.getConicGrad(g2, curr);
+                            const det = gr1.x * gr2.y - gr2.x * gr1.y;
+                            if (Math.abs(det) < 1e-14) break;
+                            const dx = (-f1 * gr2.y + f2 * gr1.y) / det;
+                            const dy = (f1 * gr2.x - f2 * gr1.x) / det;
+                            curr.x += dx; curr.y += dy;
+                            if (Math.hypot(dx, dy) < 1e-11) break;
+                        }
+                        results.push({ x: curr.x, y: curr.y });
+                    }
+                    prevV = currV;
+                }
+                const unique = [];
+                results.forEach(p => { if (!unique.some(up => M.dist(p, up) < 1e-7)) unique.push(p); });
+                return unique;
             },
 
             closestOnPath: (p, o) => {
@@ -1053,10 +1173,21 @@
             // Visibility Propagation (Parents)
             if (o.type !== 'pt') {
                 const ids = [];
-                if (o.p1) ids.push(o.p1); if (o.p2) ids.push(o.p2); if (o.p3) ids.push(o.p3); if (o.c) ids.push(o.c);
+                if (o.p1) ids.push(o.p1); if (o.p2) ids.push(o.p2); if (o.p3) ids.push(o.p3); if (o.c) ids.push(o.c); if (o.l) ids.push(o.l);
                 for (let id of ids) {
                     const p = getObj(id);
                     if (p && !p.vis) { exists = false; break; }
+                }
+                if (exists && o.type === 'perp_ln') {
+                    const p1 = getObj(o.p1), lObj = getObj(o.l);
+                    if (lObj && lObj.type === 'seg') {
+                        const g = M.getGeo(lObj);
+                        if (g) {
+                            const foot = M.projLine(p1, g);
+                            const a = getObj(lObj.p1), b = getObj(lObj.p2);
+                            if (!isPtOnSeg(foot, a, b)) exists = false;
+                        }
+                    }
                 }
             }
 
@@ -1081,6 +1212,16 @@
                             else if (g1.type === 'line' && g2.type === 'circle') pts = M.intLineCir(g1, g2);
                             else if (g1.type === 'circle' && g2.type === 'line') pts = M.intLineCir(g2, g1);
                             else if (g1.type === 'circle' && g2.type === 'circle') pts = M.intCirCir(g1, g2);
+                            else if (g1.type === 'conic' && g2.type === 'conic') pts = M.intConics(g1, g2);
+                            else if (g1.type === 'conic' && g2.type === 'line') pts = M.intConicLine(g1, g2);
+                            else if (g1.type === 'line' && g2.type === 'conic') pts = M.intConicLine(g2, g1);
+                            else if (g1.type === 'conic' && g2.type === 'circle') {
+                                const c2 = { A: 1, B: 0, C: 1, D: -2 * g2.x, E: -2 * g2.y, F: g2.x * g2.x + g2.y * g2.y - g2.r * g2.r, obj: p2 };
+                                pts = M.intConics(g1, c2);
+                            } else if (g1.type === 'circle' && g2.type === 'conic') {
+                                const c1 = { A: 1, B: 0, C: 1, D: -2 * g1.x, E: -2 * g1.y, F: g1.x * g1.x + g1.y * g1.y - g1.r * g1.r, obj: p1 };
+                                pts = M.intConics(c1, g2);
+                            }
 
                             // Filter points for Segments
                             pts = pts.filter(pt => {
@@ -1106,12 +1247,31 @@
                         } else { exists = false; }
                     }
                 }
+            } else if (exists && o.type === 'mid') {
+                const g = M.getGeo(o);
+                if (g) { o.x = g.x; o.y = g.y; }
+                else exists = false;
             }
 
             o.vis = exists && (o.hidden !== true);
         }
 
         function onDown(e) {
+            if (S.learnMode && S.learnWaitingForNext) {
+                if (e.target === cvs) {
+                    e.preventDefault();
+                    if (S.learnStreak < 3) {
+                        S.learnWaitingForNext = false;
+                        const msg = document.getElementById('learn-msg');
+                        regenPractice();
+                        msg.style.background = 'rgba(0,0,0,0.7)';
+                        updateToggles(); updateLearnUI(); render();
+                    }
+                    return; // Proceed to next problem and block any drawing
+                }
+                return; // Block drawing even if not clicking on cvs directly
+            }
+            if (e.button === 2) return; // Ignore right-click for drawing actions
             const now = Date.now();
             const isDbl = (now - S.lastTime < 300) && (Math.hypot(e.clientX - S.lastPos.x, e.clientY - S.lastPos.y) < 10);
             S.lastTime = now; S.lastPos = { x: e.clientX, y: e.clientY };
@@ -1190,9 +1350,17 @@
                     s.onchange = e => cb(e.target.value);
                     r.innerHTML = `<div>${lbl}</div>`; r.appendChild(s); p.appendChild(r);
                 };
-                addRow('Name', hit.name, v => renameObj(hit, v));
-                addRow('Caption', hit.cap, v => { hit.cap = v; saveState(); });
-                addRow('Show', (hit.hidden !== true), v => { hit.hidden = !v; saveState(); }, 'checkbox');
+                addRow(S.lang === 'KO' ? '이름' : 'Name', hit.name, v => renameObj(hit, v));
+                addRow(S.lang === 'KO' ? '캡션' : 'Caption', hit.cap, v => { hit.cap = v; saveState(); });
+                addRow(S.lang === 'KO' ? '객체 보임' : 'Show Object', (hit.hidden !== true), v => { hit.hidden = !v; saveState(); }, 'checkbox');
+                if (hit.type !== 'txt') {
+                    addRow(S.lang === 'KO' ? '라벨 보임' : 'Show Label', (hit.showLabel !== false), v => { hit.showLabel = v; saveState(); render(); }, 'checkbox');
+                    const labelOpts = [
+                        { v: 'name', l: S.lang === 'KO' ? '이름' : 'Name' },
+                        { v: 'cap', l: S.lang === 'KO' ? '캡션' : 'Caption' }
+                    ];
+                    addSelect(S.lang === 'KO' ? '라벨 표시' : 'Label', hit.labelMode || 'cap', labelOpts, v => { hit.labelMode = v; saveState(); render(); });
+                }
                 if (hit.type === 'ln' || hit.type === 'seg' || hit.type === 'par' || hit.type === 'ell' || hit.type === 'hyp') {
                     const opts = [
                         { v: 'none', l: TOOLS.eq_name.n[S.lang] },
@@ -1204,12 +1372,13 @@
                     addSelect(TOOLS.eq.n[S.lang], hit.eqMode, opts, v => { hit.eqMode = v; saveState(); render(); });
                 }
                 if (hit.type === 'cir') {
-                    if (hit.mode === 'fixed') addRow('Radius', hit.r, v => { hit.r = parseFloat(v) || hit.r; render(); });
+                    if (hit.mode === 'fixed') addRow(S.lang === 'KO' ? '반지름' : 'Radius', hit.r, v => { hit.r = parseFloat(v) || hit.r; render(); });
                     else if (hit.mode === '2pt') {
                         const c = getObj(hit.c), p2 = getObj(hit.p2);
-                        if (c && p2) addRow('Dist', M.dist(c, p2).toFixed(2), () => { }, 'text');
+                        if (c && p2) addRow(S.lang === 'KO' ? '거리' : 'Dist', M.dist(c, p2).toFixed(2), () => { }, 'text');
                     }
                 }
+
             }
         }
 
@@ -1351,8 +1520,15 @@
                     else if (obj.type === 'pt' && obj.def === 'onPath') { obj.x = pos.x; obj.y = pos.y; updateObj(obj); }
                 }
             } else if (S.curr === 'sel') {
+                // Check visible objects first, then hidden ones
                 const hit = findHit(w);
-                S.hovId = hit ? hit.id : null;
+                if (hit) {
+                    S.hovId = hit.id;
+                } else {
+                    // Check hidden objects too
+                    const hiddenHit = findHitHidden(w);
+                    S.hovId = hiddenHit ? hiddenHit.id : null;
+                }
             } else if (S.action === 'CREATE') {
                 calcSnap(w);
                 const pos = S.snap ? { x: S.snap.x, y: S.snap.y } : w;
@@ -1363,6 +1539,22 @@
                     if (c) S.tmp = { type: 'cir', c: c.id, r: M.dist(c, pos), col: C.SEL, mode: 'fixed' };
                 } else if ((S.curr === 'seg' || S.curr === 'ln') && S.pts.length === 1) {
                     S.tmp = { type: S.curr, p1: S.pts[0], p2_pos: pos, col: C.SEL };
+                } else if ((S.curr === 'par_ln' || S.curr === 'perp_ln' || S.curr === 'par') && S.pts.length === 1) {
+                    if (S.snap && S.snap.parents && S.snap.parents.length > 0) {
+                        const targetId = S.snap.parents[0];
+                        const target = getObj(targetId);
+                        if (target && (target.type === 'ln' || target.type === 'seg' || target.type === 'par_ln' || target.type === 'perp_ln' || target.type === 'bis')) {
+                            if (S.curr === 'perp_ln' && target.type === 'seg') {
+                                const p1 = getObj(S.pts[0]);
+                                const g = M.getGeo(target);
+                                if (p1 && g) {
+                                    const foot = M.projLine(p1, g);
+                                    if (!isPtOnSeg(foot, getObj(target.p1), getObj(target.p2))) { S.tmp = null; return; }
+                                }
+                            }
+                            S.tmp = { type: S.curr, p1: S.pts[0], l: targetId, col: C.SEL };
+                        } else { S.tmp = null; }
+                    } else { S.tmp = null; }
                 }
             }
         }
@@ -1380,6 +1572,17 @@
                     if (g1.type === 'line' && g2.type === 'line') { const p = M.intLines(g1, g2); if (p) pts = [p]; }
                     else if (g1.type === 'line' && g2.type === 'circle') pts = M.intLineCir(g1, g2);
                     else if (g1.type === 'circle' && g2.type === 'line') pts = M.intLineCir(g2, g1);
+                    else if (g1.type === 'circle' && g2.type === 'circle') pts = M.intCirCir(g1, g2);
+                    else if (g1.type === 'conic' && g2.type === 'conic') pts = M.intConics(g1, g2);
+                    else if (g1.type === 'conic' && g2.type === 'line') pts = M.intConicLine(g1, g2);
+                    else if (g1.type === 'line' && g2.type === 'conic') pts = M.intConicLine(g2, g1);
+                    else if (g1.type === 'conic' && g2.type === 'circle') {
+                        const c2 = { A: 1, B: 0, C: 1, D: -2 * g2.x, E: -2 * g2.y, F: g2.x * g2.x + g2.y * g2.y - g2.r * g2.r, obj: hits[1] };
+                        pts = M.intConics(g1, c2);
+                    } else if (g1.type === 'circle' && g2.type === 'conic') {
+                        const c1 = { A: 1, B: 0, C: 1, D: -2 * g1.x, E: -2 * g1.y, F: g1.x * g1.x + g1.y * g1.y - g1.r * g1.r, obj: hits[0] };
+                        pts = M.intConics(c1, g2);
+                    }
 
                     let best = null, minD = C.HIT / S.view.s;
                     pts.forEach(pt => { const d = M.dist(p, pt); if (d < minD) { minD = d; best = pt; } });
@@ -1422,12 +1625,12 @@
                         if (S.learnMode === 'pt') {
                             const d = M.dist(o, S.learnTarget);
                             if (d < 0.1) finishLearn(true);
-                            else if (!S.learnShowHint) finishLearn(false);
+                            else finishLearn(false);
                         }
                     } else if (S.learnMode === 'pt') {
                         const hp = getObj(hitId);
                         if (hp && M.dist(hp, S.learnTarget) < 0.1) finishLearn(true);
-                        else if (!S.learnShowHint) finishLearn(false);
+                        else finishLearn(false);
                     }
                     S.tmp = null;
                 } else if (S.curr === 'txt') {
@@ -1440,18 +1643,46 @@
                 } else {
                     // Multi-step tool logic
                     if ((S.curr === 'par' || S.curr === 'par_ln' || S.curr === 'perp_ln') && S.pts.length === 1) {
-                        const hitLn = S.objs.find(o => (o.type === 'ln' || o.type === 'seg' || o.type === 'par_ln' || o.type === 'perp_ln') && o.vis && checkHitObj(o, w));
+                        const hitLn = S.objs.find(o => (o.type === 'ln' || o.type === 'seg' || o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis') && o.vis && checkHitObj(o, w, C.HIT * 1.5));
                         if (hitLn) {
-                            createObj(S.curr, { p1: S.pts[0], l: hitLn.id });
+                            if (S.curr === 'perp_ln' && hitLn.type === 'seg') {
+                                const p1 = getObj(S.pts[0]);
+                                const g = M.getGeo(hitLn);
+                                if (p1 && g) {
+                                    const foot = M.projLine(p1, g);
+                                    if (!isPtOnSeg(foot, getObj(hitLn.p1), getObj(hitLn.p2))) { S.p.down = false; return; }
+                                }
+                            }
+                            createObj(S.curr, { p1: S.pts[0], l: hitLn.id, parents: [S.pts[0], hitLn.id] });
                             S.pts = []; S.tmp = null; S.action = 'IDLE'; S.p.down = false; return;
+                        } else if (S.curr === 'par_ln' || S.curr === 'perp_ln') {
+                            // Do not create an intermediate point for these tools if line selection failed
+                            S.p.down = false; return;
                         }
                     }
                     const pId = hitId || createObj('pt', { x: pos.x, y: pos.y, def, parents }).id;
                     S.pts.push(pId);
+
+                    // Check if point is on target line in learning mode
+                    if (S.learnMode === 'ln' && S.learnTarget) {
+                        const pt = getObj(pId);
+                        if (pt) {
+                            const t = S.learnTarget;
+                            // Check if point is on the line y = mx + n
+                            const expectedY = t.m * pt.x + t.n;
+                            const diff = Math.abs(pt.y - expectedY);
+                            if (diff > 0.3) {
+                                // Point is not on target line, show hint
+                                finishLearn(false);
+                            }
+                        }
+                    }
+
                     // Preview for next point
                     if (S.curr !== 'txt') S.tmp = { type: 'pt', x: pos.x, y: pos.y, col: C.SEL };
                     checkToolComplete();
                 }
+
                 saveState();
             } else if (S.action === 'DRAG' && S.dragged) {
                 saveState();
@@ -1485,16 +1716,21 @@
             const name = nextName(type);
             let cap = `$\\mathrm{${name}}$`;
             if (type === 'txt') cap = 'Text';
-            else if (['seg', 'ln', 'par', 'ell', 'hyp'].includes(type)) cap = `$${name}$`; // $a$ format for lines/curves
+            else if (['seg', 'ln', 'par', 'ell', 'hyp', 'par_ln', 'perp_ln', 'bis'].includes(type)) cap = `$${name}$`; // $a$ format for lines/curves
 
             const o = {
                 id, type, ...data,
                 name, cap,
                 vis: true, col: 'black',
-                eqMode: (type === 'ln' || type === 'seg') ? 'slope' : (['par', 'ell', 'hyp'].includes(type) ? 'gen' : null),
+                eqMode: (type === 'ln' || type === 'seg' || type === 'par_ln' || type === 'perp_ln' || type === 'bis') ? 'slope' : (['par', 'ell', 'hyp'].includes(type) ? 'gen' : null),
                 parents: data.parents || []
             };
             S.objs.push(o);
+
+            if (S.learnMode && type === 'cir') {
+                const c = getObj(o.c);
+                if (c) c.vis = false;
+            }
 
             if (S.learnMode && type !== 'pt') {
                 let success = false;
@@ -1508,10 +1744,10 @@
                         }
                     }
                 } else if (S.learnMode === 'cir' && type === 'cir') {
-                    const c = getObj(o.c);
-                    if (c) {
-                        const d = M.dist(c, { x: S.learnTarget.cx, y: S.learnTarget.cy });
-                        const rD = Math.abs(o.r - S.learnTarget.r);
+                    const g = M.getGeo(o);
+                    if (g) {
+                        const d = M.dist(g, { x: S.learnTarget.cx, y: S.learnTarget.cy });
+                        const rD = Math.abs(g.r - S.learnTarget.r);
                         if (d < 0.1 && rD < 0.1) success = true;
                     }
                 } else if ((S.learnMode === 'par_ln' || S.learnMode === 'perp_ln' || S.learnMode === 'bis') && type === o.type) {
@@ -1533,7 +1769,7 @@
                 }
 
                 if (success) finishLearn(true);
-                else if (!S.learnShowHint) finishLearn(false);
+                else finishLearn(false);
             }
 
             render();
@@ -1541,9 +1777,9 @@
         }
 
         function nextName(type) {
-            const isPt = type === 'pt';
+            const isPt = type === 'pt' || type === 'mid';
             const chars = isPt ? 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' : 'abcdefghijklmnopqrstuvwxyz';
-            const count = S.objs.filter(o => isPt ? o.type === 'pt' : (o.type !== 'pt' && o.type !== 'txt')).length;
+            const count = S.objs.filter(o => isPt ? (o.type === 'pt' || o.type === 'mid') : (o.type !== 'pt' && o.type !== 'mid' && o.type !== 'txt')).length;
             return chars[count % 26] + (Math.floor(count / 26) || '');
         }
 
@@ -1551,6 +1787,20 @@
             const hitPt = S.objs.find(o => (o.type === 'pt' || o.type === 'txt') && o.vis && M.dist(o, p) < C.HIT / S.view.s);
             if (hitPt) return hitPt;
             return S.objs.find(o => o.type !== 'pt' && o.type !== 'txt' && o.vis && checkHitObj(o, p));
+        }
+
+        function findHitHidden(p) {
+            // Find hidden objects for hover preview
+            const hitPt = S.objs.find(o => (o.type === 'pt' || o.type === 'txt') && !o.vis && o.hidden === true && M.dist(o, p) < C.HIT / S.view.s);
+            if (hitPt) return hitPt;
+            return S.objs.find(o => o.type !== 'pt' && o.type !== 'txt' && !o.vis && o.hidden === true && checkHitObjHidden(o, p));
+        }
+
+        function checkHitObjHidden(o, p, tol) {
+            // Similar to checkHitObj but works for hidden objects
+            if (o.type === 'pt' || o.type === 'txt') return M.dist(o, p) < (tol || C.HIT) / S.view.s;
+            const pt = M.closestOnPath(p, o);
+            return M.dist(p, pt) < (tol || C.HIT) / S.view.s;
         }
 
         function checkHitObj(o, p, tol) {
@@ -1647,22 +1897,7 @@
             const bLearnPerpLn = document.getElementById('b-learn-perp-ln');
             const bLearnMid = document.getElementById('b-learn-mid');
             const bLearnBis = document.getElementById('b-learn-bis');
-            const bLearnTypeL = document.getElementById('b-learn-type-l');
-            const bLearnTypeP = document.getElementById('b-learn-type-p');
             const msg = document.getElementById('learn-msg');
-
-            if (bLearnTypeL) bLearnTypeL.onclick = (e) => {
-                e.stopPropagation();
-                S.learnType = 'learn';
-                Analytics.trackEvent('change_learn_type', { type: 'learn' });
-                updateToggles();
-            };
-            if (bLearnTypeP) bLearnTypeP.onclick = (e) => {
-                e.stopPropagation();
-                S.learnType = 'prob';
-                Analytics.trackEvent('change_learn_type', { type: 'prob' });
-                updateToggles();
-            };
 
             const updateToggles = () => {
                 bGrid.classList.toggle('active', S.showGrid);
@@ -1687,10 +1922,6 @@
                 const bPerp = document.getElementById('b-learn-perp-ln'); if (bPerp) bPerp.innerText = TOOLS.learn_perp_ln.n[S.lang];
                 const bMid = document.getElementById('b-learn-mid'); if (bMid) bMid.innerText = TOOLS.learn_mid.n[S.lang];
                 const bBis = document.getElementById('b-learn-bis'); if (bBis) bBis.innerText = TOOLS.learn_bis.n[S.lang];
-                if (bLearnTypeL) bLearnTypeL.innerText = S.lang === 'KO' ? '학습' : 'Learn';
-                if (bLearnTypeP) bLearnTypeP.innerText = S.lang === 'KO' ? '문제' : 'Prob';
-                if (bLearnTypeL) bLearnTypeL.classList.toggle('active', S.learnType === 'learn');
-                if (bLearnTypeP) bLearnTypeP.classList.toggle('active', S.learnType === 'prob');
             };
             window.updateToggles = updateToggles;
             updateToggles();
@@ -1700,6 +1931,7 @@
                 bLang.innerText = S.lang;
                 setupUI(); // Refresh all labels
             };
+
 
             if (bLearn) {
                 bLearn.onclick = () => {
@@ -1742,9 +1974,15 @@
                     S.learnTarget = { x: tx, y: ty };
                     setTool('pt');
                 } else if (S.learnMode === 'ln') {
-                    const m = Math.floor(Math.random() * 5) - 2, n = Math.floor(Math.random() * 7) - 3;
-                    const p1 = { x: 0, y: n }, p2 = { x: 1, y: n + m };
-                    S.learnTarget = { m, n, p1, p2 };
+                    // Generate fractional slopes: numerator / denominator
+                    const nums = [-2, -1, -1, 0, 1, 1, 2];
+                    const dens = [1, 1, 2, 1, 2, 1, 1];
+                    const idx = Math.floor(Math.random() * nums.length);
+                    const mNum = nums[idx], mDen = dens[idx];
+                    const m = mNum / mDen;
+                    const n = Math.floor(Math.random() * 7) - 3;
+                    const p1 = { x: 0, y: n }, p2 = { x: mDen, y: n + mNum };
+                    S.learnTarget = { m, n, mNum, mDen, p1, p2 };
                     setTool('ln');
                 } else if (S.learnMode === 'cir') {
                     const cx = Math.floor(Math.random() * 9) - 4, cy = Math.floor(Math.random() * 9) - 4, r = Math.floor(Math.random() * 3) + 2;
@@ -1800,10 +2038,28 @@
             bLearnPt.onclick = (e) => { e.stopPropagation(); startPractice('pt'); };
             bLearnLn.onclick = (e) => { e.stopPropagation(); startPractice('ln'); };
             bLearnCir.onclick = (e) => { e.stopPropagation(); startPractice('cir'); };
-            bLearnParLn.onclick = (e) => { e.stopPropagation(); startPractice('par_ln'); };
-            bLearnPerpLn.onclick = (e) => { e.stopPropagation(); startPractice('perp_ln'); };
-            bLearnMid.onclick = (e) => { e.stopPropagation(); startPractice('mid'); };
-            bLearnBis.onclick = (e) => { e.stopPropagation(); startPractice('bis'); };
+            // Disabled modes
+            bLearnParLn.onclick = (e) => { e.stopPropagation(); if (!bLearnParLn.classList.contains('disabled')) startPractice('par_ln'); };
+            bLearnPerpLn.onclick = (e) => { e.stopPropagation(); if (!bLearnPerpLn.classList.contains('disabled')) startPractice('perp_ln'); };
+            bLearnMid.onclick = (e) => { e.stopPropagation(); if (!bLearnMid.classList.contains('disabled')) startPractice('mid'); };
+            bLearnBis.onclick = (e) => { e.stopPropagation(); if (!bLearnBis.classList.contains('disabled')) startPractice('bis'); };
+
+            const getJosa = (text, josaType) => {
+                if (S.lang !== 'KO') return '';
+                const lastChar = text[text.length - 1];
+                const code = lastChar.charCodeAt(0);
+                let hasBatchim = false;
+                if (code >= 48 && code <= 57) { // Numbers
+                    const batchimNums = [0, 1, 3, 6, 7, 8];
+                    hasBatchim = batchimNums.includes(parseInt(lastChar));
+                } else if (code >= 44032 && code <= 55203) { // Hangul
+                    hasBatchim = (code - 44032) % 28 !== 0;
+                }
+                if (josaType === '을/를') return hasBatchim ? '을' : '를';
+                if (josaType === '이/가') return hasBatchim ? '이' : '가';
+                if (josaType === '은/는') return hasBatchim ? '은' : '는';
+                return '';
+            };
 
             window.updateLearnUI = () => {
                 if (!S.learnMode) {
@@ -1818,18 +2074,30 @@
                         `Place a point at (${t.x}, ${t.y}).`;
                 } else if (S.learnMode === 'ln') {
                     const t = S.learnTarget;
-                    let eq = "y = ";
-                    if (t.m === 0) eq += t.n;
-                    else {
-                        if (t.m === 1) eq += "x";
-                        else if (t.m === -1) eq += "-x";
-                        else eq += t.m + "x";
+                    // Build LaTeX equation
+                    let eq = "\\displaystyle y = ";
+                    if (t.m === 0) {
+                        eq += t.n;
+                    } else {
+                        // Handle fractional slope
+                        if (t.mDen === 1) {
+                            if (t.mNum === 1) eq += "x";
+                            else if (t.mNum === -1) eq += "-x";
+                            else eq += t.mNum + "x";
+                        } else {
+                            if (t.mNum > 0) eq += `\\frac{${t.mNum}}{${t.mDen}}x`;
+                            else eq += `-\\frac{${Math.abs(t.mNum)}}{${t.mDen}}x`;
+                        }
                         if (t.n > 0) eq += " + " + t.n;
                         else if (t.n < 0) eq += " - " + Math.abs(t.n);
                     }
-                    msg.innerText = S.lang === 'KO' ?
-                        `직선 ${eq}를 그리세요.` :
-                        `Draw the line ${eq}.`;
+                    msg.innerHTML = S.lang === 'KO' ?
+                        `일차함수 <span id="eq-box"></span>의 그래프를 그리세요.` :
+                        `Draw the graph of the linear function <span id="eq-box"></span>.`;
+
+                    if (window.katex) {
+                        katex.render(eq, document.getElementById('eq-box'), { throwOnError: false });
+                    }
                 } else if (S.learnMode === 'cir') {
                     const t = S.learnTarget;
                     const getTerm = (v, char) => {
@@ -1837,9 +2105,11 @@
                         const sign = v > 0 ? '-' : '+';
                         return `(${char} ${sign} ${Math.abs(v)})^2`;
                     };
-                    const eq = `${getTerm(t.cx, 'x')} + ${getTerm(t.cy, 'y')} = ${t.r ** 2}`;
+                    const r2 = t.r ** 2;
+                    const eq = `${getTerm(t.cx, 'x')} + ${getTerm(t.cy, 'y')} = ${r2}`;
+                    const josa = getJosa(r2.toString(), '을/를');
                     msg.innerHTML = S.lang === 'KO' ?
-                        `원 <span id="eq-box"></span> 을(를) 그리세요.` :
+                        `원 <span id="eq-box"></span> ${josa} 그리세요.` :
                         `Draw the circle <span id="eq-box"></span>.`;
                     if (window.katex) {
                         katex.render(eq, document.getElementById('eq-box'), { throwOnError: false });
@@ -1876,11 +2146,15 @@
                         // End analytics session
                         Analytics.endLearningSession(true);
 
+                        S.learnWaitingForNext = true; // Block input during success message
+
                         setTimeout(() => {
                             S.objs = S.objs.filter(o => parseInt(o.id) < S.learnStartId);
                             S.idC = S.learnStartId;
+                            S.pts = []; S.tmp = null; // Clear tool state
                             S.learnMode = null;
                             S.learnStreak = 0;
+                            S.learnWaitingForNext = false;
 
                             // Restore hidden objects
                             S.learnHiddenObjs.forEach(id => {
@@ -1894,30 +2168,49 @@
                         }, 2000);
                     } else {
                         const countStr = ` (${S.learnStreak}/3)`;
-                        msg.innerText = (S.lang === 'KO' ? '참 잘했습니다!' : 'Great job!') + countStr;
+                        msg.innerText = (S.lang === 'KO' ? '정답입니다. 화면을 선택하세요.' : 'Correct! Select the screen.') + countStr;
                         msg.style.background = '#27ae60';
-                        setTimeout(() => {
-                            regenPractice();
-                            msg.style.background = 'rgba(0,0,0,0.7)';
-                            updateToggles(); updateLearnUI(); render();
-                        }, 1000);
+                        S.learnWaitingForNext = true;
                     }
                 } else {
                     S.learnStreak = 0;
                     S.learnShowHint = true;
-                    msg.innerText = S.lang === 'KO' ? '틀렸습니다! 힌트를 확인하세요.' : 'Incorrect! Check the hint.';
+                    msg.innerText = S.lang === 'KO' ? '틀렸습니다! 다시 시도하세요.' : 'Incorrect! Try again.';
                     msg.style.background = '#e74c3c';
-                    setTimeout(() => {
-                        // Delete incorrect user answers, but KEEP the reference objects
-                        S.objs = S.objs.filter(o => parseInt(o.id) < S.learnUserStartId);
-                        S.idC = S.learnUserStartId;
+
+                    // Delete incorrect user answers immediately
+                    S.objs = S.objs.filter(o => parseInt(o.id) < S.learnUserStartId);
+                    S.idC = S.learnUserStartId;
+                    S.pts = []; S.tmp = null; // Reset tool state
+
+                    updateToggles(); render();
+
+                    // Restore message after a short delay
+                    if (S.learnFailTimeout) clearTimeout(S.learnFailTimeout);
+                    S.learnFailTimeout = setTimeout(() => {
                         msg.style.background = 'rgba(0,0,0,0.7)';
-                        updateToggles(); updateLearnUI(); render();
-                    }, 1500);
+                        updateLearnUI();
+                        render();
+                        S.learnFailTimeout = null;
+                    }, 1000);
                 }
             };
 
             updateToggles();
+
+            // Right-click to proceed to next problem
+            cvs.addEventListener('contextmenu', (e) => {
+                if (S.learnMode && S.learnWaitingForNext) {
+                    e.preventDefault();
+                    if (S.learnStreak < 3) {
+                        S.learnWaitingForNext = false;
+                        const msg = document.getElementById('learn-msg');
+                        regenPractice();
+                        msg.style.background = 'rgba(0,0,0,0.7)';
+                        updateToggles(); updateLearnUI(); render();
+                    }
+                }
+            });
 
             document.getElementById('b-undo').onclick = undo;
             document.getElementById('b-redo').onclick = redo;
@@ -2011,13 +2304,24 @@
                 ctx.font = '12px sans-serif'; ctx.fillText('O', o.x - 15, o.y + 15);
             }
 
+            // Show all hidden objects when clicking on empty space (PAN action)
+            const showAllHidden = S.action === 'PAN' && S.curr === 'sel';
+
             S.objs.forEach(o => {
                 // In Learning Mode, completely hide objects that were hidden at start
                 if (S.learnMode && S.learnHiddenObjs.includes(o.id)) return;
-                if (!o.vis && S.hovId !== o.id && !S.selIds.includes(o.id)) return;
-                ctx.save(); if (!o.vis) ctx.setLineDash([5, 5]);
+                const isHovered = S.hovId === o.id;
+                const isSelected = S.selIds.includes(o.id);
+                const isHiddenButShowable = !o.vis && (showAllHidden || isHovered || isSelected);
+                if (!o.vis && !isHiddenButShowable) return;
+                ctx.save();
+                if (!o.vis) {
+                    ctx.setLineDash([5, 5]);
+                    ctx.globalAlpha = 0.4; // Faded appearance for hidden objects
+                }
                 drawObj(o); ctx.restore();
             });
+
             if (S.tmp) { ctx.save(); ctx.globalAlpha = 0.5; drawObj(S.tmp); ctx.restore(); }
 
             // Learning Mode Target
@@ -2182,13 +2486,12 @@
             else if (o.p2 && o.p3) lObj = { type: 'ln', p1: o.p2, p2: o.p3 };
 
             if (!f || !lObj) return;
-            const d1 = getObj(lObj.p1), d2 = getObj(lObj.p2);
-            if (!d1 || !d2) return;
-
-            const l = M.line(d1, d2);
-            const num = l.a * f.x + l.b * f.y + l.c;
-            const den = l.a * l.a + l.b * l.b;
-            const proj = { x: f.x - l.a * num / den, y: f.y - l.b * num / den };
+            const l = M.getGeo(lObj);
+            if (!l || l.type !== 'line') return;
+            const a = l.a, b = l.b, c = l.c;
+            const num = a * f.x + b * f.y + c;
+            const den = a * a + b * b;
+            const proj = { x: f.x - a * num / den, y: f.y - b * num / den };
             const V = { x: (f.x + proj.x) / 2, y: (f.y + proj.y) / 2 };
             const axis = { x: f.x - proj.x, y: f.y - proj.y };
             const p = Math.hypot(axis.x, axis.y) / 2;
@@ -2201,9 +2504,9 @@
             ctx.beginPath();
             const sc = S.view.s;
             // Dynamic bounds based on view scale
-            // Viewport diagonal approximation in world units
-            const limit = Math.max(cvs.width, cvs.height) / sc * 2 + 1000;
-            const step = Math.max(1, limit / 200);
+            const limit = Math.max(cvs.width, cvs.height) / sc * 2 + 100;
+            // Ensure points are at most ~2 pixels apart in Y-prime space
+            const step = Math.min(0.1, 2 / sc);
 
             let first = true;
             for (let t = -limit; t <= limit; t += step) {
@@ -2249,7 +2552,8 @@
             const limit = Math.acosh(Math.max(1, (cvs.width + cvs.height) / (a * sc || 1) + 2));
             for (let sign of [-1, 1]) {
                 let first = true;
-                for (let t = -limit; t <= limit; t += 0.1) {
+                const hStep = Math.min(0.05, 1 / (sc * a || 1)); // Adaptive step for hyperbolic parameter
+                for (let t = -limit; t <= limit; t += hStep) {
                     const lx = sign * a * Math.cosh(t);
                     const ly = b * Math.sinh(t);
                     if (first) { ctx.moveTo(lx * sc, ly * sc); first = false; }
@@ -2272,8 +2576,11 @@
                 // In Learning Mode, hide labels for hidden objects
                 if (S.learnMode && S.learnHiddenObjs.includes(o.id)) return;
                 if (!o.vis) return;
+                // Skip label if showLabel is false (but always show for txt type)
+                if (o.type !== 'txt' && o.showLabel === false) return;
                 let p = { x: o.x, y: o.y };
-                if (o.type !== 'pt' && o.type !== 'txt') { const c = getCenter(o); if (!c) return; p = c; }
+                if (o.type !== 'pt' && o.type !== 'txt' && o.type !== 'mid') { const c = getCenter(o); if (!c) return; p = c; }
+
 
                 const s = w2s(p.x, p.y);
 
@@ -2294,9 +2601,19 @@
                     el.style.top = (s.y + off) + 'px';
                 }
 
-                // Show Name if selected, otherwise Caption (for txt, always show Caption)
-                let txt = (o.type !== 'txt' && S.selIds.includes(o.id)) ? o.name : o.cap;
-                if (['ln', 'seg', 'par', 'ell', 'hyp'].includes(o.type)) {
+                // Show Name or Caption based on per-object labelMode setting
+                let txt;
+                if (o.type === 'txt') {
+                    txt = o.cap;
+                } else if (o.type === 'pt' || o.type === 'mid') {
+                    const fx = parseFloat(o.x.toFixed(1)), fy = parseFloat(o.y.toFixed(1));
+                    txt = `$\\mathrm{${o.name}}(${fx}, ${fy})$`;
+                } else if (o.labelMode === 'name') {
+                    txt = `$\\mathrm{${o.name}}$`;
+                } else {
+                    txt = o.cap;
+                }
+                if (['ln', 'seg', 'par', 'ell', 'hyp', 'par_ln', 'perp_ln', 'bis'].includes(o.type)) {
                     const eq = M.getEquation(o);
                     txt = eq ? `$${o.name}: ${eq}$` : `$${o.name}$`;
                 }
@@ -2337,7 +2654,28 @@
 
         function getCenter(o) {
             if (o.type === 'seg' || o.type === 'ln') { const p1 = getObj(o.p1), p2 = getObj(o.p2); return p1 && p2 ? { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } : null; }
+            if (o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis') {
+                const g = M.getGeo(o); if (!g) return null;
+                // For lines, use a point near the parent point if possible, else 0,0
+                const p1 = o.p1 ? getObj(o.p1) : { x: 0, y: 0 };
+                return M.projLine(p1, g);
+            }
             if (o.type === 'cir') return getObj(o.c);
+            if (o.type === 'par' || o.type === 'ell' || o.type === 'hyp') {
+                const g = M.getGeo(o); if (!g) return null;
+                if (o.type === 'par') {
+                    // Vertex is a good label point for parabola
+                    const f = getObj(o.p1); let lObj = o.l ? getObj(o.l) : { type: 'ln', p1: o.p2, p2: o.p3 };
+                    const d1 = getObj(lObj.p1), d2 = getObj(lObj.p2); if (!f || !d1 || !d2) return null;
+                    const l = M.line(d1, d2);
+                    const num = l.a * f.x + l.b * f.y + l.c, den = l.a * l.a + l.b * l.b;
+                    const proj = { x: f.x - l.a * num / den, y: f.y - l.b * num / den };
+                    return { x: (f.x + proj.x) / 2, y: (f.y + proj.y) / 2 };
+                }
+                // Center for ellipse/hyperbola
+                const f1 = getObj(o.p1), f2 = getObj(o.p2);
+                return f1 && f2 ? { x: (f1.x + f2.x) / 2, y: (f1.y + f2.y) / 2 } : null;
+            }
             return null;
         }
 
