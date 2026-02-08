@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 
 <head>
@@ -478,8 +478,10 @@
 
             selIds: [],
             hovId: null,
+            hovPart: null, // 'label' or null
             snap: null,
             dragOff: { x: 0, y: 0 },
+            dragLabelId: null,
 
             step: 0,
             pts: [],
@@ -806,7 +808,7 @@
                 if (mode === 'none') return "";
                 const fmt = (v) => parseFloat(v.toFixed(2)).toString();
 
-                if (o.type === 'ln' || o.type === 'seg') {
+                if ((o.type === 'ln' || o.type === 'seg') && o.def !== 'tan') {
                     const p1 = getObj(o.p1), p2 = getObj(o.p2 || (o.p2_pos ? o : null));
                     const pos2 = p2 ? (o.p2_pos || p2) : null;
                     if (!p1 || !pos2) return "";
@@ -828,7 +830,7 @@
                     } else if (mode === 'gen') {
                         return M.formatGeneral({ a: p1.y - pos2.y, b: pos2.x - p1.x, c: p1.x * pos2.y - pos2.x * p1.y });
                     }
-                } else if (o.type === 'par_ln' || o.type === 'perp_ln') {
+                } else if (o.type === 'par_ln' || o.type === 'perp_ln' || (o.type === 'ln' && o.def === 'tan') || o.type === 'bis') {
                     const g = M.getGeo(o);
                     if (!g) return "";
                     if (mode === 'slope') {
@@ -960,6 +962,13 @@
             getGeo: (o) => {
                 if (o.type === 'pt') return null;
                 if (o.type === 'ln' || o.type === 'seg') {
+                    if (o.def === 'tan' && o.parents.length === 2) {
+                        const p = getObj(o.parents[0]), path = getObj(o.parents[1]);
+                        if (p && path) {
+                            const res = M.getTangent(p, path, o.hint);
+                            if (res) return { type: 'line', ...res };
+                        }
+                    }
                     const p1 = getObj(o.p1), p2 = getObj(o.p2);
                     if (!p1 || !p2) return null;
                     return { type: 'line', ...M.line(p1, p2) };
@@ -1007,31 +1016,36 @@
             intConicLine: (c, l) => {
                 const results = [];
                 // Substitute line into conic
-                // if b != 0: y = (-ax-c)/b
-                // else: x = -c/a
                 if (Math.abs(l.b) > 1e-9) {
                     const a_ = -l.a / l.b, b_ = -l.c / l.b;
-                    // A*x^2 + B*x*(a_*x + b_) + C*(a_*x + b_)^2 + D*x + E*(a_*x + b_) + F = 0
-                    const A = c.A + c.B * a_ + c.C * a_ * a_;
-                    const B = c.B * b_ + 2 * c.C * a_ * b_ + c.D + c.E * a_;
-                    const C = c.C * b_ * b_ + c.E * b_ + c.F;
-                    const det = B * B - 4 * A * C;
+                    const A_q = c.A + c.B * a_ + c.C * a_ * a_;
+                    const B_q = c.B * b_ + 2 * c.C * a_ * b_ + c.D + c.E * a_;
+                    const C_q = c.C * b_ * b_ + c.E * b_ + c.F;
+                    const det = B_q * B_q - 4 * A_q * C_q;
                     if (det >= 0) {
                         const s = Math.sqrt(det);
-                        const x1 = (-B + s) / (2 * A), x2 = (-B - s) / (2 * A);
-                        results.push({ x: x1, y: a_ * x1 + b_ }, { x: x2, y: a_ * x2 + b_ });
+                        if (Math.abs(A_q) > 1e-12) {
+                            const x1 = (-B_q + s) / (2 * A_q), x2 = (-B_q - s) / (2 * A_q);
+                            results.push({ x: x1, y: a_ * x1 + b_ }, { x: x2, y: a_ * x2 + b_ });
+                        } else if (Math.abs(B_q) > 1e-12) {
+                            const x = -C_q / B_q;
+                            results.push({ x: x, y: a_ * x + b_ });
+                        }
                     }
                 } else if (Math.abs(l.a) > 1e-9) {
                     const x = -l.c / l.a;
-                    // A*x^2 + B*x*y + C*y^2 + D*x + E*y + F = 0
-                    const A = c.C;
-                    const B = c.B * x + c.E;
-                    const C = c.A * x * x + c.D * x + c.F;
-                    const det = B * B - 4 * A * C;
+                    const A_q = c.C;
+                    const B_q = c.B * x + c.E;
+                    const C_q = c.A * x * x + c.D * x + c.F;
+                    const det = B_q * B_q - 4 * A_q * C_q;
                     if (det >= 0) {
                         const s = Math.sqrt(det);
-                        const y1 = (-B + s) / (2 * A), y2 = (-B - s) / (2 * A);
-                        results.push({ x: x, y: y1 }, { x: x, y: y2 });
+                        if (Math.abs(A_q) > 1e-12) {
+                            const y1 = (-B_q + s) / (2 * A_q), y2 = (-B_q - s) / (2 * A_q);
+                            results.push({ x: x, y: y1 }, { x: x, y: y2 });
+                        } else if (Math.abs(B_q) > 1e-12) {
+                            results.push({ x: x, y: -C_q / B_q });
+                        }
                     }
                 }
                 return results;
@@ -1126,17 +1140,200 @@
                 return unique;
             },
 
-            closestOnPath: (p, o) => {
+            getTangent: (p, path, hint) => {
+                const pts = M.getAllTangentPoints(p, path);
+                const hP = hint || p;
+                let tP;
+
+                if (pts.length > 0) {
+                    tP = pts[0];
+                    let minD = M.dist(pts[0], hP);
+                    for (let i = 1; i < pts.length; i++) {
+                        const d = M.dist(pts[i], hP);
+                        if (d < minD) { minD = d; tP = pts[i]; }
+                    }
+                } else {
+                    // Fallback: tangent at closest point on path to hint
+                    tP = M.closestOnPath(hP, path);
+                }
+
+                if (path.type === 'fn') {
+                    const f = M.prepareFn(path.expr || 'x');
+                    if (f && !path.expr.includes('=')) {
+                        const h = 1e-5;
+                        const slope = (f(tP.x + h) - f(tP.x - h)) / (2 * h);
+                        return { a: slope, b: -1, c: f(tP.x) - slope * tP.x };
+                    } else {
+                        const impF = M.prepareImplicit(path.expr);
+                        if (impF) {
+                            const d = 1e-4;
+                            const gx = (impF(tP.x + d, tP.y) - impF(tP.x - d, tP.y)) / (2 * d);
+                            const gy = (impF(tP.x, tP.y + d) - impF(tP.x, tP.y - d)) / (2 * d);
+                            return { a: gx, b: gy, c: -gx * tP.x - gy * tP.y };
+                        }
+                    }
+                } else if (path.type === 'cir' || ['par', 'ell', 'hyp'].includes(path.type)) {
+                    let c;
+                    if (path.type === 'cir') {
+                        const sc = getObj(path.c); if (!sc) return null;
+                        let r = path.r; if (path.mode === '2pt') r = M.dist(sc, getObj(path.p2));
+                        c = { A: 1, B: 0, C: 1, D: -2 * sc.x, E: -2 * sc.y, F: sc.x * sc.x + sc.y * sc.y - r * r };
+                    } else {
+                        c = M.getConicCoeffs(path);
+                    }
+                    if (!c) return null;
+                    const grad = M.getConicGrad(c, tP);
+                    return { a: grad.x, b: grad.y, c: -grad.x * tP.x - grad.y * tP.y };
+                }
+                return null;
+            },
+
+            getAllTangentPoints: (p, path) => {
+                let results = [];
+                // Special case: Point on path. Rule: only draw tangent at this point.
+                const onPath = M.closestOnPath(p, path);
+                if (M.dist(p, onPath) < 1e-4) return [{ x: onPath.x, y: onPath.y }];
+
+                if (path.type === 'cir') {
+                    const sc = getObj(path.c); if (!sc) return results;
+                    let r = path.r; if (path.mode === '2pt') r = M.dist(sc, getObj(path.p2));
+                    const L = { a: p.x - sc.x, b: p.y - sc.y, c: -sc.x * (p.x - sc.x) - sc.y * (p.y - sc.y) - r * r };
+                    results.push(...M.intLineCir(L, { x: sc.x, y: sc.y, r }));
+                } else if (['par', 'ell', 'hyp'].includes(path.type)) {
+                    const c = M.getConicCoeffs(path);
+                    if (c) {
+                        const L = {
+                            a: c.A * p.x + c.B * p.y / 2 + c.D / 2,
+                            b: c.B * p.x / 2 + c.C * p.y + c.E / 2,
+                            c: c.D * p.x / 2 + c.E * p.y / 2 + c.F
+                        };
+                        results.push(...M.intConicLine(c, L));
+                    }
+                } else if (path.type === 'fn') {
+                    const expr = path.expr || 'x';
+                    if (expr.includes('=')) {
+                        const impF = M.prepareImplicit(expr);
+                        if (impF) {
+                            const alg = M.extractConic(impF);
+                            if (alg) {
+                                // If it's a circle (A=C, B=0), use geometric method for perfect stability
+                                if (Math.abs(alg.A - alg.C) < 1e-6 && Math.abs(alg.B) < 1e-6 && alg.A !== 0) {
+                                    const sc = { x: -alg.D / (2 * alg.A), y: -alg.E / (2 * alg.A) };
+                                    const r2 = (alg.D * alg.D + alg.E * alg.E) / (4 * alg.A * alg.A) - alg.F / alg.A;
+                                    if (r2 > 0) {
+                                        const r = Math.sqrt(r2);
+                                        const L = { a: p.x - sc.x, b: p.y - sc.y, c: -sc.x * (p.x - sc.x) - sc.y * (p.y - sc.y) - r * r };
+                                        results.push(...M.intLineCir(L, { ...sc, r }));
+                                    }
+                                } else {
+                                    const L = {
+                                        a: alg.A * p.x + alg.B * p.y / 2 + alg.D / 2,
+                                        b: alg.B * p.x / 2 + alg.C * p.y + alg.E / 2,
+                                        c: alg.D * p.x / 2 + alg.E * p.y / 2 + alg.F
+                                    };
+                                    results.push(...M.intConicLine(alg, L));
+                                }
+                            } else {
+                                // Numerical scan - ensure we check a large enough area around the point and curve
+                                const step = 8;
+                                const w = cvs.width, h = cvs.height;
+                                const h_eps = 1e-4;
+                                const getGImp = (px, py) => {
+                                    const gx = (impF(px + h_eps, py) - impF(px - h_eps, py)) / (2 * h_eps);
+                                    const gy = (impF(px, py + h_eps) - impF(px, py - h_eps)) / (2 * h_eps);
+                                    return gx * (px - p.x) + gy * (py - p.y);
+                                };
+                                const lerp = (v0, v1, p0, p1) => {
+                                    if (Math.abs(v1 - v0) < 1e-9) return p0;
+                                    return p0 + (p1 - p0) * (0 - v0) / (v1 - v0);
+                                };
+                                for (let y = 0; y < h; y += step) {
+                                    for (let x = 0; x < w; x += step) {
+                                        const wp0 = s2w(x, y), wp1 = s2w(x + step, y), wp2 = s2w(x + step, y + step), wp3 = s2w(x, y + step);
+                                        const v = [impF(wp0.x, wp0.y), impF(wp1.x, wp1.y), impF(wp2.x, wp2.y), impF(wp3.x, wp3.y)];
+                                        let mask = 0;
+                                        if (v[0] > 0) mask |= 1; if (v[1] > 0) mask |= 2; if (v[2] > 0) mask |= 4; if (v[3] > 0) mask |= 8;
+                                        if (mask === 0 || mask === 15) continue;
+                                        let pts = [];
+                                        if ((v[0] > 0) !== (v[1] > 0)) pts.push({ x: lerp(v[0], v[1], wp0.x, wp1.x), y: wp0.y });
+                                        if ((v[1] > 0) !== (v[2] > 0)) pts.push({ x: wp1.x, y: lerp(v[1], v[2], wp1.y, wp2.y) });
+                                        if ((v[2] > 0) !== (v[3] > 0)) pts.push({ x: lerp(v[3], v[2], wp3.x, wp2.x), y: wp2.y });
+                                        if ((v[3] > 0) !== (v[0] > 0)) pts.push({ x: wp0.x, y: lerp(v[0], v[3], wp0.y, wp3.y) });
+                                        if (pts.length >= 2) {
+                                            const g0 = getGImp(pts[0].x, pts[0].y), g1 = getGImp(pts[1].x, pts[1].y);
+                                            if (g0 * g1 <= 0) {
+                                                let pLo = pts[0], pHi = pts[1], vLo = g0;
+                                                for (let i = 0; i < 40; i++) {
+                                                    const pMid = { x: (pLo.x + pHi.x) / 2, y: (pLo.y + pHi.y) / 2 };
+                                                    const vMid = getGImp(pMid.x, pMid.y);
+                                                    if (vLo * vMid <= 0) pHi = pMid; else { pLo = pMid; vLo = vMid; }
+                                                }
+                                                results.push(M.closestOnImplicit(pLo, impF));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        const f = M.prepareFn(expr);
+                        if (f) {
+                            const startX = s2w(0, 0).x, endX = s2w(cvs.width, 0).x;
+                            const step = Math.min((endX - startX) / 100, 0.1);
+                            let prevG = null;
+                            const getG = (t) => {
+                                const h = 1e-5;
+                                const df = (f(t + h) - f(t - h)) / (2 * h);
+                                return f(t) - df * (t - p.x) - p.y;
+                            };
+                            for (let x = startX; x <= endX; x += step) {
+                                const g = getG(x);
+                                if (prevG !== null && prevG * g <= 0) {
+                                    let xLo = x - step, xHi = x;
+                                    for (let i = 0; i < 15; i++) {
+                                        let xMid = (xLo + xHi) / 2, gMid = getG(xMid);
+                                        if (Math.abs(gMid) < 1e-12) { xLo = xMid; break; }
+                                        if (getG(xLo) * gMid <= 0) xHi = xMid; else xLo = xMid;
+                                    }
+                                    results.push({ x: xLo, y: f(xLo) });
+                                }
+                                prevG = g;
+                            }
+                        }
+                    }
+                }
+                // Deduplicate
+                const unique = [];
+                results.forEach(pt => {
+                    if (!unique.some(u => M.dist(u, pt) < 1e-3)) unique.push(pt);
+                });
+                return unique;
+            },
+
+            closestOnPath: (p, path) => {
+                if (path.type === 'fn') {
+                    const expr = path.expr || 'x';
+                    const f = M.prepareFn(expr);
+                    if (f && !expr.includes('=')) {
+                        try {
+                            const y = f(p.x);
+                            if (!isNaN(y)) return { x: p.x, y };
+                        } catch (e) { }
+                    } else {
+                        const impF = M.prepareImplicit(expr);
+                        if (impF) return M.closestOnImplicit(p, impF);
+                    }
+                    return p;
+                }
+                const o = path;
                 if (o.type === 'seg') {
                     const p1 = getObj(o.p1), p2 = getObj(o.p2);
                     if (!p1 || !p2) return p;
                     return M.closest(p, p1, p2);
                 }
                 if (o.type === 'ln') {
-                    const p1 = getObj(o.p1), p2 = getObj(o.p2);
-                    if (!p1 || !p2) return p;
-                    const l = M.line(p1, p2);
-                    return M.projLine(p, l);
+                    const g = M.getGeo(o);
+                    return g ? M.projLine(p, g) : p;
                 }
                 if (o.type === 'cir') {
                     const c = getObj(o.c);
@@ -1253,6 +1450,28 @@
                     }
                 }
                 return p;
+            },
+            extractConic: (f) => {
+                const z = f(0, 0);
+                const x1 = f(1, 0), xm1 = f(-1, 0);
+                const y1 = f(0, 1), ym1 = f(0, -1);
+                const x1y1 = f(1, 1);
+                const A = (x1 + xm1 - 2 * z) / 2;
+                const D = (x1 - xm1) / 2;
+                const C = (y1 + ym1 - 2 * z) / 2;
+                const E = (y1 - ym1) / 2;
+                const B = x1y1 - (A + C + D + E + z);
+                const coeffs = { A, B, C, D, E, F: z };
+                // console.log('Extracted Conic:', coeffs);
+
+                // Verify with random points
+                for (let i = 0; i < 3; i++) {
+                    const rx = Math.random() * 10 - 5, ry = Math.random() * 10 - 5;
+                    const val = f(rx, ry);
+                    const expected = A * rx * rx + B * rx * ry + C * ry * ry + D * rx + E * ry + z;
+                    if (Math.abs(val - expected) > 1e-7) return null;
+                }
+                return coeffs;
             }
         };
 
@@ -1292,6 +1511,7 @@
             document.title = `mathlab (${d.toLocaleDateString()} ${d.toLocaleTimeString()})`;
         }
 
+        function getObj(id) { return S.objs.find(o => o.id === id); }
         function w2s(x, y) { return { x: cvs.width / 2 + x * S.view.s + S.view.x, y: cvs.height / 2 - y * S.view.s + S.view.y }; }
         function s2w(x, y) { return { x: (x - cvs.width / 2 - S.view.x) / S.view.s, y: -(y - cvs.height / 2 - S.view.y) / S.view.s }; }
         function snapToGrid(w) {
@@ -1300,7 +1520,32 @@
             const sw = { x: Math.round(w.x / st) * st, y: Math.round(w.y / st) * st };
             return M.dist(w, sw) < 12 / S.view.s ? sw : w;
         }
-        function getObj(id) { return S.objs.find(o => o.id === id); }
+
+        // Add numerical gradient descent for finding closest point on implicit curve
+        M.closestOnImplicit = (p, impF) => {
+            let x = p.x, y = p.y;
+            // Adaptive numerical gradient descent
+            for (let i = 0; i < 40; i++) {
+                const v = impF(x, y);
+                if (Math.abs(v) < 1e-10) break;
+                const d = 1e-4;
+                const gx = (impF(x + d, y) - impF(x - d, y)) / (2 * d);
+                const gy = (impF(x, y + d) - impF(x, y - d)) / (2 * d);
+                const gradSq = gx * gx + gy * gy;
+                if (gradSq < 1e-15) break;
+
+                // Optimized step
+                let stepX = v * gx / gradSq;
+                let stepY = v * gy / gradSq;
+                const stepLen = Math.hypot(stepX, stepY);
+                const maxStep = 20 / S.view.s; // Cap step size to about 20 pixels
+                if (stepLen > maxStep) { const k = maxStep / stepLen; stepX *= k; stepY *= k; }
+
+                x -= stepX; y -= stepY;
+            }
+            return { x, y };
+        };
+
 
         function saveState() {
             const snap = JSON.stringify({ objs: S.objs, idC: S.idC });
@@ -1358,7 +1603,8 @@
                     if (path) {
                         if (!path.vis) { exists = false; }
                         else {
-                            Object.assign(o, M.closestOnPath({ x: o.x, y: o.y }, path));
+                            const pt = M.closestOnPath({ x: o.x, y: o.y }, path);
+                            o.x = pt.x; o.y = pt.y;
                         }
                     } else { exists = false; }
                 }
@@ -1412,9 +1658,38 @@
                 const g = M.getGeo(o);
                 if (g) { o.x = g.x; o.y = g.y; }
                 else exists = false;
+            } else if (exists && o.type === 'ln' && o.def === 'tan') {
+                // Update tangent hint to track the moving branch
+                const p1 = getObj(o.parents[0]), curve = getObj(o.parents[1]);
+                if (p1 && curve) {
+                    const pts = M.getAllTangentPoints(p1, curve);
+                    if (pts.length > 0) {
+                        // Find closest tangent point to current hint
+                        let best = pts[0], minD = M.dist(pts[0], o.hint);
+                        for (let i = 1; i < pts.length; i++) {
+                            const d = M.dist(pts[i], o.hint);
+                            if (d < minD) { minD = d; best = pts[i]; }
+                        }
+                        // Update hint to follow the contact point
+                        o.hint.x = best.x; o.hint.y = best.y;
+                    } else {
+                        // If no tangents exist (e.g. point moved inside), hide the line
+                        exists = false;
+                    }
+                } else {
+                    exists = false;
+                }
             }
 
             o.vis = exists && (o.hidden !== true);
+
+            // Recursively update children (all who have this as a parent)
+            S.objs.forEach(child => {
+                const isChild = (child.p1 === o.id || child.p2 === o.id || child.p3 === o.id || child.c === o.id || child.l === o.id || (child.parents && child.parents.includes(o.id)));
+                if (isChild && child.id !== o.id) {
+                    updateObj(child);
+                }
+            });
         }
 
         function onDown(e) {
@@ -1473,13 +1748,22 @@
             if (e.pointerType === 'touch' && !e.isPrimary) return;
 
             const w = s2w(e.clientX, e.clientY);
-            const hit = findHit(w);
+            const hitPt = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, w) < (2.0 * C.HIT) / S.view.s);
+            const hitOther = findHit(w);
+            const hit = hitPt || hitOther;
 
-            if (S.curr === 'sel') {
+            if (hitPt || S.curr === 'sel') {
                 if (hit) {
-                    S.action = 'DRAG';
-                    S.hovId = hit.id;
-                    S.dragOff = { x: hit.x - w.x, y: hit.y - w.y };
+                    if (S.hovPart === 'label') {
+                        S.action = 'DRAG_LABEL';
+                        S.dragLabelId = hit.id; S.hovId = hit.id;
+                        const lOff = hit.labelOff || (hit.type === 'pt' || hit.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
+                        S.dragOff = { x: lOff.x - e.clientX, y: lOff.y - e.clientY };
+                    } else {
+                        S.action = 'DRAG'; S.dragged = false;
+                        S.hovId = hit.id;
+                        S.dragOff = { x: hit.x - w.x, y: hit.y - w.y };
+                    }
                     if (!S.selIds.includes(hit.id)) S.selIds = [hit.id];
                 } else {
                     S.action = 'PAN'; S.dragStart = { ...S.view }; S.selIds = [];
@@ -1521,6 +1805,22 @@
                 addRow(S.lang === 'KO' ? '이름' : 'Name', hit.name, v => renameObj(hit, v));
                 addRow(S.lang === 'KO' ? '캡션' : 'Caption', hit.cap, v => { hit.cap = v; saveState(); });
                 addRow(S.lang === 'KO' ? '객체 보임' : 'Show Object', (hit.hidden !== true), v => { hit.hidden = !v; saveState(); }, 'checkbox');
+
+                // --- Reset Label Position ---
+                const resetRow = document.createElement('div');
+                resetRow.className = 'row';
+                resetRow.style.marginTop = '10px';
+                const resetBtn = document.createElement('div');
+                resetBtn.className = 'btn';
+                resetBtn.style.width = '100%';
+                resetBtn.innerText = S.lang === 'KO' ? '라벨 위치 초기화' : 'Reset Label Pos';
+                resetBtn.onclick = () => {
+                    hit.labelOff = (hit.type === 'pt' || hit.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
+                    saveState(); render();
+                };
+                resetRow.appendChild(resetBtn);
+                p.appendChild(resetRow);
+
                 if (hit.type === 'fn') {
                     addRow(S.lang === 'KO' ? '함수식' : 'Function', 'y=' + (hit.expr || 'x'), v => {
                         hit.expr = v.toLowerCase().startsWith('y=') ? v.substring(2) : v;
@@ -1672,12 +1972,13 @@
                 if (input.parentElement) {
                     const defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
                     const val = input.value || (obj.type === 'txt' ? defaultTxt : 'x');
-                    if (obj.type === 'txt' && (val.toLowerCase().startsWith('y=') || val.includes('='))) {
+                    const cleanExpr = (v) => v.replace(/^y\s*=\s*/i, '').trim();
+                    if (obj.type === 'txt' && (val.toLowerCase().startsWith('y') && val.includes('='))) {
                         obj.type = 'fn';
-                        obj.expr = val.toLowerCase().startsWith('y=') ? val.substring(2) : val;
+                        obj.expr = cleanExpr(val);
                         obj.cap = val;
                     } else if (obj.type === 'fn') {
-                        obj.expr = val.toLowerCase().startsWith('y=') ? val.substring(2) : val;
+                        obj.expr = cleanExpr(val);
                         obj.cap = val.includes('=') ? val : 'y=' + obj.expr;
                     } else {
                         obj.cap = val;
@@ -1751,25 +2052,37 @@
             if (S.action === 'PAN') {
                 const dx = e.clientX - S.p.x; const dy = e.clientY - S.p.y;
                 S.view.x = S.dragStart.x + dx; S.view.y = S.dragStart.y + dy;
-            } else if (S.action === 'DRAG' && S.selIds.length) {
-                const obj = getObj(S.selIds[0]);
-                if (obj) {
-                    let pos = w;
-                    if (obj.type === 'pt') {
-                        pos = snapToGrid(w);
-                        if (obj.def === 'free') { obj.x = pos.x; obj.y = pos.y; }
-                        else if (obj.def === 'onPath') { obj.x = pos.x; obj.y = pos.y; updateObj(obj); }
-                    } else if (obj.type === 'fn' || obj.type === 'txt') {
-                        obj.x = w.x + S.dragOff.x; obj.y = w.y + S.dragOff.y;
+            } else if (S.action === 'DRAG_LABEL') {
+                const o = getObj(S.dragLabelId);
+                if (o) {
+                    o.labelOff = { x: e.clientX + S.dragOff.x, y: e.clientY + S.dragOff.y };
+                    S.dragged = true;
+                }
+            } else if (S.action === 'DRAG') {
+                if (S.selIds.length) {
+                    const obj = getObj(S.selIds[0]);
+                    if (obj) {
+                        // Update position relative to mouse move
+                        const newX = w.x + (S.dragOff.x || 0);
+                        const newY = w.y + (S.dragOff.y || 0);
+
+                        if (obj.type === 'pt') {
+                            // Apply grid snap to the resulting point position
+                            const rawPos = { x: newX, y: newY };
+                            const snapped = snapToGrid(rawPos);
+                            obj.x = snapped.x; obj.y = snapped.y;
+                            updateObj(obj);
+                        } else if (obj.type === 'fn' || obj.type === 'txt') {
+                            obj.x = newX; obj.y = newY;
+                            updateObj(obj);
+                        }
                     }
                 }
-            } else if (S.curr === 'sel') {
-                // Check visible objects first, then hidden ones
+            } else if (S.action === 'IDLE' && S.curr === 'sel') {
                 const hit = findHit(w);
                 if (hit) {
                     S.hovId = hit.id;
                 } else {
-                    // Check hidden objects too
                     const hiddenHit = findHitHidden(w);
                     S.hovId = hiddenHit ? hiddenHit.id : null;
                 }
@@ -1856,7 +2169,7 @@
             S.pointers.delete(e.pointerId);
             if (S.action === 'PINCH' && S.pointers.size === 0) { S.action = 'IDLE'; return; }
 
-            if (S.action === 'CREATE') {
+            if (S.action === 'CREATE' || (S.action === 'DRAG' && !S.dragged && S.curr !== 'sel')) {
                 const w = s2w(e.clientX, e.clientY);
                 calcSnap(w);
                 const pos = S.snap ? { x: S.snap.x, y: S.snap.y } : w;
@@ -1890,6 +2203,45 @@
                     S.pts = []; S.tmp = null;
                 } else {
                     // Multi-step tool logic
+                    if (S.curr === 'ln') {
+                        const hitPath = S.objs.find(o => (o.type === 'cir' || o.type === 'fn' || ['par', 'ell', 'hyp'].includes(o.type)) && o.vis && checkHitObj(o, w, C.HIT * 1.5));
+                        if (S.pts.length === 1) {
+                            // Object 1: The already selected point (could be a free point or a point-on-curve)
+                            const p1 = getObj(S.pts[0]);
+                            if (p1) {
+                                const p1CurveId = p1.parents && p1.parents[0];
+                                const p1Curve = p1CurveId ? getObj(p1CurveId) : null;
+
+                                // Object 2: The currently clicked thing
+                                const o2 = hitPath || getObj(hitId) || { id: null, type: 'pt_new' };
+
+                                let curve = null, point = null;
+
+                                // SCENARIO 1: Existing Point (p1) then Clicked Curve (o2)
+                                if (o2 && (o2.type === 'cir' || o2.type === 'fn' || ['par', 'ell', 'hyp'].includes(o2.type))) {
+                                    point = p1; curve = o2;
+                                }
+                                // SCENARIO 2: Existing Point-on-Curve (p1) then Clicked Point (o2)
+                                else if (p1Curve && (o2.type === 'pt' || o2.type === 'pt_new')) {
+                                    curve = p1Curve;
+                                    const p2Id = hitId || createObj('pt', { x: pos.x, y: pos.y, def, parents }).id;
+                                    point = getObj(p2Id);
+                                }
+
+                                if (curve && point) {
+                                    const pts = M.getAllTangentPoints(point, curve);
+                                    if (pts.length > 0) {
+                                        pts.forEach(pt => {
+                                            const exists = S.objs.some(o => o.type === 'ln' && o.def === 'tan' && o.parents[0] === point.id && o.parents[1] === curve.id && M.dist(o.hint, pt) < 1e-2);
+                                            if (!exists) createObj('ln', { def: 'tan', p1: point.id, l: curve.id, parents: [point.id, curve.id], hint: { x: pt.x, y: pt.y } });
+                                        });
+                                        saveState();
+                                        S.pts = []; S.tmp = null; S.action = 'IDLE'; S.p.down = false; return;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     if ((S.curr === 'par' || S.curr === 'par_ln' || S.curr === 'perp_ln') && S.pts.length === 1) {
                         const hitLn = S.objs.find(o => (o.type === 'ln' || o.type === 'seg' || o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis') && o.vis && checkHitObj(o, w, C.HIT * 1.5));
                         if (hitLn) {
@@ -1945,7 +2297,7 @@
             }
             delete S.startedWithEdit;
 
-            S.action = 'IDLE'; S.p.down = false;
+            S.action = 'IDLE'; S.p.down = false; S.dragLabelId = null;
         }
 
         function checkToolComplete() {
@@ -1980,6 +2332,7 @@
                 id, type, ...data,
                 name, cap,
                 vis: true, col: 'black',
+                labelOff: data.labelOff || (type === 'pt' || type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 }),
                 eqMode: (type === 'ln' || type === 'seg' || type === 'par_ln' || type === 'perp_ln' || type === 'bis') ? 'slope' : (['par', 'ell', 'hyp'].includes(type) ? 'gen' : null),
                 parents: data.parents || []
             };
@@ -2078,10 +2431,40 @@
         }
 
         function findHit(p) {
-            // Increase hit radius for labels (txt, fn) to make them easier to grab
-            const hitPt = S.objs.find(o => (o.type === 'pt' || o.type === 'txt' || o.type === 'fn') && o.vis && M.dist(o, p) < ((o.type === 'pt' ? 1 : 2.5) * C.HIT) / S.view.s);
-            if (hitPt) return hitPt;
-            return S.objs.find(o => o.type !== 'pt' && o.type !== 'txt' && o.vis && checkHitObj(o, p));
+            S.hovPart = null;
+            const sp = w2s(p.x, p.y);
+            // 1. Labels (Points, Lines, etc.)
+            for (let i = S.objs.length - 1; i >= 0; i--) {
+                const o = S.objs[i];
+                if (!o.vis) continue;
+                if (o.type !== 'txt' && o.showLabel === false) continue;
+
+                let cp = { x: o.x, y: o.y };
+                if (o.type !== 'pt' && o.type !== 'txt' && o.type !== 'mid') {
+                    const c = getCenter(o); if (!c) continue; cp = c;
+                }
+                const s = w2s(cp.x, cp.y);
+                const lOff = o.labelOff || (o.type === 'pt' || o.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
+                const lx = s.x + lOff.x, ly = s.y + lOff.y;
+
+                // Very generous hit area (80x40) to ensure easy grabbing
+                const dx = Math.abs(sp.x - lx), dy = Math.abs(sp.y - ly);
+                if (dx < 40 && dy < 20) {
+                    S.hovPart = 'label';
+                    return o;
+                }
+            }
+
+            // 2. Points (High priority, large radius for much easier grabbing)
+            let hit = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, p) < (2.0 * C.HIT) / S.view.s);
+            if (hit) return hit;
+
+            // 3. Text and Function Anchors (Labels)
+            hit = S.objs.find(o => (o.type === 'txt' || o.type === 'fn') && o.vis && M.dist(o, p) < (3.0 * C.HIT) / S.view.s);
+            if (hit) return hit;
+
+            // 4. Other paths (Lines, Circles)
+            return S.objs.find(o => o.type !== 'pt' && o.type !== 'txt' && o.type !== 'fn' && o.vis && checkHitObj(o, p));
         }
 
         function findHitHidden(p) {
@@ -2095,13 +2478,25 @@
             // Similar to checkHitObj but works for hidden objects
             if (o.type === 'pt' || o.type === 'txt') return M.dist(o, p) < (tol || C.HIT) / S.view.s;
             if (o.type === 'fn') {
-                const f = M.prepareFn(o.expr || 'x');
-                if (!f) return M.dist(o, p) < (tol || C.HIT) / S.view.s;
-                try {
-                    const yVal = f(p.x);
-                    if (isNaN(yVal)) return M.dist(o, p) < (tol || C.HIT) / S.view.s;
-                    return Math.abs(yVal - p.y) < (tol || C.HIT) / S.view.s;
-                } catch (e) { return M.dist(o, p) < (tol || C.HIT) / S.view.s; }
+                const expr = o.expr || 'x';
+                const f = M.prepareFn(expr);
+                if (f && !expr.includes('=')) {
+                    try {
+                        const yVal = f(p.x);
+                        if (isNaN(yVal)) return false;
+                        return Math.abs(yVal - p.y) < (tol || C.HIT) / S.view.s;
+                    } catch (e) { return false; }
+                } else {
+                    const impF = M.prepareImplicit(expr);
+                    if (impF) {
+                        const d = (tol || C.HIT) / S.view.s;
+                        const v1 = impF(p.x - d, p.y - d), v2 = impF(p.x + d, p.y - d);
+                        const v3 = impF(p.x + d, p.y + d), v4 = impF(p.x - d, p.y + d);
+                        if (v1 * v2 <= 0 || v2 * v3 <= 0 || v3 * v4 <= 0 || v4 * v1 <= 0) return true;
+                        if (Math.abs(impF(p.x, p.y)) < 0.1) return true;
+                    }
+                    return false;
+                }
             }
             const pt = M.closestOnPath(p, o);
             return M.dist(p, pt) < (tol || C.HIT) / S.view.s;
@@ -2111,26 +2506,26 @@
             if (o.type === 'pt' || o.type === 'txt') return M.dist(o, p) < (tol || C.HIT) / S.view.s;
             if (o.type === 'fn') {
                 const expr = o.expr || 'x';
-                // Try explicit first
                 const f = M.prepareFn(expr);
                 if (f && !expr.includes('=')) {
-                    if (!f) return M.dist(o, p) < (tol || C.HIT) / S.view.s;
                     try {
                         const yVal = f(p.x);
-                        if (isNaN(yVal)) return M.dist(o, p) < (tol || C.HIT) / S.view.s;
+                        if (isNaN(yVal)) return false;
                         return Math.abs(yVal - p.y) < (tol || C.HIT) / S.view.s;
-                    } catch (e) { return M.dist(o, p) < (tol || C.HIT) / S.view.s; }
+                    } catch (e) { return false; }
                 } else {
-                    // Implicit: Sign Change Method
                     const impF = M.prepareImplicit(expr);
                     if (impF) {
                         const d = (tol || C.HIT) / S.view.s;
-                        const v1 = impF(p.x - d, p.y - d);
-                        const v2 = impF(p.x + d, p.y - d);
-                        const v3 = impF(p.x + d, p.y + d);
-                        const v4 = impF(p.x - d, p.y + d);
+                        const v1 = impF(p.x - d, p.y - d), v2 = impF(p.x + d, p.y - d);
+                        const v3 = impF(p.x + d, p.y + d), v4 = impF(p.x - d, p.y + d);
                         if (v1 * v2 <= 0 || v2 * v3 <= 0 || v3 * v4 <= 0 || v4 * v1 <= 0) return true;
-                        if (Math.abs(impF(p.x, p.y)) < 0.1) return true;
+                        const h = 1e-4;
+                        const val = impF(p.x, p.y);
+                        const gx = (impF(p.x + h, p.y) - impF(p.x - h, p.y)) / (2 * h);
+                        const gy = (impF(p.x, p.y + h) - impF(p.x, p.y - h)) / (2 * h);
+                        const grad = Math.hypot(gx, gy);
+                        if (grad > 1e-9 && Math.abs(val) / grad < d) return true;
                     }
                     return false;
                 }
@@ -2877,7 +3272,7 @@
             } else if (o.type === 'seg') {
                 const p1 = getObj(o.p1), p2 = o.p2 ? getObj(o.p2) : o.p2_pos;
                 if (p1 && p2) { const s1 = w2s(p1.x, p1.y), s2 = w2s(p2.x, p2.y); ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y); ctx.stroke(); }
-            } else if (o.type === 'ln') {
+            } else if (o.type === 'ln' && o.def !== 'tan') {
                 const p1 = getObj(o.p1), p2 = o.p2 ? getObj(o.p2) : o.p2_pos;
                 if (p1 && p2) {
                     const dx = p2.x - p1.x, dy = p2.y - p1.y;
@@ -2928,16 +3323,16 @@
                 drawEllipse(o);
             } else if (o.type === 'hyp') {
                 drawHyperbola(o);
-            } else if (o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis') {
+            } else if (o.type === 'par_ln' || o.type === 'perp_ln' || (o.type === 'ln' && o.def === 'tan') || o.type === 'bis') {
                 const g = M.getGeo(o);
                 if (g) {
-                    const p1 = w2s(-10000, (-g.a * (-10000) - g.c) / g.b);
-                    const p2 = w2s(10000, (-g.a * 10000 - g.c) / g.b);
                     if (Math.abs(g.b) < 1e-9) { // Vertical
                         const vx = -g.c / g.a;
                         const v1 = w2s(vx, -10000), v2 = w2s(vx, 10000);
                         ctx.beginPath(); ctx.moveTo(v1.x, v1.y); ctx.lineTo(v2.x, v2.y); ctx.stroke();
                     } else {
+                        const p1 = w2s(-10000, (-g.a * (-10000) - g.c) / g.b);
+                        const p2 = w2s(10000, (-g.a * 10000 - g.c) / g.b);
                         ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
                     }
                 }
@@ -3066,14 +3461,17 @@
                 if (o.type === 'txt' || o.type === 'fn') {
                     el.classList.add(o.type === 'txt' ? 'txt-obj' : 'fn-obj');
                     if (S.selIds.includes(o.id) || S.hovId === o.id) el.classList.add('selected');
-                    // No offset for centered text/function boxes
-                    el.style.left = s.x + 'px';
-                    el.style.top = s.y + 'px';
+                    // Use labelOff for positioning as well
+                    const lOff = o.labelOff || { x: 0, y: 0 };
+                    el.style.left = (s.x + lOff.x) + 'px';
+                    el.style.top = (s.y + lOff.y) + 'px';
                 } else {
-                    // Apply fixed pixel offset for point labels
-                    el.style.left = (s.x + off) + 'px';
-                    el.style.top = (s.y + off) + 'px';
+                    // Apply relative offset from object
+                    const lOff = o.labelOff || (o.type === 'pt' || o.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
+                    el.style.left = (s.x + lOff.x) + 'px';
+                    el.style.top = (s.y + lOff.y) + 'px';
                 }
+                if (S.hovId === o.id && S.hovPart === 'label') el.style.background = 'rgba(52, 152, 219, 0.2)';
 
                 // Show Name or Caption based on per-object labelMode setting
                 let txt;
@@ -3169,8 +3567,8 @@
         }
 
         function getCenter(o) {
-            if (o.type === 'seg' || o.type === 'ln') { const p1 = getObj(o.p1), p2 = getObj(o.p2); return p1 && p2 ? { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } : null; }
-            if (o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis') {
+            if ((o.type === 'seg' || o.type === 'ln') && o.def !== 'tan') { const p1 = getObj(o.p1), p2 = getObj(o.p2); return p1 && p2 ? { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 } : null; }
+            if (o.type === 'par_ln' || o.type === 'perp_ln' || o.type === 'bis' || (o.type === 'ln' && o.def === 'tan')) {
                 const g = M.getGeo(o); if (!g) return null;
                 // For lines, use a point near the parent point if possible, else 0,0
                 const p1 = o.p1 ? getObj(o.p1) : { x: 0, y: 0 };
