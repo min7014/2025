@@ -306,12 +306,13 @@
             bottom: 10px;
             right: 10px;
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            align-items: center;
             justify-content: flex-end;
             gap: 8px;
             pointer-events: auto;
             z-index: 100;
-            max-width: calc(100% - 150px);
+            max-width: calc(100% - 20px);
             /* Leave room for left toolbar if possible */
         }
 
@@ -358,7 +359,7 @@
             style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; padding:10px 20px; border-radius:30px; font-size:14px; z-index:1000; pointer-events:none;">
         </div>
         <div id="toolbar">
-            <div class="row" style="padding:0 10px; gap:4px; margin-bottom:10px;">
+            <div class="row" style="padding:0 10px; gap:4px;">
                 <div class="btn" id="b-undo" style="width:36px; min-width:36px;">↶</div>
                 <div class="btn" id="b-redo" style="width:36px; min-width:36px;">↷</div>
             </div>
@@ -3172,7 +3173,6 @@
                     ctx.beginPath(); ctx.moveTo(o.x, 0);
                     ctx.lineTo(o.x - 5, 10); ctx.lineTo(o.x + 5, 10); ctx.fill();
                 }
-                ctx.font = '12px sans-serif'; ctx.fillText('O', o.x - 15, o.y + 15);
             }
 
             // Show all hidden objects when clicking on empty space (PAN action)
@@ -3567,13 +3567,18 @@
                     const endY = Math.floor(tl.y / stepY) * stepY;
 
                     for (let x = startX; x <= endX; x += stepX) {
-                        if (Math.abs(x) < 1e-9) continue;
                         const p = w2s(x, 0);
                         if (p.x < -50 || p.x > cvs.width + 50) continue;
+                        if (p.x > cvs.width - 50) continue; // Hide if too close to 'x' label
                         const el = document.createElement('div');
                         el.className = 'label';
-                        el.style.left = (p.x - 5) + 'px';
-                        el.style.top = (o.y + 10) + 'px';
+                        if (Math.abs(x) < 1e-9) {
+                            el.style.left = (p.x - 15) + 'px';
+                            el.style.top = (o.y + 5) + 'px'; // Near origin
+                        } else {
+                            el.style.left = (p.x - 5) + 'px';
+                            el.style.top = (o.y + 10) + 'px';
+                        }
                         let tex = S.tickModeX === 'pi' ? M.formatPi(x) : parseFloat(x.toFixed(10)).toString();
                         if (window.katex) katex.render(tex, el, { throwOnError: false }); else el.innerText = tex;
                         div.appendChild(el);
@@ -3582,6 +3587,7 @@
                         if (Math.abs(y) < 1e-9) continue;
                         const p = w2s(0, y);
                         if (p.y < -50 || p.y > cvs.height + 50) continue;
+                        if (p.y < 35) continue; // Hide if too close to 'y' label
                         const el = document.createElement('div');
                         el.className = 'label';
                         el.style.left = (o.x + 10) + 'px';
