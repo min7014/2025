@@ -225,11 +225,10 @@
         }
 
         #view-list {
-            top: 0;
-            bottom: auto;
-            right: auto;
-            left: 100%;
-            margin-left: 8px;
+            bottom: 50px;
+            right: 0;
+            width: max-content;
+            min-width: 120px;
         }
 
         #learn-list {
@@ -266,12 +265,104 @@
             font-size: 12px;
             opacity: 0;
             pointer-events: none;
-            white-space: nowrap;
+            white-space: normal;
+            width: max-content;
+            max-width: 250px;
+            z-index: 1000;
             transition: opacity 0.2s;
         }
 
         .btn:hover #tip.show {
             opacity: 1;
+        }
+
+        .btn:hover #tip.delayed {
+            transition-delay: 1s;
+            opacity: 1;
+        }
+
+        .input-mode-label {
+            position: absolute;
+            z-index: 1001;
+            background: var(--p);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            margin-top: -5px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-mode-label.fn {
+            background: var(--a);
+        }
+
+        #obj-panel {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            width: 220px;
+            max-height: 60vh;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: none;
+            flex-direction: column;
+            z-index: 500;
+        }
+
+        #obj-panel-header {
+            padding: 10px 12px;
+            font-size: 14px;
+            font-weight: bold;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #obj-panel-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 4px 0;
+        }
+
+        .obj-item {
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.1s;
+            border-bottom: 1px solid #f9f9f9;
+        }
+
+        .obj-item:last-child {
+            border-bottom: none;
+        }
+
+        .obj-item:hover {
+            background: #f0f7ff;
+        }
+
+        .obj-item.active {
+            background: #e1f0ff;
+            font-weight: bold;
+            color: var(--a);
+        }
+
+        .obj-item-icon {
+            font-weight: bold;
+            color: #888;
+            width: 20px;
+            text-align: center;
+            font-size: 14px;
         }
 
         #props {
@@ -307,12 +398,13 @@
             bottom: 10px;
             right: 10px;
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            align-items: center;
             justify-content: flex-end;
             gap: 8px;
             pointer-events: auto;
             z-index: 100;
-            max-width: calc(100% - 150px);
+            max-width: calc(100% - 20px);
             /* Leave room for left toolbar if possible */
         }
 
@@ -359,25 +451,28 @@
             style="display:none; position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; padding:10px 20px; border-radius:30px; font-size:14px; z-index:1000; pointer-events:none;">
         </div>
         <div id="toolbar">
-            <div class="row" style="padding:0 10px; gap:4px; margin-bottom:10px;">
+            <div class="row" style="padding:0 10px; gap:4px;">
                 <div class="btn" id="b-undo" style="width:36px; min-width:36px;">↶</div>
                 <div class="btn" id="b-redo" style="width:36px; min-width:36px;">↷</div>
             </div>
-            <div class="btn" id="b-sel" title="Select">↖</div>
+            <div class="btn" id="b-sel">↖</div>
             <div id="grp-wrap">
                 <div class="btn" id="b-grp">●<div id="tip">Point</div>
                 </div>
                 <div id="grp-list"></div>
             </div>
-            <div class="btn" id="b-txt">T</div>
+
+        </div>
+
+        <div id="tr">
             <div id="view-wrap" class="expand-wrap">
                 <div style="display: flex;">
                     <div class="btn" id="b-view"
-                        style="font-size:12px; font-weight:bold; border-top-right-radius:0; border-bottom-right-radius:0;">
+                        style="font-size:14px; font-weight:bold; border-top-right-radius:0; border-bottom-right-radius:0; padding:0 8px;">
                         화면 설정</div>
                     <div class="btn" id="b-view-menu"
-                        style="padding:4px; border-left:none; border-top-left-radius:0; border-bottom-left-radius:0;">▼
-                    </div>
+                        style="padding:4px; border-left:none; border-top-left-radius:0; border-bottom-left-radius:0; min-width:30px;">
+                        ▼</div>
                 </div>
                 <div id="view-list" class="expand-list">
                     <div class="btn" id="b-grid">격자</div>
@@ -397,11 +492,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div id="tr">
             <div class="expand-wrap" id="learn-wrap">
-                <div class="btn" id="b-learn" style="font-size:12px; font-weight:bold;">학습모드</div>
+                <div class="btn" id="b-learn" style="font-size:14px; font-weight:bold;">학습모드</div>
                 <div id="learn-list" class="expand-list">
                     <div class="btn" id="b-learn-pt">점 찍기</div>
                     <div class="btn" id="b-learn-ln">일차함수 그래프 그리기</div>
@@ -414,7 +506,15 @@
                         style="border-top: 1px solid #eee; margin-top: 4px; font-weight: bold;">작도 문제</div>
                 </div>
             </div>
-            <div class="btn" id="b-lang" style="font-size:12px; font-weight:bold;">KO</div>
+            <div class="btn" id="b-obj" style="font-size:14px; font-weight:bold;">객체 목록</div>
+            <div class="btn" id="b-lang" style="font-size:14px; font-weight:bold;">KO</div>
+        </div>
+        <div id="obj-panel">
+            <div id="obj-panel-header">
+                <span id="obj-panel-title">객체 목록</span>
+                <span id="obj-panel-close" style="cursor:pointer; font-size: 20px; line-height: 1;">×</span>
+            </div>
+            <div id="obj-panel-list"></div>
         </div>
         <div id="props"></div>
         <div id="link"><a href="https://min7014.github.io" target="_blank">min7014.github.io</a></div>
@@ -425,7 +525,14 @@
         // --- CONSTANTS ---
         const C = { SNAP: 12, HIT: 10, PT_R: 4, GRD: '#e0e0e0', AXS: '#888', SEL: '#3498db' };
         const TOOLS = {
-            sel: { i: '↖', n: { KO: '선택', EN: 'Select' } },
+            sel: {
+                i: '↖',
+                n: { KO: '선택', EN: 'Select' },
+                d: {
+                    KO: '객체를 선택하고 드래그하여 이동합니다. 빈 공간을 1초간 누르면 텍스트를, 한번 클릭 후 0.2초 이내에 다시 1초간 누르고 있으면 명령어를 입력할 수 있습니다.',
+                    EN: 'Select and drag objects to move. Long-press on empty space (1s) for Text. Click once, then within 0.2s, Long-press (1s) for Commands.'
+                }
+            },
             pt: { i: '●', n: { KO: '점', EN: 'Point' } },
             seg: { i: '╱', n: { KO: '선분', EN: 'Segment' } },
             ln: { i: '↔', n: { KO: '직선', EN: 'Line' } },
@@ -437,7 +544,7 @@
             perp_ln: { i: '⊥', n: { KO: '수선', EN: 'Perpendicular' } },
             mid: { i: '•', n: { KO: '중점', EN: 'Midpoint' } },
             bis: { i: '∠', n: { KO: '각의 이등분선', EN: 'Angle Bisector' } },
-            txt: { i: 'T', n: { KO: '텍스트', EN: 'Text' } },
+
             grid: { n: { KO: '격자', EN: 'Grid' } },
             axes: { n: { KO: '좌표축', EN: 'Axes' } },
             ticks: { n: { KO: '눈금', EN: 'Ticks' } },
@@ -454,7 +561,8 @@
             learn_perp_ln: { n: { KO: '수선', EN: 'Perpendicular Practice' } },
             learn_mid: { n: { KO: '중점', EN: 'Midpoint Practice' } },
             learn_bis: { n: { KO: '각의 이등분선', EN: 'Angle Bisector Practice' } },
-            learn_const: { n: { KO: '작도 문제', EN: 'Construction' } }
+            learn_const: { n: { KO: '작도 문제', EN: 'Construction' } },
+            obj_list: { n: { KO: '객체 목록', EN: 'Object List' } }
         };
         const G_TOOLS = ['pt', 'seg', 'ln', 'cir', 'par', 'ell', 'hyp', 'par_ln', 'perp_ln', 'mid', 'bis'];
 
@@ -465,6 +573,7 @@
             mode: 'pt',
             curr: 'sel',
             lang: 'KO',
+            showObjPanel: false,
 
             p: { x: 0, y: 0, down: false },
             pointers: new Map(),
@@ -472,6 +581,7 @@
 
             // Double Click
             lastTime: 0,
+            lastUpTime: 0,
             lastPos: { x: 0, y: 0 },
 
             action: 'IDLE',
@@ -503,7 +613,11 @@
             learnWaitingForNext: false,
 
             hist: [],
-            hIdx: -1
+            hIdx: -1,
+
+            longPressTimer: null,
+            cmdHoldTimer: null,
+            ptLongPressTimer: null
         };
 
         // --- ANALYTICS ---
@@ -1158,8 +1272,8 @@
                 }
 
                 if (path.type === 'fn') {
-                    const f = M.prepareFn(path.expr || 'x');
-                    if (f && !path.expr.includes('=')) {
+                    const f = M.prepareFn(path.expr);
+                    if (f && path.expr && !path.expr.includes('=')) {
                         const h = 1e-5;
                         const slope = (f(tP.x + h) - f(tP.x - h)) / (2 * h);
                         return { a: slope, b: -1, c: f(tP.x) - slope * tP.x };
@@ -1192,7 +1306,7 @@
                 let results = [];
                 // Special case: Point on path. Rule: only draw tangent at this point.
                 const onPath = M.closestOnPath(p, path);
-                if (M.dist(p, onPath) < 1e-4) return [{ x: onPath.x, y: onPath.y }];
+                if (M.dist(p, onPath) < 1e-2) return [{ x: onPath.x, y: onPath.y }];
 
                 if (path.type === 'cir') {
                     const sc = getObj(path.c); if (!sc) return results;
@@ -1210,7 +1324,8 @@
                         results.push(...M.intConicLine(c, L));
                     }
                 } else if (path.type === 'fn') {
-                    const expr = path.expr || 'x';
+                    const expr = path.expr;
+                    if (!expr) return results;
                     if (expr.includes('=')) {
                         const impF = M.prepareImplicit(expr);
                         if (impF) {
@@ -1312,7 +1427,8 @@
 
             closestOnPath: (p, path) => {
                 if (path.type === 'fn') {
-                    const expr = path.expr || 'x';
+                    const expr = path.expr;
+                    if (!expr) return p;
                     const f = M.prepareFn(expr);
                     if (f && !expr.includes('=')) {
                         try {
@@ -1487,7 +1603,20 @@
             cvs.addEventListener('pointercancel', onUp);
             cvs.addEventListener('wheel', onWheel, { passive: false });
             cvs.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+            // Close menus on click outside
+            window.addEventListener('pointerdown', (e) => {
+                const gList = document.getElementById('grp-list');
+                const vList = document.getElementById('view-list');
+                const lList = document.getElementById('learn-list');
+
+                if (!e.target.closest('#grp-wrap')) gList.classList.remove('open');
+                if (!e.target.closest('#view-wrap')) vList.classList.remove('open');
+                if (lList && !e.target.closest('#learn-wrap')) lList.classList.remove('open');
+            });
+
             setupUI();
+            setTool(S.curr);
             loop();
         }
 
@@ -1497,13 +1626,73 @@
         }
 
         function loop() {
-            // Update order matters: update parents first, then children? 
-            // Better: just loop. dependency cycle is user's fault. 
-            // In a real app we'd sort by dependency depth.
+            updateAnimations();
             S.objs.forEach(o => updateObj(o));
             render();
             updateTitle();
             requestAnimationFrame(loop);
+        }
+
+        function updateAnimations() {
+            const baseStep = 0.0025; // Speed = 1
+            S.objs.forEach(o => {
+                if (o.type === 'pt' && o.anim && o.parents && o.parents.length > 0) {
+                    if (S.selIds.includes(o.id)) return;
+
+                    const parent = getObj(o.parents[0]);
+                    if (!parent) return;
+
+                    const speed = o.animSpeed || 1;
+                    const step = baseStep * speed;
+                    const mode = o.animMode || 'alt';
+                    const tl = s2w(0, 0), br = s2w(cvs.width, cvs.height);
+
+                    if (parent.type === 'fn') {
+                        const vStep = Math.max(0.01, (br.x - tl.x)) * step;
+                        o.x += vStep * (o.animDir || 1);
+
+                        if (mode === 'alt') {
+                            if (o.x > br.x) { o.x = br.x; o.animDir = -1; }
+                            if (o.x < tl.x) { o.x = tl.x; o.animDir = 1; }
+                        } else if (mode === 'incr') {
+                            if (o.x > br.x) o.x = tl.x;
+                            o.animDir = 1;
+                        } else if (mode === 'decr') {
+                            if (o.x < tl.x) o.x = br.x;
+                            o.animDir = -1;
+                        }
+                    } else if (parent.type === 'cir') {
+                        const c = getObj(parent.c);
+                        if (!c) return;
+                        const r = (parent.mode === '2pt' && getObj(parent.p2)) ? M.dist(c, getObj(parent.p2)) : parent.r;
+                        let theta = Math.atan2(o.y - c.y, o.x - c.x);
+
+                        const dir = (mode === 'decr' ? -1 : 1);
+                        theta += step * 10 * dir;
+
+                        o.x = c.x + r * Math.cos(theta);
+                        o.y = c.y + r * Math.sin(theta);
+                        // Bounce doesn't make much sense for circles unless we define limits, 
+                        // so for circles 'alt' will just spin (same as incr).
+                    } else if (['par', 'ell', 'hyp'].includes(parent.type)) {
+                        const vStep = Math.max(0.01, (br.x - tl.x)) * step;
+                        o.x += vStep * (o.animDir || 1);
+                        o.y += vStep * (o.animDir || 1);
+
+                        if (mode === 'alt') {
+                            if (o.x > br.x || o.x < tl.x || o.y > tl.y || o.y < br.y) {
+                                o.animDir = -(o.animDir || 1);
+                            }
+                        } else if (mode === 'incr') {
+                            if (o.x > br.x || o.y < br.y) { o.x = tl.x; o.y = tl.y; }
+                            o.animDir = 1;
+                        } else if (mode === 'decr') {
+                            if (o.x < tl.x || o.y > tl.y) { o.x = br.x; o.y = br.y; }
+                            o.animDir = -1;
+                        }
+                    }
+                }
+            });
         }
 
         function updateTitle() {
@@ -1693,10 +1882,10 @@
         }
 
         function onDown(e) {
+            S.startedWithEdit = S.objs.some(o => o.editing);
             // Find "trashable" objects using the robust cleanup logic
             cleanupInput();
 
-            S.startedWithEdit = S.objs.some(o => o.editing);
 
             if (S.learnMode && S.learnWaitingForNext) {
                 if (e.target === cvs) {
@@ -1714,7 +1903,7 @@
             }
             if (e.button === 2) return; // Ignore right-click for drawing actions
             const now = Date.now();
-            const isDbl = (now - S.lastTime < 300) && (Math.hypot(e.clientX - S.lastPos.x, e.clientY - S.lastPos.y) < 10);
+            const isDbl = (now - S.lastUpTime < 200) && (Math.hypot(e.clientX - S.lastPos.x, e.clientY - S.lastPos.y) < 10);
             S.lastTime = now; S.lastPos = { x: e.clientX, y: e.clientY };
 
             // Don't trigger double-click if an object is being edited
@@ -1724,14 +1913,21 @@
                 if (S.curr === 'sel') {
                     const w = s2w(e.clientX, e.clientY);
                     const hit = findHit(w);
-                    if (hit && (hit.type === 'txt' || hit.type === 'fn')) {
-                        // Start direct edit instead of showing props
-                        startDirectEdit(hit);
+                    if (hit) {
+                        if (hit.type === 'txt' || hit.type === 'fn') {
+                            // Start direct edit instead of showing props
+                            startDirectEdit(hit);
+                            return;
+                        }
+                        showProps(e);
                         return;
                     }
+                    // If no hit in 'sel' mode, don't return! 
+                    // Let it fall through to the double-click-and-hold logic below.
+                } else {
+                    showProps(e);
+                    return;
                 }
-                showProps(e);
-                return;
             }
 
             document.getElementById('props').style.display = 'none';
@@ -1763,10 +1959,53 @@
                         S.action = 'DRAG'; S.dragged = false;
                         S.hovId = hit.id;
                         S.dragOff = { x: hit.x - w.x, y: hit.y - w.y };
+
+                        // Start Long Press for Point Settings (1s)
+                        if (hit.type === 'pt') {
+                            clearTimeout(S.ptLongPressTimer);
+                            S.ptLongPressTimer = setTimeout(() => {
+                                if (S.p.down && !S.dragged) {
+                                    showProps(e);
+                                    S.action = 'IDLE'; // Cancel drag if menu opens
+                                }
+                            }, 1000);
+                        }
                     }
                     if (!S.selIds.includes(hit.id)) S.selIds = [hit.id];
                 } else {
                     S.action = 'PAN'; S.dragStart = { ...S.view }; S.selIds = [];
+
+                    // --- Text or Command Creation Logic ---
+                    if (S.curr === 'sel' && !S.startedWithEdit) {
+                        clearTimeout(S.longPressTimer);
+                        clearTimeout(S.cmdHoldTimer);
+
+                        const pos = s2w(e.clientX, e.clientY);
+
+                        if (isDbl) {
+                            // Double-click detected (within 200ms) - Start Command Hold Timer
+                            S.cmdHoldTimer = setTimeout(() => {
+                                if (S.p.down && S.curr === 'sel' && S.action === 'PAN') {
+                                    const o = createObj('fn', { x: pos.x, y: pos.y });
+                                    o.isNew = true; o.fixedType = 'fn';
+                                    S.selIds = [o.id];
+                                    startDirectEdit(o);
+                                    saveState(); render();
+                                }
+                            }, 1000);
+                        } else {
+                            // Standard press - Start Text Long Press Timer
+                            S.longPressTimer = setTimeout(() => {
+                                if (S.p.down && S.curr === 'sel' && S.action === 'PAN') {
+                                    const o = createObj('txt', { x: pos.x, y: pos.y });
+                                    o.isNew = true; o.fixedType = 'txt';
+                                    S.selIds = [o.id];
+                                    startDirectEdit(o);
+                                    saveState(); render();
+                                }
+                            }, 1000);
+                        }
+                    }
                 }
             } else {
                 S.action = 'CREATE';
@@ -1845,6 +2084,41 @@
                     }
                     addSelect(TOOLS.eq.n[S.lang], hit.eqMode, opts, v => { hit.eqMode = v; saveState(); render(); });
                 }
+                if (hit.type === 'pt') {
+                    if (hit.parents && hit.parents.length > 0) {
+                        const parent = getObj(hit.parents[0]);
+                        if (parent && (parent.type === 'cir' || parent.type === 'fn' || ['par', 'ell', 'hyp'].includes(parent.type))) {
+                            addRow(S.lang === 'KO' ? '애니메이션 시작' : 'Start Animation', !!hit.anim, v => {
+                                hit.anim = v;
+                                if (v) {
+                                    hit.animDir = hit.animDir || 1;
+                                    hit.animSpeed = hit.animSpeed || 1;
+                                    hit.animMode = hit.animMode || 'alt';
+                                }
+                                saveState(); showProps(e); // Refresh to show sub-options
+                            }, 'checkbox');
+
+                            if (hit.anim) {
+                                addRow(S.lang === 'KO' ? '속도' : 'Speed', hit.animSpeed || 1, v => {
+                                    hit.animSpeed = Math.max(0.1, parseFloat(v) || 1);
+                                    saveState();
+                                }, 'number');
+
+                                const modeOpts = [
+                                    { v: 'incr', l: S.lang === 'KO' ? '증가' : 'Increase' },
+                                    { v: 'decr', l: S.lang === 'KO' ? '감소' : 'Decrease' },
+                                    { v: 'alt', l: S.lang === 'KO' ? '반복' : 'Bounce' }
+                                ];
+                                addSelect(S.lang === 'KO' ? '방향' : 'Direction', hit.animMode || 'alt', modeOpts, v => {
+                                    hit.animMode = v;
+                                    hit.animDir = (v === 'decr' ? -1 : 1);
+                                    saveState();
+                                });
+                            }
+                        }
+                    }
+                }
+
                 if (hit.type === 'cir') {
                     if (hit.mode === 'fixed') addRow(S.lang === 'KO' ? '반지름' : 'Radius', hit.r, v => { hit.r = parseFloat(v) || hit.r; render(); });
                     else if (hit.mode === '2pt') {
@@ -1882,10 +2156,31 @@
             input.type = 'text';
             input.className = 'direct-edit';
             input.autocomplete = 'off';
-            input.autocomplete = 'off';
-            const defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
-            input.value = (obj.cap === 'Text' || obj.cap === '입력' || obj.cap === 'Input' ? '' : obj.cap);
-            input.placeholder = defaultTxt;
+            let defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
+            if (obj.fixedType === 'fn') defaultTxt = S.lang === 'KO' ? '명령어 입력' : 'Command Input';
+            else if (obj.fixedType === 'txt') defaultTxt = S.lang === 'KO' ? '텍스트 입력' : 'Text Input';
+
+            const isPlaceholder = (c) => c === 'Text' || c === '입력' || c === 'Input' || c === '명령어 입력' || c === '텍스트 입력' || c === 'Command Input' || c === 'Text Input' || c === `$\\mathrm{${obj.name}}$` || c === `$${obj.name}$`;
+            input.value = (isPlaceholder(obj.cap) ? '' : obj.cap);
+            if (obj.fixedType === 'fn') {
+                input.placeholder = S.lang === 'KO' ? '명령어 입력' : 'Command Input';
+            } else {
+                input.placeholder = S.lang === 'KO' ? '입력하세요.' : 'Enter here.';
+            }
+
+            // Visual Mode Indicator
+            const modeLabel = document.createElement('div');
+            modeLabel.className = 'input-mode-label' + (obj.fixedType === 'fn' ? ' fn' : '');
+            if (obj.fixedType === 'fn') {
+                modeLabel.style.display = 'none';
+            } else if (obj.fixedType === 'txt') {
+                modeLabel.innerText = S.lang === 'KO' ? '텍스트 입력' : 'Text Input';
+            } else {
+                modeLabel.style.display = 'none';
+            }
+
+            modeLabel.style.left = pos.x + 'px';
+            modeLabel.style.top = (pos.y + 40) + 'px';
 
             // Offset input field (e.g., 40px below the anchor point)
             input.style.left = pos.x + 'px';
@@ -1896,6 +2191,7 @@
             preview.className = 'latex-preview';
             preview.style.left = pos.x + 'px';
             preview.style.top = (pos.y - 10) + 'px';
+            if (obj.fixedType === 'fn' || obj.type === 'fn') preview.style.display = 'none';
 
             const updatePreview = (text) => {
                 if (window.katex && text) {
@@ -1924,21 +2220,21 @@
                         preview.textContent = text;
                     }
                 } else {
-                    const defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
                     preview.textContent = text || defaultTxt;
                 }
             };
 
             document.getElementById('ui-persist').appendChild(input);
             document.getElementById('ui-persist').appendChild(preview);
+            document.getElementById('ui-persist').appendChild(modeLabel);
 
             updatePreview(input.value);
+            input.focus(); // Immediate focus for mobile keyboard activation
 
             setTimeout(() => {
-                input.focus();
+                input.focus(); // Follow-up focus
                 input.select();
-            }, 150);
-            input.focus(); // Immediate focus attempt
+            }, 100);
 
             obj.editing = true;
 
@@ -1953,59 +2249,79 @@
             // Real-time update
             input.oninput = () => {
                 obj.modified = true;
-                const defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
-                const val = input.value || (obj.type === 'txt' ? defaultTxt : 'x');
-                updatePreview(val);
-                if (val.toLowerCase().startsWith('y=') || val.includes('=')) {
+                const val = input.value;
+                updatePreview(val || (obj.type === 'txt' ? '입력' : 'x'));
+
+                if (obj.fixedType === 'txt') {
+                    obj.type = 'txt';
+                    obj.cap = val;
+                } else if (obj.fixedType === 'fn') {
                     obj.type = 'fn';
                     obj.expr = val.toLowerCase().startsWith('y=') ? val.substring(2) : val;
                     obj.cap = val;
                 } else {
-                    obj.type = 'txt';
-                    obj.cap = val;
+                    // Legacy auto-conversion
+                    if (val.toLowerCase().startsWith('y=') || val.includes('=')) {
+                        obj.type = 'fn';
+                        obj.expr = val.toLowerCase().startsWith('y=') ? val.substring(2) : val;
+                        obj.cap = val;
+                    } else {
+                        obj.type = 'txt';
+                        obj.cap = val;
+                    }
                 }
+                preview.style.display = (obj.type === 'fn' || obj.fixedType === 'fn') ? 'none' : 'block';
                 render();
             };
 
-            // Real-time update
+            // Finish logic
             const finish = () => {
                 if (input.parentElement) {
-                    const defaultTxt = S.lang === 'KO' ? '입력' : 'Input';
-                    const val = input.value || (obj.type === 'txt' ? defaultTxt : 'x');
+                    const val = input.value;
                     const cleanExpr = (v) => v.replace(/^y\s*=\s*/i, '').trim();
-                    if (obj.type === 'txt' && (val.toLowerCase().startsWith('y') && val.includes('='))) {
+
+                    if (obj.fixedType === 'fn') {
                         obj.type = 'fn';
                         obj.expr = cleanExpr(val);
-                        obj.cap = val;
-                    } else if (obj.type === 'fn') {
-                        obj.expr = cleanExpr(val);
                         obj.cap = val.includes('=') ? val : 'y=' + obj.expr;
-                    } else {
+                    } else if (obj.fixedType === 'txt') {
+                        obj.type = 'txt';
                         obj.cap = val;
+                    } else {
+                        // Legacy logic
+                        if (obj.type === 'txt' && (val.toLowerCase().startsWith('y') && val.includes('='))) {
+                            obj.type = 'fn';
+                            obj.expr = cleanExpr(val);
+                            obj.cap = val;
+                        } else if (obj.type === 'fn') {
+                            obj.expr = cleanExpr(val);
+                            obj.cap = val.includes('=') ? val : 'y=' + obj.expr;
+                        } else {
+                            obj.cap = val;
+                        }
                     }
 
                     // Check for trash (new & empty/default)
-                    const isTrash = obj.isNew && (!obj.modified || !val || val === defaultTxt || val === 'Text' || val === '입력' || val === 'Input');
+                    const isTrash = obj.isNew && (!obj.modified || !val);
 
-                    if (obj.waste || isTrash) {
+                    if (isTrash) {
                         S.objs = S.objs.filter(o => o !== obj);
                         input.remove();
                         preview.remove();
+                        if (modeLabel) modeLabel.remove();
                         render();
                         return;
                     }
                     obj.editing = false;
                     input.remove();
                     preview.remove();
+                    if (modeLabel) modeLabel.remove();
                     saveState();
                     render();
                 }
             };
 
-            input.onblur = (e) => {
-                // Check if the focus actually moved to something else
-                finish();
-            };
+            input.onblur = finish;
             input.onkeydown = e => {
                 e.stopPropagation();
                 if (e.key === 'Enter') finish();
@@ -2037,7 +2353,13 @@
 
         function onMove(e) {
             S.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-            if (S.p.down && Math.hypot(e.clientX - S.p.x, e.clientY - S.p.y) > 5) S.dragged = true;
+            const threshold = e.pointerType === 'touch' ? 12 : 5;
+            if (S.p.down && Math.hypot(e.clientX - S.p.x, e.clientY - S.p.y) > threshold) {
+                S.dragged = true;
+                clearTimeout(S.longPressTimer);
+                clearTimeout(S.cmdHoldTimer);
+                clearTimeout(S.ptLongPressTimer);
+            }
 
             if (S.action === 'PINCH' && S.pointers.size === 2) {
                 const ptrs = [...S.pointers.values()];
@@ -2052,6 +2374,21 @@
             if (S.action === 'PAN') {
                 const dx = e.clientX - S.p.x; const dy = e.clientY - S.p.y;
                 S.view.x = S.dragStart.x + dx; S.view.y = S.dragStart.y + dy;
+
+                // Restart Long Press timer on movement (1000ms after drag stops)
+                if (S.curr === 'sel' && !S.startedWithEdit) {
+                    clearTimeout(S.longPressTimer);
+                    S.longPressTimer = setTimeout(() => {
+                        if (S.p.down && S.curr === 'sel' && S.action === 'PAN') {
+                            const pos = s2w(e.clientX, e.clientY);
+                            const o = createObj('txt', { x: pos.x, y: pos.y });
+                            o.isNew = true; o.fixedType = 'txt';
+                            S.selIds = [o.id];
+                            startDirectEdit(o);
+                            saveState(); render();
+                        }
+                    }, 1000);
+                }
             } else if (S.action === 'DRAG_LABEL') {
                 const o = getObj(S.dragLabelId);
                 if (o) {
@@ -2095,7 +2432,21 @@
                     const c = getObj(S.pts[0]);
                     if (c) S.tmp = { type: 'cir', c: c.id, r: M.dist(c, pos), col: C.SEL, mode: 'fixed' };
                 } else if ((S.curr === 'seg' || S.curr === 'ln') && S.pts.length === 1) {
-                    S.tmp = { type: S.curr, p1: S.pts[0], p2_pos: pos, col: C.SEL };
+                    const hitObj = findHit(w);
+                    const hitPath = (hitObj && (hitObj.type === 'cir' || hitObj.type === 'fn' || ['par', 'ell', 'hyp'].includes(hitObj.type))) ? hitObj : null;
+                    if (S.curr === 'ln' && hitPath) {
+                        const p1 = getObj(S.pts[0]);
+                        if (p1) {
+                            const pts = M.getAllTangentPoints(p1, hitPath);
+                            if (pts.length > 0) {
+                                S.tmp = { type: 'composite', items: pts.map(pt => ({ type: 'ln', def: 'tan', p1: p1.id, l: hitPath.id, parents: [p1.id, hitPath.id], hint: { x: pt.x, y: pt.y }, col: C.SEL, dash: [5, 5] })) };
+                            } else {
+                                S.tmp = { type: S.curr, p1: S.pts[0], p2_pos: pos, col: C.SEL };
+                            }
+                        }
+                    } else {
+                        S.tmp = { type: S.curr, p1: S.pts[0], p2_pos: pos, col: C.SEL };
+                    }
                 } else if ((S.curr === 'par_ln' || S.curr === 'perp_ln' || S.curr === 'par') && S.pts.length === 1) {
                     if (S.snap && S.snap.parents && S.snap.parents.length > 0) {
                         const targetId = S.snap.parents[0];
@@ -2112,6 +2463,16 @@
                             S.tmp = { type: S.curr, p1: S.pts[0], l: targetId, col: C.SEL };
                         } else { S.tmp = null; }
                     } else { S.tmp = null; }
+                }
+            }
+            if (S.learnMode) {
+                const msg = document.getElementById('learn-msg');
+                if (msg) {
+                    if (e.clientY < 150) {
+                        msg.style.top = 'auto'; msg.style.bottom = '60px';
+                    } else {
+                        msg.style.top = '60px'; msg.style.bottom = 'auto';
+                    }
                 }
             }
             render();
@@ -2167,6 +2528,11 @@
 
         function onUp(e) {
             S.pointers.delete(e.pointerId);
+            S.lastUpTime = Date.now();
+            clearTimeout(S.longPressTimer);
+            clearTimeout(S.cmdHoldTimer);
+            clearTimeout(S.ptLongPressTimer);
+
             if (S.action === 'PINCH' && S.pointers.size === 0) { S.action = 'IDLE'; return; }
 
             if (S.action === 'CREATE' || (S.action === 'DRAG' && !S.dragged && S.curr !== 'sel')) {
@@ -2193,9 +2559,9 @@
                     S.tmp = null;
                 } else if (S.curr === 'txt' || S.curr === 'fn') {
                     const type = S.curr;
-                    const o = createObj(type, type === 'fn' ? { expr: 'x' } : { x: pos.x, y: pos.y, def, parents });
+                    const o = createObj(type, type === 'fn' ? { expr: '' } : { x: pos.x, y: pos.y, def, parents });
                     if (type === 'fn') { o.x = pos.x; o.y = pos.y; } // Anchor for label
-                    o.isNew = true;
+                    o.isNew = true; o.fixedType = type;
                     S.selIds = [o.id]; S.tmp = null; startDirectEdit(o);
                 } else if (S.curr === 'cir' && S.pts.length === 1 && S.dragged) {
                     const c = getObj(S.pts[0]);
@@ -2204,28 +2570,21 @@
                 } else {
                     // Multi-step tool logic
                     if (S.curr === 'ln') {
-                        const hitPath = S.objs.find(o => (o.type === 'cir' || o.type === 'fn' || ['par', 'ell', 'hyp'].includes(o.type)) && o.vis && checkHitObj(o, w, C.HIT * 1.5));
+                        const hitObj = findHit(w);
+                        let hitPath = (hitObj && (hitObj.type === 'cir' || hitObj.type === 'fn' || ['par', 'ell', 'hyp'].includes(hitObj.type))) ? hitObj : null;
+                        if (!hitPath) {
+                            // If findHit failed (likely click was slightly off), try a more generous scan
+                            hitPath = S.objs.find(o => (o.type === 'cir' || o.type === 'fn' || ['par', 'ell', 'hyp'].includes(o.type)) && o.vis && checkHitObj(o, w, C.HIT * 5.0));
+                        }
                         if (S.pts.length === 1) {
-                            // Object 1: The already selected point (could be a free point or a point-on-curve)
                             const p1 = getObj(S.pts[0]);
                             if (p1) {
                                 const p1CurveId = p1.parents && p1.parents[0];
                                 const p1Curve = p1CurveId ? getObj(p1CurveId) : null;
-
-                                // Object 2: The currently clicked thing
-                                const o2 = hitPath || getObj(hitId) || { id: null, type: 'pt_new' };
-
                                 let curve = null, point = null;
-
-                                // SCENARIO 1: Existing Point (p1) then Clicked Curve (o2)
-                                if (o2 && (o2.type === 'cir' || o2.type === 'fn' || ['par', 'ell', 'hyp'].includes(o2.type))) {
-                                    point = p1; curve = o2;
-                                }
-                                // SCENARIO 2: Existing Point-on-Curve (p1) then Clicked Point (o2)
-                                else if (p1Curve && (o2.type === 'pt' || o2.type === 'pt_new')) {
-                                    curve = p1Curve;
-                                    const p2Id = hitId || createObj('pt', { x: pos.x, y: pos.y, def, parents }).id;
-                                    point = getObj(p2Id);
+                                // ONLY trigger tangent logic if we HAVEN'T hit an existing point
+                                if (!hitId && hitPath) {
+                                    point = p1; curve = hitPath;
                                 }
 
                                 if (curve && point) {
@@ -2283,18 +2642,9 @@
                 }
 
                 saveState();
-            } else if (S.curr === 'sel' && S.action === 'PAN' && !S.dragged) {
-                // Only create if we didn't start this click interaction while editing
-                if (!S.startedWithEdit) {
-                    const w = s2w(e.clientX, e.clientY);
-                    const o = createObj('txt', { x: w.x, y: w.y });
-                    o.isNew = true;
-                    S.selIds = [o.id];
-                    S.lastTime = 0; // Prevent immediate double-click
-                    startDirectEdit(o);
-                    saveState();
-                }
             }
+            clearTimeout(S.longPressTimer);
+            clearTimeout(S.ptLongPressTimer);
             delete S.startedWithEdit;
 
             S.action = 'IDLE'; S.p.down = false; S.dragLabelId = null;
@@ -2325,7 +2675,8 @@
             const id = (S.idC++).toString();
             const name = nextName(type);
             let cap = `$\\mathrm{${name}}$`;
-            if (type === 'txt') cap = 'Text';
+            if (type === 'txt') cap = S.lang === 'KO' ? '텍스트 입력' : 'Text Input';
+            else if (type === 'fn') cap = S.lang === 'KO' ? '명령어 입력' : 'Command Input';
             else if (['seg', 'ln', 'par', 'ell', 'hyp', 'par_ln', 'perp_ln', 'bis'].includes(type)) cap = `$${name}$`; // $a$ format for lines/curves
 
             const o = {
@@ -2433,7 +2784,12 @@
         function findHit(p) {
             S.hovPart = null;
             const sp = w2s(p.x, p.y);
-            // 1. Labels (Points, Lines, etc.)
+
+            // 1. Points (Highest priority)
+            let hit = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, p) < (2.0 * C.HIT) / S.view.s);
+            if (hit) return hit;
+
+            // 2. Labels (Points, Lines, etc.)
             for (let i = S.objs.length - 1; i >= 0; i--) {
                 const o = S.objs[i];
                 if (!o.vis) continue;
@@ -2447,19 +2803,14 @@
                 const lOff = o.labelOff || (o.type === 'pt' || o.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
                 const lx = s.x + lOff.x, ly = s.y + lOff.y;
 
-                // Very generous hit area (80x40) to ensure easy grabbing
                 const dx = Math.abs(sp.x - lx), dy = Math.abs(sp.y - ly);
-                if (dx < 40 && dy < 20) {
+                if (dx < 30 && dy < 20) {
                     S.hovPart = 'label';
                     return o;
                 }
             }
 
-            // 2. Points (High priority, large radius for much easier grabbing)
-            let hit = S.objs.find(o => o.type === 'pt' && o.vis && M.dist(o, p) < (2.0 * C.HIT) / S.view.s);
-            if (hit) return hit;
-
-            // 3. Text and Function Anchors (Labels)
+            // 3. Text and Function Anchors
             hit = S.objs.find(o => (o.type === 'txt' || o.type === 'fn') && o.vis && M.dist(o, p) < (3.0 * C.HIT) / S.view.s);
             if (hit) return hit;
 
@@ -2554,14 +2905,17 @@
         function setupUI() {
             const updateBtn = (id, tool) => {
                 const btn = document.getElementById(id);
-                btn.innerHTML = `${tool.n[S.lang]}<div id="tip">${tool.n[S.lang]}</div>`;
+                const name = tool.n[S.lang];
+                const desc = tool.d ? tool.d[S.lang] : null;
+                const tipClass = desc ? 'show delayed' : 'show';
+                btn.innerHTML = `${name}<div id="tip" class="${tipClass}">${desc || name}</div>`;
             };
 
             document.getElementById('b-sel').onclick = () => setTool('sel');
-            document.getElementById('b-txt').onclick = () => setTool('txt');
+
 
             updateBtn('b-sel', TOOLS.sel);
-            updateBtn('b-txt', TOOLS.txt);
+
 
             const gMain = document.getElementById('b-grp');
             const gList = document.getElementById('grp-list');
@@ -2570,6 +2924,15 @@
             const updateGMain = () => {
                 const tool = TOOLS[S.mode];
                 gMain.innerHTML = `${tool.n[S.lang]}<div id="tip" class="show">${tool.n[S.lang]}</div>`;
+
+                // Highlight active item in group list
+                const items = gList.querySelectorAll('.btn');
+                G_TOOLS.forEach((k, idx) => {
+                    if (items[idx]) {
+                        if (k === S.mode) items[idx].classList.add('active');
+                        else items[idx].classList.remove('active');
+                    }
+                });
             };
             updateGMain();
 
@@ -2628,6 +2991,10 @@
             bTickNumY.onclick = (e) => { e.stopPropagation(); S.tickModeY = 'num'; updateToggles(); render(); };
             bTickPiY.onclick = (e) => { e.stopPropagation(); S.tickModeY = 'pi'; updateToggles(); render(); };
 
+            document.getElementById('b-obj').onclick = toggleObjPanel;
+            updateBtn('b-obj', TOOLS.obj_list);
+            document.getElementById('obj-panel-close').onclick = toggleObjPanel;
+
             // Language Toggle
             const bLang = document.getElementById('b-lang');
 
@@ -2647,12 +3014,17 @@
             // Initial LaTeX render for UI elements (like the pi/2 button)
             const renderUI = () => {
                 if (window.renderMathInElement) {
-                    renderMathInElement(document.getElementById('toolbar'), {
-                        delimiters: [
-                            { left: "$$", right: "$$", display: true },
-                            { left: "$", right: "$", inline: true }
-                        ],
-                        throwOnError: false
+                    ['toolbar', 'tr'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            renderMathInElement(el, {
+                                delimiters: [
+                                    { left: "$$", right: "$$", display: true },
+                                    { left: "$", right: "$", inline: true }
+                                ],
+                                throwOnError: false
+                            });
+                        }
                     });
                     return true;
                 }
@@ -2677,6 +3049,11 @@
                 const lAy = document.getElementById('label-axis-y');
                 if (lAx) lAx.innerText = TOOLS.axis_x.n[S.lang];
                 if (lAy) lAy.innerText = TOOLS.axis_y.n[S.lang];
+
+                const bObj = document.getElementById('b-obj');
+                if (bObj) updateBtn('b-obj', TOOLS.obj_list);
+                const title = document.getElementById('obj-panel-title');
+                if (title) title.innerText = TOOLS.obj_list.n[S.lang];
 
                 // Explicitly render LaTeX labels for tick buttons to ensure they show up
                 if (window.katex) {
@@ -2735,6 +3112,18 @@
                     const obj = getObj(id);
                     if (obj) obj.vis = false;
                 });
+
+                // Set view and grid for Point Plotting (Spacing = 1)
+                if (mode === 'pt') {
+                    S.view.s = 50; // 1 unit = 50px (results in Grid Step 1)
+                    S.view.x = 0;
+                    S.view.y = 0;
+                    S.showGrid = true;
+                    S.showAxes = true;
+                    S.showTicks = true;
+                    S.tickModeX = 'num';
+                    S.tickModeY = 'num';
+                }
 
                 // Start analytics tracking
                 Analytics.startLearningSession(mode);
@@ -3144,7 +3533,6 @@
                     ctx.beginPath(); ctx.moveTo(o.x, 0);
                     ctx.lineTo(o.x - 5, 10); ctx.lineTo(o.x + 5, 10); ctx.fill();
                 }
-                ctx.font = '12px sans-serif'; ctx.fillText('O', o.x - 15, o.y + 15);
             }
 
             // Show all hidden objects when clicking on empty space (PAN action)
@@ -3165,7 +3553,15 @@
                 drawObj(o); ctx.restore();
             });
 
-            if (S.tmp) { ctx.save(); ctx.globalAlpha = 0.5; drawObj(S.tmp); ctx.restore(); }
+            if (S.tmp) {
+                ctx.save(); ctx.globalAlpha = 0.5;
+                if (S.tmp.type === 'composite') {
+                    S.tmp.items.forEach(item => drawObj(item));
+                } else {
+                    drawObj(S.tmp);
+                }
+                ctx.restore();
+            }
 
             // Learning Mode Target
             if (S.learnMode === 'pt' && S.learnTarget && S.learnShowHint) {
@@ -3256,6 +3652,7 @@
             }
 
             updateLabels();
+            if (S.showObjPanel) updateObjList();
         }
 
         function drawObj(o) {
@@ -3264,6 +3661,8 @@
             const col = sel ? C.SEL : (o.col || 'black');
             ctx.lineWidth = (sel || hov) ? (sel ? 3 : 4) : 2;
             ctx.strokeStyle = col; ctx.fillStyle = col;
+            if (o.dash) ctx.setLineDash(o.dash);
+            else ctx.setLineDash([]);
 
             if (o.type === 'pt') {
                 const p = w2s(o.x, o.y);
@@ -3284,7 +3683,8 @@
                     }
                 }
             } else if (o.type === 'fn') {
-                const expr = o.expr || 'x';
+                const expr = o.expr;
+                if (!expr) return;
                 // Try explicit first
                 const f = M.prepareFn(expr);
                 if (f && !expr.includes('=')) {
@@ -3433,44 +3833,108 @@
             ctx.restore();
         }
 
+        function toggleObjPanel() {
+            S.showObjPanel = !S.showObjPanel;
+            document.getElementById('obj-panel').style.display = S.showObjPanel ? 'flex' : 'none';
+            if (S.showObjPanel) updateObjList();
+        }
+
+        function updateObjList() {
+            const container = document.getElementById('obj-panel-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            S.objs.forEach(o => {
+                if (S.learnMode && S.learnHiddenObjs.includes(o.id)) return;
+                const item = document.createElement('div');
+                item.className = 'obj-item' + (S.selIds.includes(o.id) ? ' active' : '');
+
+                const icon = document.createElement('span');
+                icon.className = 'obj-item-icon';
+                const icons = {
+                    pt: '●', mid: '⊙', ln: '↔', seg: '╱', cir: '○',
+                    fn: 'ƒ', par: '∪', ell: '⬭', hyp: ')(',
+                    par_ln: '∥', perp_ln: '⊥', bis: '∠', txt: 'T'
+                };
+                icon.innerText = icons[o.type] || '•';
+
+                const name = document.createElement('span');
+                name.innerText = o.name || (o.type === 'txt' ? 'Text' : 'Obj');
+
+                item.appendChild(icon);
+                item.appendChild(name);
+
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    S.selIds = [o.id];
+                    render();
+                };
+
+                container.appendChild(item);
+            });
+        }
+
         function updateLabels() {
             const div = document.getElementById('ui');
             div.innerHTML = '';
 
-            // Fixed Pixel Offset Logic
-            // Using C.PT_R + 8 as base offset
-            const off = C.PT_R + 8;
+            const placed = []; // Keep track of placed label boxes: {x, y, w, h}
 
             S.objs.forEach(o => {
                 // In Learning Mode, hide labels for hidden objects
                 if (S.learnMode && S.learnHiddenObjs.includes(o.id)) return;
-                if (!o.vis) return;
+                if (!o.vis || o.editing) return;
                 // Skip label if showLabel is false (but always show for txt type)
                 if (o.type !== 'txt' && o.showLabel === false) return;
                 let p = { x: o.x, y: o.y };
                 if (o.type !== 'pt' && o.type !== 'txt' && o.type !== 'mid') { const c = getCenter(o); if (!c) return; p = c; }
 
-
                 const s = w2s(p.x, p.y);
 
                 // Culling
-                if (s.x < -50 || s.x > cvs.width + 50 || s.y < -50 || s.y > cvs.height + 50) return;
+                if (s.x < -100 || s.x > cvs.width + 100 || s.y < -100 || s.y > cvs.height + 100) return;
+
+                const lOff = o.labelOff || (o.type === 'pt' || o.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
+                let lx = s.x + lOff.x, ly = s.y + lOff.y;
+
+                // --- Collision Avoidance ---
+                // Estimate dimensions (approximate)
+                let lw = 80, lh = 24;
+                if (o.type === 'pt' || o.type === 'mid') { lw = 100; lh = 24; }
+                else if (o.type === 'txt') { lw = (o.cap || '').length * 8 + 20; lh = 30; }
+                else if (o.type === 'fn') { lw = 120; lh = 30; }
+                else { lw = 120; lh = 24; }
+
+                // Simple greedy adjustment (push down if overlapping)
+                let shiftY = 0;
+                const maxShift = 100;
+                let iterations = 0;
+                let collision = true;
+                while (collision && iterations < 5) {
+                    collision = false;
+                    const curBox = { x: lx, y: ly + shiftY, w: lw, h: lh };
+                    for (const b of placed) {
+                        if (curBox.x < b.x + b.w && curBox.x + curBox.w > b.x &&
+                            curBox.y < b.y + b.h && curBox.y + curBox.h > b.y) {
+                            shiftY += b.h + 2; // Push down by height of obstacle + margin
+                            collision = true;
+                            break;
+                        }
+                    }
+                    if (shiftY > maxShift) break;
+                    iterations++;
+                }
+                ly += shiftY;
+                placed.push({ x: lx, y: ly, w: lw, h: lh });
 
                 const el = document.createElement('div');
                 el.className = 'label';
                 if (o.type === 'txt' || o.type === 'fn') {
                     el.classList.add(o.type === 'txt' ? 'txt-obj' : 'fn-obj');
                     if (S.selIds.includes(o.id) || S.hovId === o.id) el.classList.add('selected');
-                    // Use labelOff for positioning as well
-                    const lOff = o.labelOff || { x: 0, y: 0 };
-                    el.style.left = (s.x + lOff.x) + 'px';
-                    el.style.top = (s.y + lOff.y) + 'px';
-                } else {
-                    // Apply relative offset from object
-                    const lOff = o.labelOff || (o.type === 'pt' || o.type === 'mid' ? { x: 12, y: 12 } : { x: 0, y: 0 });
-                    el.style.left = (s.x + lOff.x) + 'px';
-                    el.style.top = (s.y + lOff.y) + 'px';
                 }
+                el.style.left = lx + 'px';
+                el.style.top = ly + 'px';
                 if (S.hovId === o.id && S.hovPart === 'label') el.style.background = 'rgba(52, 152, 219, 0.2)';
 
                 // Show Name or Caption based on per-object labelMode setting
@@ -3489,10 +3953,12 @@
                     const eq = M.getEquation(o);
                     txt = eq ? `$${o.name}: ${eq}$` : `$${o.name}$`;
                 } else if (o.type === 'fn') {
-                    if (o.expr && o.expr.includes('=')) {
-                        txt = `$${o.name}: ${o.expr}$`;
+                    const isPlace = o.cap === '명령어 입력' || o.cap === 'Command Input';
+                    if (isPlace) {
+                        txt = o.cap;
                     } else {
-                        txt = `$${o.name}: y = ${o.expr || 'x'}$`;
+                        const expr = o.expr || '';
+                        txt = expr.includes('=') ? `${o.name}: ${expr}` : `${o.name}: y = ${expr}`;
                     }
                 }
                 el.innerText = txt;
@@ -3539,13 +4005,18 @@
                     const endY = Math.floor(tl.y / stepY) * stepY;
 
                     for (let x = startX; x <= endX; x += stepX) {
-                        if (Math.abs(x) < 1e-9) continue;
                         const p = w2s(x, 0);
                         if (p.x < -50 || p.x > cvs.width + 50) continue;
+                        if (p.x > cvs.width - 50) continue; // Hide if too close to 'x' label
                         const el = document.createElement('div');
                         el.className = 'label';
-                        el.style.left = (p.x - 5) + 'px';
-                        el.style.top = (o.y + 10) + 'px';
+                        if (Math.abs(x) < 1e-9) {
+                            el.style.left = (p.x - 15) + 'px';
+                            el.style.top = (o.y + 5) + 'px'; // Near origin
+                        } else {
+                            el.style.left = (p.x - 5) + 'px';
+                            el.style.top = (o.y + 10) + 'px';
+                        }
                         let tex = S.tickModeX === 'pi' ? M.formatPi(x) : parseFloat(x.toFixed(10)).toString();
                         if (window.katex) katex.render(tex, el, { throwOnError: false }); else el.innerText = tex;
                         div.appendChild(el);
@@ -3554,6 +4025,7 @@
                         if (Math.abs(y) < 1e-9) continue;
                         const p = w2s(0, y);
                         if (p.y < -50 || p.y > cvs.height + 50) continue;
+                        if (p.y < 35) continue; // Hide if too close to 'y' label
                         const el = document.createElement('div');
                         el.className = 'label';
                         el.style.left = (o.x + 10) + 'px';
